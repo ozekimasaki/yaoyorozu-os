@@ -47,10 +47,11 @@ const HELP = `八百万OS 奉納シェル
   tree [path]          匣の形
   diff <a> <b>         札の差
   echo text >> path    追記
+  purge                無縁を清める
   cmd | grep|sort|tee  管で繋ぐ
   logout               EPERM
   reboot               遷宮
-  ↑↓ 履歴  Tab 補完
+  ↑↓ 履歴  Ctrl+R 探る  Tab 補完
 `;
 
 const COMMANDS = [
@@ -111,6 +112,7 @@ const COMMANDS = [
   "tree",
   "diff",
   "ll",
+  "purge",
   "logout",
   "reboot",
   "clear",
@@ -125,13 +127,18 @@ export default {
     const el = document.createElement("div");
     el.innerHTML = `
       <div class="term-out" id="term-out"></div>
-      <div class="term-row"><span>神官 $</span><input type="text" autocomplete="off" spellcheck="false" aria-label="奉納コマンド" /></div>
+      <div class="term-row"><span class="term-ps">神官 $</span><input type="text" autocomplete="off" spellcheck="false" aria-label="奉納コマンド" /></div>
     `;
     const outEl = el.querySelector(".term-out");
     const input = el.querySelector("input");
-    let cwd = `/home/${kernel.state.ujiko}`;
+    const ps = el.querySelector(".term-ps");
+    let cwd = kernel.state.termCwd || `/home/${kernel.state.ujiko}`;
     let histCursor = -1;
     let draft = "";
+    let searchMode = false;
+    let searchQ = "";
+    let searchHits = [];
+    let searchI = -1;
 
     let sink = null;
     function out(text) {
@@ -587,8 +594,17 @@ export default {
             break;
           case "cd":
             cwd = resolve(rest[0] || `/home/${kernel.state.ujiko}`);
+            kernel.state.termCwd = cwd;
+            kernel.commit();
             out(cwd);
             break;
+          case "purge": {
+            const n = await kernel.vfs.purgeMuen();
+            kernel.noteOshi(`無縁を清めた ${n}`, "muen");
+            out(`cleared ${n}`);
+            kernel.emit("vfs");
+            break;
+          }
           case "clear":
             outEl.textContent = "";
             break;
@@ -722,7 +738,58 @@ export default {
         /* 札が無い日もある */
       }
     })();
+    function applySearch() {
+      const hist = historyList();
+      searchHits = hist.filter((h) => h.includes(searchQ));
+      searchI = searchHits.length ? searchHits.length - 1 : -1;
+      input.value = searchI >= 0 ? searchHits[searchI] : "";
+      ps.textContent = searchQ ? `探る ${searchQ} $` : "探る $";
+    }
+
     input.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && (e.key === "r" || e.key === "R")) {
+        e.preventDefault();
+        if (!searchMode) {
+          searchMode = true;
+          searchQ = "";
+          draft = input.value;
+          applySearch();
+        } else if (searchHits.length) {
+          searchI = (searchI - 1 + searchHits.length) % searchHits.length;
+          input.value = searchHits[searchI];
+        }
+        return;
+      }
+      if (searchMode) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          searchMode = false;
+          searchQ = "";
+          input.value = draft;
+          ps.textContent = "神官 $";
+          return;
+        }
+        if (e.key === "Enter") {
+          searchMode = false;
+          searchQ = "";
+          ps.textContent = "神官 $";
+          handle(input.value);
+          input.value = "";
+          return;
+        }
+        if (e.key === "Backspace") {
+          e.preventDefault();
+          searchQ = searchQ.slice(0, -1);
+          applySearch();
+          return;
+        }
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          searchQ += e.key;
+          applySearch();
+          return;
+        }
+      }
       if (e.key === "Enter") {
         handle(input.value);
         input.value = "";
