@@ -59,7 +59,7 @@ export function startField(canvas, kernel) {
   let raf = 0;
   function tick() {
     raf = 0;
-    if (document.hidden) return;
+    if (document.hidden || kernel.state.maLocked) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const p of particles) {
       p.x += p.vx;
@@ -77,9 +77,10 @@ export function startField(canvas, kernel) {
     raf = requestAnimationFrame(tick);
   }
   function resume() {
-    if (!document.hidden && !raf) raf = requestAnimationFrame(tick);
+    if (!document.hidden && !kernel.state.maLocked && !raf) raf = requestAnimationFrame(tick);
   }
   document.addEventListener("visibilitychange", resume);
+  kernel.addEventListener("ma", resume);
   tick();
 
   function burst(kind = "hitodama", n = 12) {

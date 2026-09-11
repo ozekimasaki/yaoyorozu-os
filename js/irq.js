@@ -94,6 +94,10 @@ export function startIrq(layer, kernel, field, launch) {
     const ms = kernel.state.settings.irqMs || 16000;
     const wait = ms + Math.random() * 8000;
     timer = setTimeout(() => {
+      if (document.hidden || kernel.state.maLocked) {
+        loop();
+        return;
+      }
       if (!kernel.state.settings.silent || Math.random() < 0.35) card(pickKind());
       loop();
     }, wait);
