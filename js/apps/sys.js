@@ -14,7 +14,7 @@ export default {
       if (sig === lastSig && el.querySelector(".grid-2")) return;
       lastSig = sig;
       el.innerHTML = `
-        <p class="lede">このブラウザが、筐体である</p>
+        <p class="lede">このブラウザが、箕体である</p>
         <div class="grid-2">
           <div class="card"><div class="tag">UID</div><h3>${s.ujiko}</h3><p class="muted">未ログアウト ${s.logoutDays} 日</p></div>
           <div class="card"><div class="tag">SPACE</div><h3>${kernel.spacePref().name}</h3><p class="muted">47のうちの一つ。親ではない。</p></div>
