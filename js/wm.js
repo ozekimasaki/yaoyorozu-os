@@ -55,6 +55,11 @@ export function createWm(root, taskbar, kernel) {
           else if (cur.el.classList.contains("focused")) minimize(cur.pid);
           else focus(cur.pid);
         });
+        btn.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showTaskMenu(e.clientX, e.clientY, Number(btn.dataset.pid));
+        });
         host.appendChild(btn);
       }
       if (btn.className !== cls) btn.className = cls;
@@ -63,6 +68,60 @@ export function createWm(root, taskbar, kernel) {
     host.querySelectorAll("[data-pid]").forEach((el) => {
       if (!seen.has(el.dataset.pid)) el.remove();
     });
+  }
+
+  const taskMenu = document.createElement("div");
+  taskMenu.id = "task-menu";
+  taskMenu.hidden = true;
+  taskMenu.innerHTML =
+    `<button type="button" data-act="min">しまう</button>` +
+    `<button type="button" data-act="pin">全県に結ぶ</button>` +
+    `<button type="button" data-act="close">閉じる</button>`;
+  document.body.appendChild(taskMenu);
+  let taskMenuPid = 0;
+  function showTaskMenu(x, y, pid) {
+    taskMenuPid = pid;
+    taskMenu.style.left = `${x}px`;
+    taskMenu.style.top = `${y}px`;
+    taskMenu.hidden = false;
+  }
+  taskMenu.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const act = e.target.dataset.act;
+    const pid = taskMenuPid;
+    taskMenu.hidden = true;
+    if (!act || !pid) return;
+    if (act === "min") minimize(pid);
+    else if (act === "pin") pin(pid);
+    else if (act === "close") close(pid);
+  });
+  document.addEventListener("click", () => {
+    taskMenu.hidden = true;
+  });
+
+  function tile() {
+    const vis = [...windows.values()].filter((w) => !w.minimized && !w.el.classList.contains("is-away"));
+    if (!vis.length) return 0;
+    const n = vis.length;
+    const cols = Math.ceil(Math.sqrt(n));
+    const rows = Math.ceil(n / cols);
+    const availW = window.innerWidth - INSET.left - INSET.right;
+    const availH = window.innerHeight - INSET.top - INSET.bottom;
+    const cw = availW / cols;
+    const rh = availH / rows;
+    vis.forEach((w, i) => {
+      w.maximized = false;
+      w.el.classList.remove("is-max");
+      const c = i % cols;
+      const r = (i / cols) | 0;
+      w.el.style.left = `${INSET.left + c * cw}px`;
+      w.el.style.top = `${INSET.top + r * rh}px`;
+      w.el.style.width = `${Math.max(320, cw - 8)}px`;
+      w.el.style.height = `${Math.max(220, rh - 8)}px`;
+    });
+    schedulePersist();
+    kernel.log(`窓を${n}席に並べた`, "wm");
+    return n;
   }
 
   function applySpace(spaceId) {
@@ -142,6 +201,7 @@ export function createWm(root, taskbar, kernel) {
     applySpace(kernel.state.currentSpace);
     schedulePersist();
     kernel.log(w.space ? `窓 ${w.pid} をこの県へ戻した` : `窓 ${w.pid} を全県に結んだ`, "wm");
+    return;
   }
 
   function maximize(pid) {
@@ -404,5 +464,6 @@ export function createWm(root, taskbar, kernel) {
     geomOf,
     hideAll,
     pin,
+    tile,
   };
 }
