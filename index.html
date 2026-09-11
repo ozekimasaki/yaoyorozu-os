@@ -66,24 +66,31 @@
         </div>
       </section>
 
-      <section class="window" data-win="map" hidden style="left: 190px; top: 72px; width: min(860px, 80vw); height: min(580px, 74vh)">
+      <section class="window" data-win="map" hidden style="left: 168px; top: 56px; width: min(980px, 88vw); height: min(720px, 82vh)">
         <div class="titlebar"><span>列島.map</span><div class="win-btns"><button class="win-close" data-win="map" aria-label="閉じる"></button><button class="win-min" data-win="map" aria-label="最小化"></button><button class="win-max" data-win="map" aria-label="最大化"></button></div></div>
-        <div class="win-body" style="padding: 0; position: relative">
+        <div class="win-body map-body">
           <div class="map-wrap">
             <div class="map-stage">
-              <svg class="map-bg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-                <path d="M78 4 C86 6 90 12 88 18 C84 22 80 16 74 18 C76 10 74 6 78 4Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
-                <path d="M70 18 C76 22 78 30 72 38 C66 42 62 34 64 28 C66 22 68 20 70 18Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
-                <path d="M58 34 C70 40 68 52 58 54 C48 52 46 40 58 34Z" fill="rgba(244,234,216,0.08)" stroke="rgba(201,162,39,0.25)"/>
-                <path d="M42 44 C54 46 52 58 40 60 C32 56 34 46 42 44Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
-                <path d="M22 48 C36 50 34 62 24 64 C16 60 16 50 22 48Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
-                <path d="M28 54 C36 56 36 64 30 62 C24 60 24 54 28 54Z" fill="rgba(244,234,216,0.06)" stroke="rgba(201,162,39,0.2)"/>
-                <path d="M14 52 C24 56 24 70 18 70 C10 64 10 54 14 52Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
-                <circle cx="8" cy="78" r="3.2" fill="rgba(244,234,216,0.08)" stroke="rgba(201,162,39,0.3)"/>
-              </svg>
-              <div id="map-nodes"></div>
+              <div class="map-chrome">
+                <div class="map-kicker">列島カーネル · 47</div>
+                <div class="map-callout" id="map-callout">県を選べ</div>
+              </div>
+              <div class="map-canvas" id="japan-map-host">
+                <p class="muted" style="padding:24px">列島を呼び出している…</p>
+              </div>
+              <div class="map-legend" aria-hidden="true">
+                <span class="lg cool">余白</span>
+                <span class="lg mid">中</span>
+                <span class="lg hot">過密</span>
+              </div>
             </div>
-            <aside class="map-panel" id="map-panel"></aside>
+            <aside class="map-panel">
+              <label class="map-select-label">都道府県
+                <select id="map-select"></select>
+              </label>
+              <div id="map-panel"></div>
+              <p class="map-attr">地図: MapSVG / @svg-maps/japan · CC BY 4.0</p>
+            </aside>
           </div>
         </div>
       </section>
