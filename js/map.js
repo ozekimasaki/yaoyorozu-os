@@ -31,9 +31,15 @@
     return o ? o.pick(lines) : lines[1];
   }
 
+  function prefCode(p) {
+    if (p.code) return p.code;
+    const i = window.YAOYOROZU_PREFECTURES.findIndex((x) => x.id === p.id);
+    return String(i + 1).padStart(2, "0");
+  }
+
   function panelHtml(p) {
     return `
-      <div class="tag">${p.region} / ${p.code} / 未使用CPU ${p.unusedCpu}%</div>
+      <div class="tag">${p.region} / ${prefCode(p)} / 未使用CPU ${p.unusedCpu}%</div>
       <h2>${p.name}</h2>
       <p class="muted">${p.kami}</p>
       <p>${p.protocol}</p>
@@ -66,7 +72,7 @@
       window.YAOYOROZU_PREFECTURES.forEach((p) => {
         const opt = document.createElement("option");
         opt.value = p.id;
-        opt.textContent = `${p.code} ${p.name}`;
+        opt.textContent = `${prefCode(p)} ${p.name}`;
         selectEl.appendChild(opt);
       });
     }
