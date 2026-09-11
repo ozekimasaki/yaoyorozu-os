@@ -221,6 +221,19 @@ async function startDesktop() {
   };
   applyMa(!!kernel.state.maLocked);
   kernel.addEventListener("ma", (ev) => applyMa(!!ev.detail));
+  const syncClock = () => kernel.pauseClock(document.hidden || !!kernel.state.maLocked);
+  syncClock();
+  kernel.addEventListener("ma", syncClock);
+  let hiddenSince = 0;
+  document.addEventListener("visibilitychange", () => {
+    syncClock();
+    hiddenSince = document.hidden ? Date.now() : 0;
+  });
+  setInterval(() => {
+    if (document.hidden && hiddenSince && Date.now() - hiddenSince > 45000 && !kernel.state.maLocked) {
+      kernel.maSleep();
+    }
+  }, 4000);
   document.getElementById("ma-wake").addEventListener("click", () => kernel.maWake());
   kernel.addEventListener("auth", () => {
     if (kernel.state.maLocked) kernel.maWake();
@@ -384,6 +397,10 @@ async function startDesktop() {
     if (act === "clip") launch("clip");
     if (act === "ma") kernel.maSleep();
     if (act === "muen") launch("muen");
+    if (act === "box") {
+      const path = `/home/${kernel.state.ujiko}/desktop/匣-${Date.now()}`;
+      kernel.vfs.mkdir(path).then(() => kernel.emit("vfs"));
+    }
     if (act === "ofuda") {
       const path = `/home/${kernel.state.ujiko}/desktop/${Date.now()}.ofuda`;
       kernel.vfs.write(path, "名を書け。空のスローガンはコンパイルされない。", "text/plain").then(() => {
