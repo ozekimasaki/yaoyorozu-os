@@ -8,3 +8,4 @@ package-lock.json
 .gitignore
 .assetsignore
 README.md
+.netlify
