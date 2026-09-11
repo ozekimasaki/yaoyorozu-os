@@ -40,6 +40,7 @@ function normalize(path) {
 }
 
 function parentOf(path) {
+  const n = normalize(path);
   if (n === "/") return "/";
   return n.slice(0, n.lastIndexOf("/")) || "/";
 }
