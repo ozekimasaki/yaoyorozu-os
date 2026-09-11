@@ -5,7 +5,14 @@ export default {
   height: "min(540px, 72vh)",
   spawn({ kernel, launch }) {
     const el = document.createElement("div");
+    let lastSig = "";
     const render = () => {
+      const sig = `${kernel.state.tokyo | 0}|${kernel.state.local | 0}|${(kernel.state.sockets || [])
+        .slice(0, 24)
+        .map((s) => `${s.id}:${s.ttl}:${s.state}`)
+        .join("|")}`;
+      if (sig === lastSig && el.querySelector(".os-table")) return;
+      lastSig = sig;
       el.innerHTML = `
         <p class="lede">縁は双方向である</p>
         <p class="muted">東京負荷 ${kernel.state.tokyo.toFixed(0)}% · 地方神 ${kernel.state.local.toFixed(0)}% · ソケット ${kernel.state.sockets.length}</p>
