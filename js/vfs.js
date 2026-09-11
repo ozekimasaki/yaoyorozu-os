@@ -262,6 +262,13 @@ export function createVfs() {
     return { bytes, files, dirs };
   }
 
+  async function copy(from, to) {
+    const src = await getFile(from);
+    if (!src) throw new Error("ENOENT");
+    if (src.type === "dir") throw new Error("EISDIR");
+    return write(to, src.body, src.mime || "text/plain");
+  }
+
   async function rename(from, to) {
     const src = await getFile(from);
     if (!src) throw new Error("ENOENT");
@@ -329,6 +336,7 @@ export function createVfs() {
     find,
     grep,
     usage,
+    copy,
     rename,
     remove,
     moveToMuen,

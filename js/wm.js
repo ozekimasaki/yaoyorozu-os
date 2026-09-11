@@ -127,7 +127,10 @@ export function createWm(root, taskbar, kernel) {
       kernel.emit("irq", { kind: "zashiki", pid });
       return false;
     }
-    if (w.onClose) w.onClose();
+    if (w.onClose) {
+      const allow = w.onClose();
+      if (allow === false) return false;
+    }
     kernel.exitApp(w.pid);
     w.el.remove();
     windows.delete(pid);
