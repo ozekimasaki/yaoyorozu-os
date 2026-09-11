@@ -21,9 +21,18 @@
 }
 
 .desk-icon:hover,
-.desk-icon:focus-visible {
+.desk-icon:focus-visible,
+.desk-icon.is-on {
   border-color: var(--gold);
   color: var(--gold-2);
+}
+
+.desk-icon.is-on {
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+
+#desktop:focus {
+  outline: none;
 }
 
 #window-layer {
