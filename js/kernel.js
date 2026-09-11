@@ -247,6 +247,15 @@ class Kernel extends EventTarget {
     if (!(await this.vfs.getFile(rc))) {
       await this.vfs.write(rc, "# 奉納の始めに読む。空でよい。\nalias ll=ls -l\n", "text/plain");
     }
+    await this.vfs.mkdir(`${home}/.init`);
+    const initNote = `${home}/.init/readme.ofuda`;
+    if (!(await this.vfs.getFile(initNote))) {
+      await this.vfs.write(
+        initNote,
+        "この匣の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
+        "text/plain"
+      );
+    }
   }
 
   defaultState(saved) {
