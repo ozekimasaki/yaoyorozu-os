@@ -54,6 +54,7 @@ function applyJob(job) {
 }
 
 let lastDeskSig = "";
+let lastDeskPick = "";
 let deskPos = null;
 
 async function loadDeskPos() {
@@ -92,7 +93,7 @@ async function paintDesktop() {
   rows.forEach((f, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "desk-icon";
+    btn.className = `desk-icon${f.path === lastDeskPick ? " is-on" : ""}`;
     btn.dataset.path = f.path;
     btn.textContent = f.name.replace(".gate", "");
     const saved = pos[f.path];
@@ -125,6 +126,8 @@ async function paintDesktop() {
     });
     btn.addEventListener("pointerup", () => {
       dragging = false;
+      lastDeskPick = f.path;
+      icons.querySelectorAll(".desk-icon").forEach((el) => el.classList.toggle("is-on", el.dataset.path === f.path));
       if (moved) {
         pos[f.path] = { x: btn.offsetLeft, y: btn.offsetTop };
         deskPos = pos;
@@ -328,9 +331,58 @@ async function startDesktop() {
       e.preventDefault();
       toggleSpaces();
     }
+    if (!overlaysOpen() && onDesktopKeys()) {
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        moveDeskPick(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        moveDeskPick(1);
+      } else if (e.key === "Enter" && lastDeskPick) {
+        e.preventDefault();
+        openPath(lastDeskPick);
+      }
+    }
   });
 
-  document.querySelector(".hint").textContent = "/ 鳥居 · ; 窓 · ' 空間送り · [ ] 隣県 · k 柏手 · m 間";
+  function deskIconList() {
+    return [...document.querySelectorAll(".desk-icon")].sort((a, b) => {
+      const dy = a.offsetTop - b.offsetTop;
+      if (Math.abs(dy) > 24) return dy;
+      return a.offsetLeft - b.offsetLeft;
+    });
+  }
+
+  function moveDeskPick(delta) {
+    const icons = deskIconList();
+    if (!icons.length) return;
+    let i = icons.findIndex((el) => el.classList.contains("is-on"));
+    if (i < 0) i = 0;
+    else i = (i + delta + icons.length) % icons.length;
+    lastDeskPick = icons[i].dataset.path || "";
+    icons.forEach((el, idx) => el.classList.toggle("is-on", idx === i));
+    icons[i].focus();
+  }
+
+  function overlaysOpen() {
+    return (
+      document.getElementById("torii-gate").classList.contains("open") ||
+      document.getElementById("kashiwa-stage").classList.contains("open") ||
+      document.getElementById("win-switcher").classList.contains("open") ||
+      document.getElementById("space-switcher").classList.contains("open") ||
+      !document.getElementById("eaves-menu").hidden ||
+      !document.getElementById("ujiko-drawer").hidden
+    );
+  }
+
+  function onDesktopKeys() {
+    const ae = document.activeElement;
+    if (!ae) return true;
+    if (ae === document.body || ae.id === "desktop" || ae.classList.contains("desk-icon")) return true;
+    return false;
+  }
+
+  document.querySelector(".hint").textContent = "/ 鳥居 · ; 窓 · ' 空間送り · [ ] 隣県 · ↑↓ 札 · k 柏手 · m 間";
 
   const switcher = document.getElementById("win-switcher");
   function toggleSwitcher() {
@@ -381,6 +433,11 @@ async function startDesktop() {
   }
 
   const eaves = document.getElementById("eaves-menu");
+  desktop.addEventListener("mousedown", (e) => {
+    if (e.target.closest(".window") || e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
+    if (e.target.closest(".desk-icon")) return;
+    desktop.focus();
+  });
   desktop.addEventListener("contextmenu", (e) => {
     if (e.target.closest(".window") || e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
     e.preventDefault();
