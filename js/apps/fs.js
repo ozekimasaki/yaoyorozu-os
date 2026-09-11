@@ -86,6 +86,7 @@ export default {
           <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
           <button class="btn" type="button" id="fs-rename" ${locked ? "disabled" : ""}>改名</button>
           <button class="btn" type="button" id="fs-muen" ${locked ? "disabled" : ""}>無縁へ</button>
+          <button class="btn" type="button" id="fs-restore" ${cwd === "/var/muen" ? "" : "disabled"}>席へ戻す</button>
           <button class="btn" type="button" id="muen-scan">無縁スキャン</button>
         </div>
       `;
@@ -136,6 +137,18 @@ export default {
           kernel.emit("vfs");
         } catch (e) {
           kernel.log(`muen: ${e.message}`, "fs");
+        }
+      };
+      el.querySelector("#fs-restore").onclick = async () => {
+        if (!selected) return;
+        try {
+          const dest = await kernel.vfs.restoreFromMuen(selected);
+          kernel.log(`restore ${selected} → ${dest}`, "fs");
+          kernel.noteRecent(dest);
+          selected = "";
+          kernel.emit("vfs");
+        } catch (e) {
+          kernel.log(`restore: ${e.message}`, "fs");
         }
       };
       el.querySelector("#muen-scan").onclick = () => {

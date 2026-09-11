@@ -53,6 +53,25 @@ function nameOf(path) {
 
 export function createVfs() {
   let db = null;
+  let indexReady = false;
+  const cache = new Map();
+  const children = new Map();
+
+  function remember(record) {
+    cache.set(record.path, record);
+    if (record.path === "/") return;
+    const p = parentOf(record.path);
+    if (!children.has(p)) children.set(p, new Set());
+    children.get(p).add(record.path);
+  }
+
+  function forget(path) {
+    const n = normalize(path);
+    cache.delete(n);
+    const p = parentOf(n);
+    const set = children.get(p);
+    if (set) set.delete(n);
+  }
 
   async function ready() {
     if (!db) db = await openDb();
@@ -60,9 +79,11 @@ export function createVfs() {
   }
 
   async function getFile(path) {
+    const n = normalize(path);
+    if (indexReady && cache.has(n)) return cache.get(n);
     const store = (await ready()).transaction("files", "readonly").objectStore("files");
     return new Promise((resolve, reject) => {
-      const req = store.get(normalize(path));
+      const req = store.get(n);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
@@ -73,6 +94,7 @@ export function createVfs() {
     const tx = database.transaction("files", "readwrite");
     tx.objectStore("files").put(record);
     await txDone(tx);
+    if (indexReady) remember(record);
     return record;
   }
 
@@ -81,6 +103,7 @@ export function createVfs() {
     const tx = database.transaction("files", "readwrite");
     tx.objectStore("files").delete(normalize(path));
     await txDone(tx);
+    if (indexReady) forget(path);
   }
 
   async function allFiles() {
@@ -92,8 +115,20 @@ export function createVfs() {
     });
   }
 
+  async function ensureIndex() {
+    if (indexReady) return;
+    cache.clear();
+    children.clear();
+    const files = await allFiles();
+    for (const f of files) remember(f);
+    indexReady = true;
+  }
+
   async function mkdir(path) {
     const n = normalize(path);
+    if (n === "/") {
+      return { path: "/", type: "dir", body: "", mime: "inode/directory", updated: 0 };
+    }
     const existing = await getFile(n);
     if (existing && existing.type !== "dir") throw new Error("ENOTDIR");
     if (existing) return existing;
@@ -123,6 +158,7 @@ export function createVfs() {
       type: "file",
       body: String(body ?? ""),
       mime,
+      origin: prev && prev.origin,
       updated: Date.now(),
     });
   }
@@ -135,38 +171,95 @@ export function createVfs() {
   }
 
   async function ls(path) {
+    await ensureIndex();
     const n = normalize(path);
     if (n !== "/") {
-      const dir = await getFile(n);
+      const dir = cache.get(n) || (await getFile(n));
       if (!dir) throw new Error("ENOENT");
       if (dir.type !== "dir") throw new Error("ENOTDIR");
     }
-    const files = await allFiles();
-    const prefix = n === "/" ? "/" : `${n}/`;
-    const names = new Map();
-    for (const f of files) {
-      if (f.path === n) continue;
-      if (n === "/") {
-        const top = f.path.split("/").filter(Boolean)[0];
-        if (top && !names.has(top)) {
-          const child = files.find((x) => x.path === `/${top}`);
-          names.set(top, child || { path: `/${top}`, type: "dir", name: top });
+    const kids = children.get(n) || new Set();
+    return [...kids].map((p) => {
+      const f = cache.get(p) || { path: p, type: "dir" };
+      return { ...f, name: nameOf(p) };
+    });
+  }
+
+  async function find(root, needle) {
+    await ensureIndex();
+    const n = normalize(root || "/");
+    const q = String(needle || "").toLowerCase();
+    const out = [];
+    const seen = new Set();
+    const walk = (dir) => {
+      if (seen.has(dir)) return;
+      seen.add(dir);
+      for (const p of children.get(dir) || []) {
+        const f = cache.get(p);
+        if (!f || p === dir) continue;
+        if (!q || p.toLowerCase().includes(q) || nameOf(p).toLowerCase().includes(q)) {
+          out.push({ ...f, name: nameOf(p) });
         }
-      } else if (f.path.startsWith(prefix)) {
-        const rest = f.path.slice(prefix.length);
-        const name = rest.split("/")[0];
-        if (!name) continue;
-        const childPath = `${n}/${name}`;
-        if (!names.has(name)) {
-          const child = files.find((x) => x.path === childPath);
-          names.set(name, child || { path: childPath, type: "dir", name });
+        if (f.type === "dir") walk(p);
+        if (out.length >= 200) return;
+      }
+    };
+    walk(n);
+    return out;
+  }
+
+  async function grep(root, pat) {
+    if (!pat) throw new Error("EINVAL");
+    await ensureIndex();
+    const n = normalize(root || "/");
+    const hits = [];
+    const seen = new Set();
+    const walk = (dir) => {
+      if (seen.has(dir)) return;
+      seen.add(dir);
+      for (const p of children.get(dir) || []) {
+        const f = cache.get(p);
+        if (!f || p === dir) continue;
+        if (f.type === "dir") walk(p);
+        else if (typeof f.body === "string" && f.body.includes(pat)) {
+          const line = f.body.split("\n").find((l) => l.includes(pat)) || "";
+          hits.push(`${p}: ${line.slice(0, 140)}`);
+        }
+        if (hits.length >= 80) return;
+      }
+    };
+    walk(n);
+    return hits;
+  }
+
+  async function usage(path) {
+    await ensureIndex();
+    const n = normalize(path || "/");
+    const root = cache.get(n);
+    if (root && root.type === "file") {
+      return { bytes: (root.body || "").length, files: 1, dirs: 0 };
+    }
+    let bytes = 0;
+    let files = 0;
+    let dirs = 0;
+    const seen = new Set();
+    const walk = (dir) => {
+      if (seen.has(dir)) return;
+      seen.add(dir);
+      for (const p of children.get(dir) || []) {
+        const f = cache.get(p);
+        if (!f || p === dir) continue;
+        if (f.type === "dir") {
+          dirs += 1;
+          walk(p);
+        } else {
+          files += 1;
+          bytes += (f.body || "").length;
         }
       }
-    }
-    return [...names.values()].map((f) => ({
-      ...f,
-      name: nameOf(f.path),
-    }));
+    };
+    walk(n);
+    return { bytes, files, dirs };
   }
 
   async function rename(from, to) {
@@ -181,9 +274,29 @@ export function createVfs() {
     const src = await getFile(path);
     if (!src) throw new Error("ENOENT");
     const dest = `/var/muen/${Date.now()}-${nameOf(path)}`;
-    await write(dest, src.body, src.mime || "text/plain");
+    await mkdir("/var/muen");
+    await putFile({
+      path: dest,
+      type: "file",
+      body: src.body || "",
+      mime: src.mime || "text/plain",
+      origin: normalize(path),
+      updated: Date.now(),
+    });
     await remove(path);
     return dest;
+  }
+
+  async function restoreFromMuen(path, dest) {
+    const src = await getFile(path);
+    if (!src) throw new Error("ENOENT");
+    const n = normalize(path);
+    if (!n.startsWith("/var/muen/")) throw new Error("EXDEV");
+    const name = nameOf(n).replace(/^\d+-/, "");
+    const to = dest ? normalize(dest) : src.origin || `/var/restored/${name}`;
+    await write(to, src.body, src.mime || "text/plain");
+    await remove(n);
+    return to;
   }
 
   async function metaGet(key) {
@@ -207,14 +320,19 @@ export function createVfs() {
     parentOf,
     nameOf,
     ready,
+    ensureIndex,
     getFile,
     mkdir,
     write,
     read,
     ls,
+    find,
+    grep,
+    usage,
     rename,
     remove,
     moveToMuen,
+    restoreFromMuen,
     allFiles,
     metaGet,
     metaSet,
