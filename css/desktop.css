@@ -1,0 +1,349 @@
+#desktop-icons {
+  position: absolute;
+  left: 18px;
+  top: 58px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 112px;
+}
+
+.desk-icon {
+  appearance: none;
+  background: rgba(22, 20, 15, 0.55);
+  border: 1px solid var(--line);
+  color: var(--washi);
+  padding: 10px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-align: left;
+}
+
+.desk-icon:hover,
+.desk-icon:focus-visible {
+  border-color: var(--gold);
+  color: var(--gold-2);
+}
+
+#window-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+
+#window-layer .window {
+  pointer-events: auto;
+}
+
+#torii-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(8, 7, 6, 0.86);
+  display: none;
+  padding: 8vh 8vw 12vh;
+}
+
+#torii-gate.open {
+  display: flex;
+  flex-direction: column;
+}
+
+.torii-head {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 4vw, 40px);
+  letter-spacing: 0.2em;
+  margin: 0 0 8px;
+}
+
+#torii-search {
+  width: min(640px, 100%);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--gold);
+  color: var(--washi);
+  font-size: 18px;
+  padding: 10px 0;
+  outline: none;
+  margin: 16px 0;
+}
+
+#torii-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  overflow: auto;
+}
+
+.torii-item {
+  appearance: none;
+  text-align: left;
+  background: rgba(22, 20, 15, 0.9);
+  border: 1px solid var(--line);
+  color: var(--washi);
+  padding: 12px;
+  cursor: pointer;
+}
+
+.torii-item:hover,
+.torii-item.is-on {
+  border-color: var(--gold);
+}
+
+.torii-item small {
+  display: block;
+  color: var(--washi-dim);
+  margin-top: 4px;
+}
+
+#kashiwa-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 75;
+  background: radial-gradient(800px 500px at 50% 30%, #2a120e, #0c0b09);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+#kashiwa-stage.open {
+  display: flex;
+}
+
+.kashiwa-hands {
+  display: flex;
+  gap: 24px;
+  margin: 24px 0;
+}
+
+.hand {
+  width: 160px;
+  height: 180px;
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--gold-2);
+  font-family: var(--font-serif);
+  font-size: 28px;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+}
+
+.hand.struck {
+  background: var(--vermilion);
+  color: var(--washi);
+  border-color: var(--vermilion);
+}
+
+#kashiwa-log {
+  width: min(560px, 92vw);
+  min-height: 120px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  color: var(--washi-dim);
+}
+
+#kashiwa-result {
+  margin-top: 20px;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  letter-spacing: 0.16em;
+}
+
+.brand,
+.clock,
+.menubar-meta {
+  cursor: pointer;
+}
+
+#ujiko-drawer {
+  position: fixed;
+  top: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  width: min(640px, 92vw);
+  background: #16140f;
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+
+#ujiko-drawer[hidden] {
+  display: none;
+}
+
+#ujiko-drawer .term-out {
+  min-height: 80px;
+  max-height: 220px;
+  overflow: auto;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+#ma-lock {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 66;
+  background: radial-gradient(700px 420px at 50% 40%, #1a1610, #0c0b09);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  padding: 32px;
+}
+
+#ma-lock.open {
+  display: flex;
+}
+
+#desktop.is-ma #window-layer,
+#desktop.is-ma #desktop-icons,
+#desktop.is-ma .taskbar,
+#desktop.is-ma .hint,
+#desktop.is-ma .menubar {
+  pointer-events: none;
+}
+
+#win-switcher {
+  display: none;
+  position: fixed;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  z-index: 68;
+  width: min(520px, 90vw);
+  background: #16140f;
+  border: 1px solid var(--gold);
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+
+#win-switcher.open {
+  display: grid;
+  gap: 6px;
+}
+
+#win-switcher button {
+  appearance: none;
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--washi);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+#win-switcher button:hover {
+  border-color: var(--gold);
+}
+
+#win-switcher small {
+  display: block;
+  color: var(--washi-dim);
+}
+
+#eaves-menu {
+  position: fixed;
+  z-index: 69;
+  background: #16140f;
+  border: 1px solid var(--line);
+  min-width: 140px;
+  display: grid;
+}
+
+#eaves-menu[hidden] {
+  display: none;
+}
+
+#eaves-menu button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--washi);
+  text-align: left;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+#eaves-menu button:hover {
+  background: rgba(201, 162, 39, 0.12);
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 16px 0;
+}
+
+.cal-grid em,
+.cal-grid b,
+.cal-grid i {
+  display: grid;
+  place-items: center;
+  min-height: 32px;
+  font-style: normal;
+  font-weight: 400;
+  border: 1px solid var(--line);
+}
+
+.cal-grid em {
+  color: var(--gold-2);
+  border: 0;
+  font-size: 11px;
+}
+
+.cal-grid b.is-today {
+  background: var(--vermilion);
+  color: var(--washi);
+}
+
+.taskbar {
+  justify-content: flex-start;
+}
+
+.taskbar .pill {
+  cursor: pointer;
+}
+
+#desktop {
+  --space-land: #3d5c4a;
+}
+
+#desktop .desktop-veil {
+  background:
+    radial-gradient(900px 500px at 80% 10%, color-mix(in srgb, var(--space-land) 35%, transparent), transparent 55%),
+    radial-gradient(800px 500px at 10% 90%, rgba(30, 58, 95, 0.35), transparent 50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .window,
+  #torii-gate,
+  #kashiwa-stage,
+  .hand {
+    transition: none;
+  }
+}
+
+@media (max-width: 820px) {
+  #desktop-icons {
+    flex-direction: row;
+    width: auto;
+    right: 12px;
+    left: 12px;
+    flex-wrap: wrap;
+  }
+  .hand {
+    width: 120px;
+    height: 140px;
+    font-size: 20px;
+  }
+}
