@@ -56,8 +56,16 @@ export default {
         draw();
         return;
       }
+      const virt = kernel.procRead(current);
+      if (virt) {
+        body = virt.body;
+        readonly = true;
+        saved = body;
+        draw();
+        return;
+      }
       try {
-        const f = await kernel.vfs.read(current);
+        const f = await kernel.readPath(current);
         body = f.body;
         kernel.noteRecent(current);
       } catch (err) {
@@ -111,11 +119,27 @@ export default {
       };
     }
 
+    const onVfs = async () => {
+      if (dirty || readonly) return;
+      try {
+        const f = await kernel.vfs.read(current);
+        if (f.body === body) return;
+        body = f.body;
+        saved = body;
+        const ta = el.querySelector(".editor");
+        if (ta) ta.value = body;
+      } catch (err) {
+        /* 札が消えた日もある */
+      }
+    };
+    kernel.addEventListener("vfs", onVfs);
+
     load();
     return {
       el,
       title: current.split("/").pop() || "言霊",
       onClose() {
+        kernel.removeEventListener("vfs", onVfs);
         clearTimeout(autosaveT);
         if (readonly || !dirty) return true;
         if (!dirtyOnce) {

@@ -35,30 +35,45 @@ export function createWm(root, taskbar, kernel) {
 
   function taskButtons() {
     if (!taskbar) return;
-    taskbar.querySelectorAll("[data-pid]").forEach((el) => el.remove());
     const host = taskbar.querySelector(".task-apps") || taskbar;
+    const seen = new Set();
     for (const w of windows.values()) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = `task-app${w.el.classList.contains("focused") ? " is-focus" : ""}${w.minimized ? " is-min" : ""}`;
-      btn.dataset.pid = String(w.pid);
-      btn.textContent = `${w.title} · ${w.pid}`;
-      btn.addEventListener("click", () => {
-        if (w.minimized) restore(w.pid);
-        else if (w.el.classList.contains("focused")) minimize(w.pid);
-        else focus(w.pid);
-      });
-      host.appendChild(btn);
+      const pid = String(w.pid);
+      seen.add(pid);
+      const cls = `task-app${w.el.classList.contains("focused") ? " is-focus" : ""}${w.minimized ? " is-min" : ""}`;
+      const label = `${w.title} · ${w.pid}`;
+      let btn = host.querySelector(`[data-pid="${pid}"]`);
+      if (!btn) {
+        btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.pid = pid;
+        btn.addEventListener("click", () => {
+          const cur = windows.get(Number(btn.dataset.pid));
+          if (!cur) return;
+          if (cur.minimized) restore(cur.pid);
+          else if (cur.el.classList.contains("focused")) minimize(cur.pid);
+          else focus(cur.pid);
+        });
+        host.appendChild(btn);
+      }
+      if (btn.className !== cls) btn.className = cls;
+      if (btn.textContent !== label) btn.textContent = label;
     }
+    host.querySelectorAll("[data-pid]").forEach((el) => {
+      if (!seen.has(el.dataset.pid)) el.remove();
+    });
   }
 
   function applySpace(spaceId) {
+    let first = null;
     for (const w of windows.values()) {
       const here = !w.space || w.space === spaceId;
       w.el.classList.toggle("is-away", !here);
       if (!here) w.el.classList.remove("focused");
+      else if (!first && !w.minimized) first = w;
     }
-    taskButtons();
+    if (first) focus(first.pid);
+    else taskButtons();
   }
 
   function focus(pid) {

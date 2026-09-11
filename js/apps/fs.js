@@ -52,8 +52,15 @@ export default {
         return;
       }
       kernel.noteRecent(p);
+      if (type === "link") {
+        const node = await kernel.vfs.getFile(p);
+        if (node && node.target) {
+          const dest = await kernel.vfs.getFile(node.target);
+          return openPath(node.target, dest ? dest.type : "file");
+        }
+      }
       if (p.endsWith(".gate")) {
-        const f = await kernel.vfs.read(p);
+        const f = await kernel.readPath(p);
         launch(f.body.trim());
         return;
       }
@@ -64,7 +71,7 @@ export default {
       let entries = [];
       let err = "";
       try {
-        entries = (await virtualListing(cwd)) || (await kernel.vfs.ls(cwd));
+        entries = (await virtualListing(cwd)) || (await kernel.listPath(cwd));
       } catch (e) {
         err = e.message;
       }
@@ -77,7 +84,7 @@ export default {
           ${entries
             .map(
               (f) =>
-                `<button type="button" class="${f.path === selected ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : "·"} ${f.name || f.path}</button>`
+                `<button type="button" class="${f.path === selected ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
             )
             .join("")}
         </div>
@@ -85,6 +92,7 @@ export default {
           <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
           <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
+          <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
           <button class="btn" type="button" id="fs-rename" ${locked ? "disabled" : ""}>改名</button>
           <button class="btn" type="button" id="fs-muen" ${locked ? "disabled" : ""}>無縁へ</button>
           <button class="btn" type="button" id="fs-restore" ${cwd === "/var/muen" ? "" : "disabled"}>席へ戻す</button>
@@ -114,6 +122,18 @@ export default {
         } catch (e) {
           err = e.message;
           render();
+        }
+      };
+      el.querySelector("#fs-link").onclick = async () => {
+        const name = (nameEl.value || "").trim();
+        if (!selected || !name) return;
+        try {
+          const dest = kernel.vfs.normalize(`${cwd}/${name}`);
+          await kernel.vfs.link(selected, dest);
+          kernel.noteRecent(dest);
+          kernel.emit("vfs");
+        } catch (e) {
+          kernel.log(`ln: ${e.message}`, "fs");
         }
       };
       el.querySelector("#fs-copy").onclick = async () => {
