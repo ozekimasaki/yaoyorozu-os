@@ -237,6 +237,7 @@ class Kernel extends EventTarget {
       ["奉納.gate", "term"],
       ["祭暦.gate", "cal"],
       ["機械.gate", "sys"],
+      ["無縁.gate", "muen"],
     ];
     for (const [name, app] of gates) {
       const path = `${desk}/${name}`;
@@ -449,6 +450,7 @@ class Kernel extends EventTarget {
     this.state = this.defaultState(saved);
     this.state.oncall = this.computeOncall();
     await this.seedFs();
+    await this.vfs.ensureIndex();
     this.bus = createBus((msg) => this.applyRemote(msg));
     try {
       this.worker = new Worker(new URL("./kernel-worker.js", import.meta.url), { type: "module" });
@@ -565,7 +567,7 @@ class Kernel extends EventTarget {
     kami.status = "running";
     this.log(`attach ${kami.name}`, "proc");
     this.commit();
-    this.emit("change");
+    this.emit("ps");
     return kami;
   }
 
@@ -579,7 +581,7 @@ class Kernel extends EventTarget {
     kami.status = "running";
     kami.cpu = Math.max(1, (kami.cpu || 4) - 3);
     this.log(`harai ${kami.name}`, "proc");
-    this.emit("change");
+    this.emit("ps");
     return kami;
   }
 
@@ -603,7 +605,7 @@ class Kernel extends EventTarget {
     this.gepAdd(12);
     this.log(`spawn ${kami.name}`, "proc");
     this.commit();
-    this.emit("change");
+    this.emit("ps");
     return kami;
   }
 
@@ -643,7 +645,6 @@ class Kernel extends EventTarget {
     this.state.sockets.unshift(sock);
     if (this.state.sockets.length > 80) this.state.sockets.pop();
     this.emit("net");
-    this.emit("change");
     return { dest, ms };
   }
 
@@ -655,7 +656,7 @@ class Kernel extends EventTarget {
     this.setSpace(dest.id, true);
     this.log(`migrate 過密の龍 → ${dest.name}`, "net");
     this.commit();
-    this.emit("change");
+    this.emit("net");
     return dest;
   }
 
@@ -682,7 +683,7 @@ class Kernel extends EventTarget {
     this.state.fw.push(rule);
     this.log(`fw add ${name}`, "fw");
     this.commit();
-    this.emit("change");
+    this.emit("fw");
     return rule;
   }
 
@@ -693,7 +694,7 @@ class Kernel extends EventTarget {
     rule.action = rule.action === "deny" ? "allow" : "deny";
     this.log(`fw ${rule.name}=${rule.action}`, "fw");
     this.commit();
-    this.emit("change");
+    this.emit("fw");
     return rule;
   }
 
