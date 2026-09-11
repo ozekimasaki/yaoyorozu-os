@@ -46,7 +46,7 @@ npm run dev
 | 層 | 中身 |
 | --- | --- |
 | Kernel | Worker 時計、当直ハッシュ、GEP / 無縁、syscall |
-| 縁fs | IndexedDB。親索引。宣言・憲法は `/etc`。無縁匡から戻せる |
+| 縁fs | IndexedDB。親索引。宣言・憲法は `/etc`。無縁匣から戻せる |
 | 神 | ps。アタッチ、祓い、立てる。殺すUIはない |
 | 注連縄 | 既定 deny。子ども・死者は外せない |
 | 縁 | ソケット。ping と migrate が地図を変える |
