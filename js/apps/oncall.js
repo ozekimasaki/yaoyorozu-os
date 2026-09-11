@@ -12,9 +12,13 @@ export default {
   height: "min(560px, 74vh)",
   spawn({ kernel, launch }) {
     const el = document.createElement("div");
+    let lastSig = "";
     const render = () => {
       const s = kernel.state;
       const o = s.oncall;
+      const sig = `${s.authenticated}|${s.officialStatus || ""}|${s.currentSpace}|${o.entropy}`;
+      if (sig === lastSig && el.querySelector(".grid-2")) return;
+      lastSig = sig;
       const auth = s.authenticated
         ? `${s.officialStatus || "ATTACHED"}`
         : "AUTH required";

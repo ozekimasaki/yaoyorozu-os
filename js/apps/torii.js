@@ -5,6 +5,7 @@ export function bindTorii(gate, kernel) {
   const list = gate.querySelector("#torii-list");
   let items = [];
   let cursor = 0;
+  let lastSig = "";
 
   function catalog(q) {
     const query = (q || "").trim();
@@ -35,6 +36,14 @@ export function bindTorii(gate, kernel) {
   function draw() {
     items = catalog(search.value);
     cursor = Math.min(cursor, Math.max(0, items.length - 1));
+    const sig = items.map((r) => `${r.kind}:${r.id}`).join("\n");
+    if (sig === lastSig && list.children.length) {
+      list.querySelectorAll(".torii-item").forEach((btn, i) => {
+        btn.classList.toggle("is-on", i === cursor);
+      });
+      return;
+    }
+    lastSig = sig;
     list.innerHTML = items
       .map(
         (r, i) =>

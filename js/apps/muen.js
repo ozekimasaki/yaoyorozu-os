@@ -7,6 +7,7 @@ export default {
     const el = document.createElement("div");
     let selected = "";
     let lastSig = "";
+    let purgeOnce = false;
 
     async function render() {
       let rows = [];
@@ -34,6 +35,7 @@ export default {
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start">
           <button class="btn primary" type="button" id="muen-restore">席へ戻す</button>
           <button class="btn" type="button" id="muen-read">読む</button>
+          <button class="btn" type="button" id="muen-purge">清める</button>
         </div>
       `;
       el.querySelectorAll("[data-path]").forEach((btn) => {
@@ -56,6 +58,19 @@ export default {
       };
       el.querySelector("#muen-read").onclick = () => {
         if (selected) launch("editor", { path: selected });
+      };
+      el.querySelector("#muen-purge").onclick = async () => {
+        if (!purgeOnce) {
+          purgeOnce = true;
+          kernel.log("無縁: もう一度押すと札を清める。戻せず、名も消える", "muen");
+          return;
+        }
+        purgeOnce = false;
+        const n = await kernel.vfs.purgeMuen();
+        kernel.noteOshi(`無縁を清めた ${n}`, "muen");
+        selected = "";
+        lastSig = "";
+        kernel.emit("vfs");
       };
     }
 

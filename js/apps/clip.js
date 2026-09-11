@@ -5,8 +5,12 @@ export default {
   height: "min(480px, 68vh)",
   spawn({ kernel }) {
     const el = document.createElement("div");
+    let lastSig = "";
     const render = () => {
       const rows = kernel.state.clipboard || [];
+      const sig = rows.map((r) => r.t).join("\n");
+      if (sig === lastSig && el.querySelector(".fs-tree")) return;
+      lastSig = sig;
       el.innerHTML = `
         <p class="lede">言霊の控え</p>
         <p class="muted">コピーしたものが、ここに残る。空のスローガンは載せない。</p>

@@ -5,12 +5,16 @@ export default {
   height: "min(480px, 68vh)",
   spawn({ kernel }) {
     const el = document.createElement("div");
+    let lastSig = "";
     const render = () => {
       const s = kernel.state;
       const kami = s.processes.filter((p) => p.kind !== "app").length;
       const shrines = Object.values(s.quotas).reduce((a, n) => a + n, 0);
+      const sig = `${s.ujiko}|${s.authenticated}|${s.currentSpace}|${kami}|${Math.floor(s.gep)}|${s.muen.toFixed(1)}`;
+      if (sig === lastSig && el.querySelector(".grid-2")) return;
+      lastSig = sig;
       el.innerHTML = `
-        <p class="lede">このブラウザが、筐体である</p>
+        <p class="lede">このブラウザが、箕体である</p>
         <div class="grid-2">
           <div class="card"><div class="tag">UID</div><h3>${s.ujiko}</h3><p class="muted">未ログアウト ${s.logoutDays} 日</p></div>
           <div class="card"><div class="tag">SPACE</div><h3>${kernel.spacePref().name}</h3><p class="muted">47のうちの一つ。親ではない。</p></div>
