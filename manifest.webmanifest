@@ -1,7 +1,7 @@
 {
   "name": "八百万OS",
   "short_name": "八百万OS",
-  "description": "ブラウザを箕体にする、八百万の関係性のオペレーティングシステム。",
+  "description": "ブラウザを筐体にする、八百万の関係性のオペレーティングシステム。",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0c0b09",
