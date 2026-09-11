@@ -56,6 +56,9 @@ function applyJob(job) {
 let lastDeskSig = "";
 let lastDeskPick = "";
 let deskPos = null;
+let deskSelected = new Set();
+let deskClipboard = { mode: "copy", paths: [] };
+let switcherIndex = 0;
 
 async function loadDeskPos() {
   if (deskPos) return deskPos;
@@ -86,14 +89,17 @@ async function paintDesktop() {
     rows = [];
   }
   const sig = rows.map((f) => f.path).join("\n");
-  if (sig === lastDeskSig && icons.children.length) return;
+  if (sig === lastDeskSig && icons.children.length) {
+    paintDeskMarks();
+    return;
+  }
   lastDeskSig = sig;
   const pos = await loadDeskPos();
   icons.innerHTML = "";
   rows.forEach((f, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = `desk-icon${f.path === lastDeskPick ? " is-on" : ""}`;
+    btn.className = "desk-icon";
     btn.dataset.path = f.path;
     btn.textContent = f.name.replace(".gate", "");
     const saved = pos[f.path];
@@ -107,6 +113,7 @@ async function paintDesktop() {
     let oy = 0;
     let sx = left;
     let sy = top;
+    let group = [];
     btn.addEventListener("pointerdown", (e) => {
       dragging = true;
       moved = false;
@@ -114,30 +121,231 @@ async function paintDesktop() {
       sy = btn.offsetTop;
       ox = e.clientX - sx;
       oy = e.clientY - sy;
+      if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !deskSelected.has(f.path)) {
+        deskSelected = new Set([f.path]);
+        lastDeskPick = f.path;
+        paintDeskMarks();
+      }
+      const paths = deskSelected.has(f.path) ? [...deskSelected] : [f.path];
+      group = paths
+        .map((path) => {
+          const el = [...icons.querySelectorAll(".desk-icon")].find((n) => n.dataset.path === path);
+          return el ? { el, path, x: el.offsetLeft, y: el.offsetTop } : null;
+        })
+        .filter(Boolean);
       btn.setPointerCapture(e.pointerId);
     });
     btn.addEventListener("pointermove", (e) => {
       if (!dragging) return;
       const x = Math.max(8, e.clientX - ox);
       const y = Math.max(48, e.clientY - oy);
-      if (Math.abs(x - sx) + Math.abs(y - sy) > 6) moved = true;
-      btn.style.left = `${x}px`;
-      btn.style.top = `${y}px`;
+      const dx = x - sx;
+      const dy = y - sy;
+      if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+      for (const g of group) {
+        g.el.style.left = `${Math.max(8, g.x + dx)}px`;
+        g.el.style.top = `${Math.max(48, g.y + dy)}px`;
+      }
     });
-    btn.addEventListener("pointerup", () => {
+    btn.addEventListener("pointerup", (e) => {
       dragging = false;
       lastDeskPick = f.path;
-      icons.querySelectorAll(".desk-icon").forEach((el) => el.classList.toggle("is-on", el.dataset.path === f.path));
       if (moved) {
-        pos[f.path] = { x: btn.offsetLeft, y: btn.offsetTop };
+        for (const g of group) {
+          pos[g.path] = { x: g.el.offsetLeft, y: g.el.offsetTop };
+        }
         deskPos = pos;
         saveDeskPos();
         return;
       }
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        if (deskSelected.has(f.path)) deskSelected.delete(f.path);
+        else deskSelected.add(f.path);
+        paintDeskMarks();
+        return;
+      }
+      deskSelected = new Set([f.path]);
+      paintDeskMarks();
       openPath(f.path);
     });
     icons.appendChild(btn);
   });
+  paintDeskMarks();
+}
+
+function paintDeskMarks() {
+  const cut = deskClipboard.mode === "cut" ? new Set(deskClipboard.paths) : null;
+  document.querySelectorAll(".desk-icon").forEach((el) => {
+    const p = el.dataset.path;
+    el.classList.toggle("is-on", deskSelected.has(p) || p === lastDeskPick);
+    el.classList.toggle("is-cut", !!(cut && cut.has(p)));
+  });
+}
+
+function selectedDeskPaths() {
+  if (deskSelected.size) return [...deskSelected];
+  if (lastDeskPick) return [lastDeskPick];
+  return [];
+}
+
+function uniqueDeskName(name, taken) {
+  if (!taken.has(name)) return name;
+  const dot = name.lastIndexOf(".");
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+  let i = 2;
+  while (taken.has(`${stem}-${i}${ext}`)) i += 1;
+  return `${stem}-${i}${ext}`;
+}
+
+async function copyTree(from, to) {
+  const src = await kernel.vfs.getFile(from);
+  if (!src) throw new Error("ENOENT");
+  if (src.type === "dir") {
+    await kernel.vfs.mkdir(to);
+    const kids = await kernel.vfs.ls(from);
+    for (const k of kids) {
+      await copyTree(k.path, kernel.vfs.normalize(`${to}/${k.name}`));
+    }
+    return;
+  }
+  await kernel.vfs.copy(from, to);
+}
+
+function copyDesk(cut) {
+  const paths = selectedDeskPaths();
+  if (!paths.length) return;
+  deskClipboard = { mode: cut ? "cut" : "copy", paths };
+  paintDeskMarks();
+  kernel.clipPush(paths.join("\n"));
+  kernel.log(cut ? "卓を切った" : "卓を写した", "desk");
+}
+
+async function pasteDesk() {
+  if (!deskClipboard.paths.length) return;
+  const desk = `/home/${kernel.state.ujiko}/desktop`;
+  let rows = [];
+  try {
+    rows = await kernel.vfs.ls(desk);
+  } catch (err) {
+    rows = [];
+  }
+  const taken = new Set(rows.map((r) => r.name));
+  let n = 0;
+  for (const src of deskClipboard.paths) {
+    const name = uniqueDeskName(kernel.vfs.nameOf(src), taken);
+    taken.add(name);
+    const dest = kernel.vfs.normalize(`${desk}/${name}`);
+    try {
+      if (deskClipboard.mode === "cut") {
+        try {
+          await kernel.vfs.rename(src, dest);
+        } catch (err) {
+          if (err.message === "EXDEV" || err.message === "EISDIR") {
+            kernel.log("匣の切りは写して残す", "desk");
+            await copyTree(src, dest);
+          } else {
+            await copyTree(src, dest);
+            await kernel.vfs.moveToMuen(src);
+          }
+        }
+      } else {
+        await copyTree(src, dest);
+      }
+      n += 1;
+    } catch (err) {
+      kernel.log(`貼る: ${err.message}`, "desk");
+    }
+  }
+  if (deskClipboard.mode === "cut") deskClipboard = { mode: "copy", paths: [] };
+  deskSelected.clear();
+  kernel.emit("vfs");
+  kernel.log(`卓に貼った ×${n}`, "desk");
+}
+
+function selectAllDesk() {
+  document.querySelectorAll(".desk-icon").forEach((el) => {
+    if (el.dataset.path) deskSelected.add(el.dataset.path);
+  });
+  paintDeskMarks();
+}
+
+function tidyDesk() {
+  const icons = [...document.querySelectorAll(".desk-icon")].sort((a, b) => {
+    const dy = a.offsetTop - b.offsetTop;
+    if (Math.abs(dy) > 24) return dy;
+    return a.offsetLeft - b.offsetLeft;
+  });
+  const pos = deskPos || {};
+  icons.forEach((el, i) => {
+    const col = i % 8;
+    const row = (i / 8) | 0;
+    const x = 18 + col * 120;
+    const y = 58 + row * 64;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    pos[el.dataset.path] = { x, y };
+  });
+  deskPos = pos;
+  saveDeskPos();
+  kernel.log("札を揃えた", "desk");
+}
+
+async function muenSelected() {
+  const paths = selectedDeskPaths();
+  for (const p of paths) {
+    try {
+      await kernel.vfs.moveToMuen(p);
+    } catch (err) {
+      kernel.log(`muen: ${err.message}`, "fs");
+    }
+  }
+  deskSelected.clear();
+  lastDeskPick = "";
+  kernel.emit("vfs");
+}
+
+async function renamePicked() {
+  const path = lastDeskPick || selectedDeskPaths()[0];
+  if (!path) return;
+  const cur = kernel.vfs.nameOf(path);
+  const name = window.prompt("新しい名", cur);
+  if (!name || name === cur) return;
+  const dest = kernel.vfs.normalize(`${kernel.vfs.parentOf(path)}/${name}`);
+  try {
+    await kernel.vfs.rename(path, dest);
+    lastDeskPick = dest;
+    deskSelected = new Set([dest]);
+    kernel.noteRecent(dest);
+    kernel.emit("vfs");
+  } catch (err) {
+    kernel.log(`rename: ${err.message}`, "fs");
+  }
+}
+
+function focusedWin() {
+  const wm = getWm();
+  if (!wm) return null;
+  return (
+    wm.list().find((w) => w.el.classList.contains("focused") && !w.minimized && !w.el.classList.contains("is-away")) ||
+    null
+  );
+}
+
+async function maybeOpenInitGates() {
+  if (sessionStorage.getItem("y8-init-opened")) return;
+  const wm = getWm();
+  if (wm && wm.list().length) return;
+  let rows = [];
+  try {
+    rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/.init`);
+  } catch (err) {
+    return;
+  }
+  const gates = rows.filter((e) => (e.name || "").endsWith(".gate")).slice(0, 4);
+  if (!gates.length) return;
+  sessionStorage.setItem("y8-init-opened", "1");
+  for (const g of gates) await openPath(g.path);
 }
 
 let lastClock = "";
@@ -305,7 +513,31 @@ async function startDesktop() {
       if (e.key === "k") kashiwa.open();
       return;
     }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "w" || e.key === "W")) {
+      e.preventDefault();
+      const w = focusedWin();
+      if (w) getWm().close(w.pid);
+      return;
+    }
     if (typing) return;
+    const switcherOpen = document.getElementById("win-switcher").classList.contains("open");
+    if (switcherOpen) {
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        moveSwitcher(-1);
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        moveSwitcher(1);
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        activateSwitcher();
+        return;
+      }
+    }
     if (e.key === "/") {
       e.preventDefault();
       torii.open();
@@ -351,16 +583,58 @@ async function startDesktop() {
       const wm = getWm();
       if (wm) wm.tile();
     }
+    if ((e.ctrlKey || e.metaKey) && onDesktopKeys() && !overlaysOpen()) {
+      if (e.key === "a" || e.key === "A") {
+        e.preventDefault();
+        selectAllDesk();
+        return;
+      }
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        copyDesk(false);
+        return;
+      }
+      if (e.key === "x" || e.key === "X") {
+        e.preventDefault();
+        copyDesk(true);
+        return;
+      }
+      if (e.key === "v" || e.key === "V") {
+        e.preventDefault();
+        pasteDesk();
+        return;
+      }
+    }
+    const deskIconOn = document.activeElement && document.activeElement.classList.contains("desk-icon");
+    if (
+      e.shiftKey &&
+      (e.key === "ArrowLeft" || e.key === "ArrowRight") &&
+      !overlaysOpen() &&
+      !deskIconOn
+    ) {
+      const w = focusedWin();
+      if (w) {
+        e.preventDefault();
+        getWm().snapEdge(w.pid, e.key === "ArrowLeft" ? "left" : "right");
+        return;
+      }
+    }
     if (!overlaysOpen() && onDesktopKeys()) {
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();
-        moveDeskPick(-1);
+        moveDeskPick(-1, e.shiftKey);
       } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
-        moveDeskPick(1);
+        moveDeskPick(1, e.shiftKey);
       } else if (e.key === "Enter" && lastDeskPick) {
         e.preventDefault();
         openPath(lastDeskPick);
+      } else if (e.key === "Delete") {
+        e.preventDefault();
+        muenSelected();
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        renamePicked();
       }
     }
   });
@@ -373,14 +647,16 @@ async function startDesktop() {
     });
   }
 
-  function moveDeskPick(delta) {
+  function moveDeskPick(delta, extend) {
     const icons = deskIconList();
     if (!icons.length) return;
-    let i = icons.findIndex((el) => el.classList.contains("is-on"));
+    let i = icons.findIndex((el) => el.dataset.path === lastDeskPick);
     if (i < 0) i = 0;
     else i = (i + delta + icons.length) % icons.length;
     lastDeskPick = icons[i].dataset.path || "";
-    icons.forEach((el, idx) => el.classList.toggle("is-on", idx === i));
+    if (!extend) deskSelected = new Set(lastDeskPick ? [lastDeskPick] : []);
+    else if (lastDeskPick) deskSelected.add(lastDeskPick);
+    paintDeskMarks();
     icons[i].focus();
   }
 
@@ -405,24 +681,30 @@ async function startDesktop() {
     return false;
   }
 
-  document.querySelector(".hint").textContent = "/ 鳥居 · ; 窓 · ' 空間 · , 席 · . 並べ · n 告げ · k 柏手 · m 間";
+  document.querySelector(".hint").textContent =
+    "/ 鳥居 · ; 窓 · ' 空間 · , 席 · . 並べ · n 告げ · k 柏手 · m 間 · Ctrl+W 閉じる";
 
   const switcher = document.getElementById("win-switcher");
-  function toggleSwitcher() {
-    if (switcher.classList.contains("open")) {
-      switcher.classList.remove("open");
-      return;
-    }
+  function paintSwitcher(keepIndex) {
     const wm = getWm();
     const wins = wm ? wm.list().filter((w) => !w.el.classList.contains("is-away")) : [];
-    switcher.innerHTML = wins.length
-      ? wins
-          .map(
-            (w) =>
-              `<button type="button" data-pid="${w.pid}">${w.title}<small>${w.appId} · ${w.pid}</small></button>`
-          )
-          .join("")
-      : `<p class="muted">走っている窓はない。鳥居をくぐれ。</p>`;
+    if (!wins.length) {
+      switcher.innerHTML = `<p class="muted">走っている窓はない。鳥居をくぐれ。</p>`;
+      switcher.classList.add("open");
+      return;
+    }
+    if (!keepIndex) {
+      const fi = wins.findIndex((w) => w.el.classList.contains("focused"));
+      switcherIndex = fi >= 0 ? fi : 0;
+    }
+    if (switcherIndex >= wins.length) switcherIndex = 0;
+    if (switcherIndex < 0) switcherIndex = wins.length - 1;
+    switcher.innerHTML = wins
+      .map(
+        (w, i) =>
+          `<button type="button" class="${i === switcherIndex ? "is-on" : ""}" data-pid="${w.pid}">${w.title}<small>${w.appId} · ${w.pid}</small></button>`
+      )
+      .join("");
     switcher.classList.add("open");
     switcher.querySelectorAll("[data-pid]").forEach((btn) => {
       btn.onclick = () => {
@@ -431,6 +713,33 @@ async function startDesktop() {
         switcher.classList.remove("open");
       };
     });
+    const on = switcher.querySelector("button.is-on");
+    if (on) on.focus();
+  }
+  function toggleSwitcher() {
+    if (switcher.classList.contains("open")) {
+      switcher.classList.remove("open");
+      return;
+    }
+    paintSwitcher(false);
+  }
+  function moveSwitcher(dir) {
+    switcherIndex += dir;
+    paintSwitcher(true);
+  }
+  function activateSwitcher() {
+    const btn = switcher.querySelector("button.is-on[data-pid]");
+    if (!btn) {
+      switcher.classList.remove("open");
+      return;
+    }
+    const wm = getWm();
+    const pid = Number(btn.dataset.pid);
+    if (wm) {
+      wm.restore(pid);
+      wm.focus(pid);
+    }
+    switcher.classList.remove("open");
   }
 
   const spaces = document.getElementById("space-switcher");
@@ -500,6 +809,11 @@ async function startDesktop() {
     if (e.target.closest(".window") || e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
     if (e.target.closest(".desk-icon")) return;
     desktop.focus();
+    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      deskSelected.clear();
+      lastDeskPick = "";
+      paintDeskMarks();
+    }
   });
   desktop.addEventListener("contextmenu", (e) => {
     if (e.target.closest(".window") || e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
@@ -531,7 +845,23 @@ async function startDesktop() {
       return;
     }
     if (act === "copy") {
-      kernel.clipPush(path);
+      if (path) {
+        deskSelected.add(path);
+        lastDeskPick = path;
+      }
+      copyDesk(false);
+      return;
+    }
+    if (act === "cut") {
+      if (path) {
+        deskSelected.add(path);
+        lastDeskPick = path;
+      }
+      copyDesk(true);
+      return;
+    }
+    if (act === "paste") {
+      pasteDesk();
       return;
     }
     if (act === "rename") {
@@ -576,6 +906,8 @@ async function startDesktop() {
       const wm = getWm();
       if (wm) wm.tile();
     }
+    if (act === "tidy") tidyDesk();
+    if (act === "paste") pasteDesk();
     if (act === "ofuda") {
       const path = `/home/${kernel.state.ujiko}/desktop/${Date.now()}.ofuda`;
       kernel.vfs.write(path, "名を書け。空のスローガンはコンパイルされない。", "text/plain").then(() => {
@@ -609,6 +941,8 @@ async function startDesktop() {
   } catch (err) {
     /* first boot */
   }
+
+  await maybeOpenInitGates();
 
   if (!kernel.state.authenticated) {
     setTimeout(() => kashiwa.open(), 600);
