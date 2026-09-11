@@ -10,6 +10,10 @@ const HELP = `八百万OS 奉納シェル
   mv <from> <to>       名を移す
   rm <path>            無縁へ送る
   restore <path> [to]  無縁から戻す
+  cp <from> <to>       写す
+  echo text [> path]   言霊を出す
+  head/tail/wc <path>  端と量
+  uptime               通電からの間
   find [path] [名]     探す
   grep <pat> [path]    札の中
   stat <path>          属性
@@ -46,6 +50,12 @@ const COMMANDS = [
   "mv",
   "rm",
   "restore",
+  "cp",
+  "echo",
+  "head",
+  "tail",
+  "wc",
+  "uptime",
   "find",
   "grep",
   "stat",
@@ -89,6 +99,7 @@ export default {
 
     function out(text) {
       outEl.textContent += `${text}\n`;
+      if (outEl.textContent.length > 16000) outEl.textContent = outEl.textContent.slice(-12000);
       outEl.scrollTop = outEl.scrollHeight;
     }
 
@@ -231,6 +242,46 @@ export default {
             kernel.noteRecent(dest);
             out(`restore → ${dest}`);
             kernel.emit("vfs");
+            break;
+          }
+          case "cp": {
+            const dest = resolve(rest[1]);
+            await kernel.vfs.copy(resolve(rest[0]), dest);
+            kernel.noteRecent(dest);
+            out(`cp → ${dest}`);
+            kernel.emit("vfs");
+            break;
+          }
+          case "echo": {
+            const m = restText.match(/^(.*)>\s*(\S+)\s*$/);
+            if (m) {
+              const path = resolve(m[2]);
+              await kernel.vfs.write(path, m[1].trim());
+              kernel.noteRecent(path);
+              out(path);
+              kernel.emit("vfs");
+            } else {
+              out(restText);
+            }
+            break;
+          }
+          case "head":
+          case "tail": {
+            const f = await kernel.vfs.read(resolve(rest[0]));
+            const lines = f.body.split("\n");
+            const slice = a === "head" ? lines.slice(0, 12) : lines.slice(-12);
+            out(slice.join("\n"));
+            break;
+          }
+          case "wc": {
+            const f = await kernel.vfs.read(resolve(rest[0]));
+            const lines = f.body ? f.body.split("\n").length : 0;
+            out(`${lines} ${f.body.split(/\s+/).filter(Boolean).length} ${(f.body || "").length} ${resolve(rest[0])}`);
+            break;
+          }
+          case "uptime": {
+            const ms = Date.now() - (kernel.bootedAt || Date.now());
+            out(`${Math.floor(ms / 1000)}s 通電 · visits=${kernel.state.visits} · logoutDays=${kernel.state.logoutDays}`);
             break;
           }
           case "cat": {
