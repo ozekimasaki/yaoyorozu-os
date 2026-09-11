@@ -46,7 +46,17 @@
         break;
       case "cat":
         if (b === "constitution") {
-          const n = Number(restText);
+          const token = rest[0];
+          if (!token) {
+            out(
+              el,
+              window.YAOYOROZU_CONSTITUTION.articles
+                .map((x) => `第${x.n}条 ${x.title}`)
+                .join("\n")
+            );
+            break;
+          }
+          const n = Number(token);
           const art = window.YAOYOROZU_CONSTITUTION.articles.find((x) => x.n === n);
           if (!art) out(el, "条文が見つからない。1-20。");
           else out(el, `第${art.n}条 ${art.title}\n${art.body}`);
