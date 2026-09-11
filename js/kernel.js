@@ -502,12 +502,10 @@ class Kernel extends EventTarget {
     if (official) {
       const rng = mulberry32(hash32(`${this.state.ujiko}:${today}:kashiwa`));
       status = SYSCALLS[(rng() * SYSCALLS.length) | 0];
-    } else {
-      status = SYSCALLS[(Math.random() * SYSCALLS.length) | 0];
-    }
-    if (official) {
       this.state.officialDay = today;
       this.state.officialStatus = status;
+    } else {
+      status = SYSCALLS[(Math.random() * SYSCALLS.length) | 0];
     }
     this.state.authenticated = true;
     const oncall = this.state.oncall;
