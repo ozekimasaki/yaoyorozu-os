@@ -299,6 +299,14 @@ class Kernel extends EventTarget {
       clipboard: (saved && saved.clipboard) || [],
       recent: (saved && saved.recent) || [],
       history: (saved && saved.history) || [],
+      aliases: (saved && saved.aliases) || {},
+      env: {
+        SHELL: "hounou.sh",
+        ...((saved && saved.env) || {}),
+        HOME: `/home/${ujiko}`,
+        USER: ujiko,
+        SPACE: (saved && saved.currentSpace) || "shimane",
+      },
       maLocked: !!(saved && saved.maLocked),
       appProcs: [],
     };
@@ -336,6 +344,8 @@ class Kernel extends EventTarget {
       clipboard: s.clipboard,
       recent: s.recent,
       history: s.history,
+      aliases: s.aliases,
+      env: s.env,
       maLocked: s.maLocked,
       fw: s.fw,
       gep: s.gep,
@@ -392,6 +402,120 @@ class Kernel extends EventTarget {
     this.state.recent = [{ path: p, at: Date.now() }, ...this.state.recent.filter((r) => r.path !== p)].slice(0, 24);
     this.emit("recent");
     this.commit(true);
+  }
+
+  setEnv(name, value) {
+    const k = String(name || "").trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) throw new Error("EINVAL");
+    if (!this.state.env) this.state.env = {};
+    this.state.env[k] = String(value ?? "");
+    this.emit("env");
+    this.commit(true);
+    return this.state.env;
+  }
+
+  unsetEnv(name) {
+    const k = String(name || "").trim();
+    if (!k || !this.state.env) return this.state.env || {};
+    delete this.state.env[k];
+    this.emit("env");
+    this.commit(true);
+    return this.state.env;
+  }
+
+  findProc(q) {
+    const s = String(q || "");
+    return this.state.processes.find((p) => String(p.pid) === s || p.id === s || p.name === s) || null;
+  }
+
+  holdKami(q) {
+    const kami = this.findProc(q);
+    if (!kami) throw new Error("ESRCH");
+    if (kami.kind === "app" || kami.id === "zashiki") throw new Error("EPERM");
+    kami.status = "seasonal";
+    kami.cpu = 0;
+    this.log(`hold ${kami.name} pid=${kami.pid}`, "proc");
+    this.emit("ps");
+    return kami;
+  }
+
+  wakeKami(q) {
+    const kami = this.findProc(q);
+    if (!kami) throw new Error("ESRCH");
+    if (kami.kind === "app") throw new Error("EPERM");
+    kami.status = "running";
+    kami.cpu = Math.max(1, kami.cpu || 1);
+    this.log(`wake ${kami.name} pid=${kami.pid}`, "proc");
+    this.emit("ps");
+    return kami;
+  }
+
+  niceKami(q, n) {
+    const kami = this.findProc(q);
+    if (!kami) throw new Error("ESRCH");
+    if (kami.kind === "app") throw new Error("EPERM");
+    kami.cpu = Math.max(0, Math.min(99, (kami.cpu || 0) + Number(n || 0)));
+    this.log(`nice ${kami.name} cpu=${kami.cpu}`, "proc");
+    this.emit("ps");
+    return kami;
+  }
+
+  procRead(path) {
+    const n = this.vfs.normalize(path);
+    const up = Math.floor((Date.now() - (this.bootedAt || Date.now())) / 1000);
+    const files = {
+      "/proc/version": () => `YaoyorozuOS browser ${this.state.ujiko}`,
+      "/proc/uptime": () => String(up),
+      "/proc/self": () =>
+        `uid=${this.state.ujiko}\nspace=${this.state.currentSpace}\nauth=${this.state.authenticated}\nshell=hounou.sh`,
+      "/proc/oncall": () => {
+        const o = this.state.oncall;
+        return `day=${o.day}\nkami=${o.kami.name}\nkernel=${o.pref.name}\nentropy=${o.entropy}\narticle=${o.article}`;
+      },
+      "/proc/spaces": () =>
+        this.state.prefs.map((p) => `${p.id}\t${p.name}\t${p.season}\t${p.unusedCpu}`).join("\n"),
+      "/proc/env": () =>
+        Object.entries(this.state.env || {})
+          .map(([k, v]) => `${k}=${v}`)
+          .join("\n"),
+    };
+    if (!files[n]) return null;
+    return { path: n, type: "file", body: files[n](), mime: "text/proc", updated: Date.now() };
+  }
+
+  async readPath(path) {
+    const virt = this.procRead(path);
+    if (virt) return virt;
+    return this.vfs.read(path);
+  }
+
+  async listPath(path) {
+    const n = this.vfs.normalize(path);
+    if (n === "/proc") {
+      const real = await this.vfs.ls("/proc");
+      const virt = ["version", "uptime", "self", "oncall", "spaces", "env"].map((name) => ({
+        name,
+        path: `/proc/${name}`,
+        type: "file",
+        mime: "text/proc",
+        body: "",
+      }));
+      const names = new Set(virt.map((v) => v.name));
+      return [...real.filter((f) => !names.has(f.name)), ...virt];
+    }
+    return this.vfs.ls(n);
+  }
+
+  setAlias(name, value) {
+    const k = String(name || "").trim();
+    if (!k) throw new Error("EINVAL");
+    if (!this.state.aliases) this.state.aliases = {};
+    const v = String(value || "").trim();
+    if (!v) delete this.state.aliases[k];
+    else this.state.aliases[k] = v;
+    this.emit("alias");
+    this.commit(true);
+    return this.state.aliases;
   }
 
   pushHistory(line) {
@@ -482,6 +606,10 @@ class Kernel extends EventTarget {
     for (let i = 0; i < 40; i += 1) {
       const p = list[(start + i) % n];
       if (!p || p.kind === "app") continue;
+      if (p.status === "seasonal") {
+        p.cpu = 0;
+        continue;
+      }
       const jitter = ((Math.random() * 5) | 0) - 2;
       p.cpu = Math.max(0, Math.min(99, (p.cpu || 0) + jitter));
     }
@@ -558,6 +686,7 @@ class Kernel extends EventTarget {
     const p = this.state.prefs.find((x) => x.id === prefId);
     if (!p) return null;
     this.state.currentSpace = prefId;
+    if (this.state.env) this.state.env.SPACE = prefId;
     if (!silent) this.log(`space ${p.name}`, "torii");
     this.commit();
     this.emit("space", p);
