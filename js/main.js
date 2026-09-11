@@ -298,6 +298,8 @@ async function startDesktop() {
       document.getElementById("space-switcher").classList.remove("open");
       document.getElementById("oshi-list").hidden = true;
       document.getElementById("desk-icon-menu").hidden = true;
+      const tm = document.getElementById("task-menu");
+      if (tm) tm.hidden = true;
     }
     if (kernel.state.maLocked) {
       if (e.key === "k") kashiwa.open();
@@ -344,6 +346,11 @@ async function startDesktop() {
       const wm = getWm();
       if (wm) wm.hideAll();
     }
+    if (e.key === "." || e.key === "。") {
+      e.preventDefault();
+      const wm = getWm();
+      if (wm) wm.tile();
+    }
     if (!overlaysOpen() && onDesktopKeys()) {
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();
@@ -386,7 +393,8 @@ async function startDesktop() {
       !document.getElementById("eaves-menu").hidden ||
       !document.getElementById("ujiko-drawer").hidden ||
       !document.getElementById("oshi-list").hidden ||
-      !document.getElementById("desk-icon-menu").hidden
+      !document.getElementById("desk-icon-menu").hidden ||
+      (document.getElementById("task-menu") && !document.getElementById("task-menu").hidden)
     );
   }
 
@@ -397,7 +405,7 @@ async function startDesktop() {
     return false;
   }
 
-  document.querySelector(".hint").textContent = "/ 鳥居 · ; 窓 · ' 空間 · , 席 · n 告げ · ↑↓ 札 · k 柏手 · m 間";
+  document.querySelector(".hint").textContent = "/ 鳥居 · ; 窓 · ' 空間 · , 席 · . 並べ · n 告げ · k 柏手 · m 間";
 
   const switcher = document.getElementById("win-switcher");
   function toggleSwitcher() {
@@ -563,6 +571,10 @@ async function startDesktop() {
     if (act === "box") {
       const path = `/home/${kernel.state.ujiko}/desktop/匣-${Date.now()}`;
       kernel.vfs.mkdir(path).then(() => kernel.emit("vfs"));
+    }
+    if (act === "tile") {
+      const wm = getWm();
+      if (wm) wm.tile();
     }
     if (act === "ofuda") {
       const path = `/home/${kernel.state.ujiko}/desktop/${Date.now()}.ofuda`;
