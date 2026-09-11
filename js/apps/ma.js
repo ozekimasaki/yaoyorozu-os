@@ -5,8 +5,12 @@ export default {
   height: "min(420px, 64vh)",
   spawn({ kernel }) {
     const el = document.createElement("div");
+    let lastSig = "";
     const render = () => {
       const s = kernel.state.settings;
+      const sig = `${s.silent}|${s.irqMs}|${s.sound}`;
+      if (sig === lastSig && el.querySelector("#silent")) return;
+      lastSig = sig;
       el.innerHTML = `
         <p class="lede">間は、埋めるな</p>
         <p class="muted">通知の既定は沈黙。IRQの間隔は季節の下位互換。アイドルは機能である。</p>

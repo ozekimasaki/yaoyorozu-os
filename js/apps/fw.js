@@ -5,7 +5,11 @@ export default {
   height: "min(520px, 70vh)",
   spawn({ kernel }) {
     const el = document.createElement("div");
+    let lastSig = "";
     const render = () => {
+      const sig = (kernel.state.fw || []).map((r) => `${r.id}:${r.action}`).join("|");
+      if (sig === lastSig && el.querySelector(".os-table")) return;
+      lastSig = sig;
       el.innerHTML = `
         <p class="lede">既定は deny</p>
         <p class="muted">子ども・死者・病・失敗・祈りは保護ネットワーク。外せない。足せるのは、公開してよい儀礼だけ。</p>
