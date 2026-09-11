@@ -48,6 +48,7 @@ const HELP = `八百万OS 奉納シェル
   diff <a> <b>         札の差
   echo text >> path    追記
   purge                無縁を清める
+  sync                 縁fsを確定する
   cmd | grep|sort|tee  管で繋ぐ
   logout               EPERM
   reboot               遷宮
@@ -113,6 +114,7 @@ const COMMANDS = [
   "diff",
   "ll",
   "purge",
+  "sync",
   "logout",
   "reboot",
   "clear",
@@ -605,6 +607,10 @@ export default {
             kernel.emit("vfs");
             break;
           }
+          case "sync":
+            await kernel.commit(true);
+            out("ok");
+            break;
           case "clear":
             outEl.textContent = "";
             break;
