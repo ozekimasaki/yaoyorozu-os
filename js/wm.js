@@ -201,7 +201,6 @@ export function createWm(root, taskbar, kernel) {
     applySpace(kernel.state.currentSpace);
     schedulePersist();
     kernel.log(w.space ? `窓 ${w.pid} をこの県へ戻した` : `窓 ${w.pid} を全県に結んだ`, "wm");
-    return;
   }
 
   function maximize(pid) {
