@@ -55,12 +55,12 @@ export default {
     };
     render();
     const on = () => render();
-    kernel.addEventListener("change", on);
+    kernel.addEventListener("fw", on);
     return {
       el,
       title: "shimenawa.fw",
       onClose() {
-        kernel.removeEventListener("change", on);
+        kernel.removeEventListener("fw", on);
       },
     };
   },

@@ -40,13 +40,11 @@ export default {
     };
     render();
     const on = () => render();
-    kernel.addEventListener("change", on);
     kernel.addEventListener("net", on);
     return {
       el,
       title: "en.sock",
       onClose() {
-        kernel.removeEventListener("change", on);
         kernel.removeEventListener("net", on);
       },
     };

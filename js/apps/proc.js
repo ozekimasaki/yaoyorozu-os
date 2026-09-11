@@ -41,7 +41,7 @@ export default {
                   <td>${(k.en || 0).toLocaleString("ja-JP")}</td>
                   <td class="row-actions">
                     <button class="btn" data-act="attach">アタッチ</button>
-                    <button class="btn" data-act="harai">祓い</button>
+                    <button class="btn" data-act="harai">神祐い</button>
                   </td>
                 </tr>`;
               })
@@ -106,13 +106,13 @@ export default {
         if (span) span.style.width = `${Math.max(0, Math.min(99, k.cpu | 0))}%`;
       });
     };
-    kernel.addEventListener("change", onChange);
+    kernel.addEventListener("ps", onChange);
     kernel.addEventListener("tick", onTick);
     return {
       el,
       title: "kami.ps",
       onClose() {
-        kernel.removeEventListener("change", onChange);
+        kernel.removeEventListener("ps", onChange);
         kernel.removeEventListener("tick", onTick);
       },
     };

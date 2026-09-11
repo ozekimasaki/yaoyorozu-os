@@ -50,8 +50,10 @@ export default {
         <p class="muted">${current}</p>
         <textarea class="editor" spellcheck="false">${body.replace(/</g, "&lt;")}</textarea>
         ${warn}
-        <div class="boot-actions" style="margin-top:12px;justify-content:flex-start">
+        <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn primary" type="button" id="save">書く</button>
+          <input class="search" id="ed-find" placeholder="札の中を探る" style="margin:0;max-width:200px" />
+          <button class="btn" type="button" id="ed-find-go">探る</button>
         </div>
       `;
       const ta = el.querySelector(".editor");
@@ -59,6 +61,17 @@ export default {
       ta.addEventListener("input", () => {
         body = ta.value;
       });
+      el.querySelector("#ed-find-go").onclick = () => {
+        const q = el.querySelector("#ed-find").value;
+        if (!q) return;
+        const i = body.indexOf(q);
+        if (i < 0) {
+          kernel.log("探る: 見つからない", "kotodama");
+          return;
+        }
+        ta.focus();
+        ta.setSelectionRange(i, i + q.length);
+      };
       el.querySelector("#save").onclick = async () => {
         try {
           await kernel.vfs.write(current, body, "text/plain");
