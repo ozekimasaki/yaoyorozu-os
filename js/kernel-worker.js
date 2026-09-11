@@ -15,5 +15,9 @@ self.onmessage = (ev) => {
   }
   if (msg.type === "stop") {
     clearInterval(timer);
+    timer = 0;
+  }
+  if (msg.type === "start") {
+    if (!timer) timer = setInterval(tick, interval);
   }
 };
