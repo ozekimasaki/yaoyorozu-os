@@ -49,9 +49,9 @@
         width: w.el.style.width,
         height: w.el.style.height,
       };
-      w.el.style.left = "12px";
+      w.el.style.left = "148px";
       w.el.style.top = "54px";
-      w.el.style.width = "calc(100% - 24px)";
+      w.el.style.width = "calc(100% - 160px)";
       w.el.style.height = "calc(100% - 96px)";
     } else if (w.prev) {
       w.el.style.left = w.prev.left;
