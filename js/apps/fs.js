@@ -18,6 +18,7 @@ export default {
     const el = document.createElement("div");
     let cwd = startPath || "/";
     let selected = "";
+    let lastSig = "";
 
     async function virtualListing(path) {
       if (path === "/proc/kami") {
@@ -77,6 +78,9 @@ export default {
       }
       const parent = kernel.vfs.parentOf(cwd);
       const locked = isVirtual(cwd);
+      const sig = `${cwd}\n${selected}\n${err}\n${locked}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
+      if (sig === lastSig && el.querySelector(".fs-tree")) return;
+      lastSig = sig;
       el.innerHTML = `
         <p class="muted">cwd ${cwd}${err ? ` · ${err}` : ""}</p>
         <div class="fs-tree">

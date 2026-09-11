@@ -6,6 +6,7 @@ export default {
   spawn({ kernel, launch }) {
     const el = document.createElement("div");
     let selected = "";
+    let lastSig = "";
 
     async function render() {
       let rows = [];
@@ -14,6 +15,9 @@ export default {
       } catch (err) {
         rows = [];
       }
+      const sig = `${selected}\n${rows.map((f) => f.path).join("\n")}`;
+      if (sig === lastSig && el.querySelector(".fs-tree")) return;
+      lastSig = sig;
       el.innerHTML = `
         <p class="lede">無縁はゴミ箱ではない</p>
         <p class="muted">名を失った札。戻すことは、強制友情ではない。席を返すだけ。</p>

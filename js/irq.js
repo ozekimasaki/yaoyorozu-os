@@ -88,6 +88,7 @@ export function startIrq(layer, kernel, field, launch) {
 
     if (kind !== "sengu") layer.appendChild(box);
     kernel.log(`irq ${kind}`, "irq");
+    if (kernel.noteOshi) kernel.noteOshi(`割込 ${kind}`, "irq");
   }
 
   function loop() {
@@ -109,6 +110,7 @@ export function startIrq(layer, kernel, field, launch) {
       c.className = "irq-card";
       c.innerHTML = `<h3>座敷童</h3><p>空きプロセスを殺すな。この空間の最後の窓を、一度止めた。</p>`;
       layer.appendChild(c);
+      if (kernel.noteOshi) kernel.noteOshi("座敷童が最後の窓を止めた", "irq");
       setTimeout(() => c.remove(), 3200);
     }
   });
