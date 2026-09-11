@@ -346,7 +346,7 @@ export default {
             kernel.logout();
             break;
           case "reboot":
-            out("式年遷宮を前倒しています。人は残し、権威のホコリは捨てます。");
+            out("式年遷宮を前倒ししています。人は残し、権威のホコリは捨てます。");
             setTimeout(() => window.location.reload(), 500);
             break;
           case "cd":
