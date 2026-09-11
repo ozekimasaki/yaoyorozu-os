@@ -504,7 +504,7 @@ window.YAOYOROZU_PREFECTURES = [
     protocol: "二度と落とさない。それが仕様。",
     unusedCpu: 48,
     specialty: "記憶の核",
-    crisis: "記憶の儀礼化",
+    crisis: "記憶の儀式化",
     opportunity: "平和を実行可能なポリシーエンジンにする",
     en: 25000,
     season: "灯籠",
@@ -567,7 +567,7 @@ window.YAOYOROZU_PREFECTURES = [
     crisis: "中間地点の無名",
     opportunity: "回復を四国の輸出産業にする",
     en: 15000,
-    season: "蜜柄",
+    season: "蜜柑",
   },
   {
     id: "kochi",
