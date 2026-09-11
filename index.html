@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>八百万OS — 未開封の日本を、起動する</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 24'%3E%3Crect x='2' y='4' width='28' height='3' fill='%23c23a2b'/%3E%3Crect x='6' y='7' width='3' height='14' fill='%23c23a2b'/%3E%3Crect x='23' y='7' width='3' height='14' fill='%23c23a2b'/%3E%3C/svg%3E" />
+    <meta name="description" content="浮体都市でも火星でもない。日本に既にある八百万の関係性を、国家OSとして起動するビッグアイデア。" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Shippori+Mincho:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/os.css" />
+  </head>
+  <body>
+    <div id="boot">
+      <svg class="torii-mark" viewBox="0 0 280 120" aria-hidden="true">
+        <rect x="18" y="28" width="244" height="10" fill="#c23a2b" />
+        <rect x="10" y="18" width="260" height="10" fill="#c23a2b" />
+        <rect x="46" y="28" width="12" height="84" fill="#c23a2b" />
+        <rect x="222" y="28" width="12" height="84" fill="#c23a2b" />
+        <rect x="86" y="38" width="8" height="28" fill="#c9a227" />
+        <rect x="186" y="38" width="8" height="28" fill="#c9a227" />
+      </svg>
+      <h1 class="boot-title">八百万OS</h1>
+      <div class="boot-sub">YAOYOROZU OPERATING SYSTEM</div>
+      <div id="boot-log" aria-live="polite"></div>
+      <div class="boot-actions" id="boot-ready" hidden>
+        <button class="btn primary" id="boot-start" type="button">起動する</button>
+        <button class="btn" id="boot-skip" type="button">遷宮を急ぐ</button>
+      </div>
+    </div>
+
+    <div id="desktop">
+      <canvas id="kami-field"></canvas>
+      <div class="desktop-veil"></div>
+      <header class="menubar">
+        <div class="brand">八百万OS</div>
+        <div class="menubar-meta">shrine.nodes=80431 · muen=23.4% · leftover.tokens=burning</div>
+        <div class="clock" id="clock"></div>
+      </header>
+      <nav class="dock" aria-label="神具">
+        <button type="button" data-win="idea">宣言</button>
+        <button type="button" data-win="map">列島</button>
+        <button type="button" data-win="kami">神プロセス</button>
+        <button type="button" data-win="constitution">憲法</button>
+        <button type="button" data-win="protocol">プロトコル</button>
+        <button type="button" data-win="arch">三相電源</button>
+        <button type="button" data-win="sim">1000日</button>
+        <button type="button" data-win="century">百年</button>
+        <button type="button" data-win="term">奉納</button>
+      </nav>
+
+      <section class="window focused" data-win="idea" style="left: 156px; top: 64px; width: min(740px, 72vw); height: min(640px, 78vh)">
+        <div class="titlebar"><span>宣言.yaoyorozu</span><div class="win-btns"><button class="win-close" data-win="idea" aria-label="閉じる"></button><button class="win-min" data-win="idea" aria-label="最小化"></button><button class="win-max" data-win="idea" aria-label="最大化"></button></div></div>
+        <div class="win-body">
+          <p class="lede">ビッグアイデアは、新しい島を建てることではない。<br />すでにそこにある八百万の関係性を、国家OSとして起動することだ。</p>
+          <p>日本の未使用資源は、土地でも人口でも計算力でもない。神社、祭、方言、湯、通勤、謝罪、未完了の維新——まだカーネルに昇格していない関係性である。浮体都市も火星移住も、標準ライブラリを無視したハローワールドになりうる。こちらは、80,431の神社をマイクロサービスとして認識し、47都道府県を同等のカーネルとして並列起動する。</p>
+          <div class="grid-2">
+            <div class="card"><div class="tag">NAME</div><h3>八百万OS</h3><p class="muted">Yaoyorozu Operating System。神はマイクロサービスである。</p></div>
+            <div class="card"><div class="tag">REPLACE</div><h3>GDP → GEP</h3><p class="muted">Gross En Product。接続と再訪を数える。消費の速さではない。</p></div>
+            <div class="card"><div class="tag">KERNEL</div><h3>47連邦</h3><p class="muted">東京は親プロセスではない。端と、別時間の島も、同等。</p></div>
+            <div class="card"><div class="tag">RELEASE</div><h3>式年遷宮</h3><p class="muted">20年ごとに思想を解体して建て直す。人は残し、ホコリは捨てる。</p></div>
+          </div>
+          <p class="muted">左のドックから、列島・神プロセス・憲法・1000日シミュレータ・奉納ターミナルを開け。余ったトークンは、余白へ還す。</p>
+          <div id="manifesto-body"></div>
+        </div>
+      </section>
+
+      <section class="window" data-win="map" hidden style="left: 190px; top: 72px; width: min(860px, 80vw); height: min(580px, 74vh)">
+        <div class="titlebar"><span>列島.map</span><div class="win-btns"><button class="win-close" data-win="map" aria-label="閉じる"></button><button class="win-min" data-win="map" aria-label="最小化"></button><button class="win-max" data-win="map" aria-label="最大化"></button></div></div>
+        <div class="win-body" style="padding: 0; position: relative">
+          <div class="map-wrap">
+            <div class="map-stage">
+              <svg class="map-bg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                <path d="M78 4 C86 6 90 12 88 18 C84 22 80 16 74 18 C76 10 74 6 78 4Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
+                <path d="M70 18 C76 22 78 30 72 38 C66 42 62 34 64 28 C66 22 68 20 70 18Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
+                <path d="M58 34 C70 40 68 52 58 54 C48 52 46 40 58 34Z" fill="rgba(244,234,216,0.08)" stroke="rgba(201,162,39,0.25)"/>
+                <path d="M42 44 C54 46 52 58 40 60 C32 56 34 46 42 44Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
+                <path d="M22 48 C36 50 34 62 24 64 C16 60 16 50 22 48Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
+                <path d="M28 54 C36 56 36 64 30 62 C24 60 24 54 28 54Z" fill="rgba(244,234,216,0.06)" stroke="rgba(201,162,39,0.2)"/>
+                <path d="M14 52 C24 56 24 70 18 70 C10 64 10 54 14 52Z" fill="rgba(244,234,216,0.07)" stroke="rgba(201,162,39,0.25)"/>
+                <circle cx="8" cy="78" r="3.2" fill="rgba(244,234,216,0.08)" stroke="rgba(201,162,39,0.3)"/>
+              </svg>
+              <div id="map-nodes"></div>
+            </div>
+            <aside class="map-panel" id="map-panel"></aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="window" data-win="kami" hidden style="left: 170px; top: 78px; width: min(900px, 82vw); height: min(560px, 72vh)">
+        <div class="titlebar"><span>kami.ps</span><div class="win-btns"><button class="win-close" data-win="kami" aria-label="閉じる"></button><button class="win-min" data-win="kami" aria-label="最小化"></button><button class="win-max" data-win="kami" aria-label="最大化"></button></div></div>
+        <div class="win-body">
+          <p class="muted">稼働中の神 <span id="kami-count">0</span> 柱。新しい神を立ててよい。殺してはならない。</p>
+          <input class="search" id="kami-search" type="search" placeholder="神を検索（会議、無縁、睡眠…）" />
+          <table class="proc-table">
+            <thead><tr><th>NAME</th><th>ROLE</th><th>STAT</th><th>CPU</th><th>EN</th><th>NOTE</th></tr></thead>
+            <tbody id="kami-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="window" data-win="constitution" hidden style="left: 200px; top: 60px; width: min(740px, 76vw); height: min(600px, 76vh)">
+        <div class="titlebar"><span>constitution.20</span><div class="win-btns"><button class="win-close" data-win="constitution" aria-label="閉じる"></button><button class="win-min" data-win="constitution" aria-label="最小化"></button><button class="win-max" data-win="constitution" aria-label="最大化"></button></div></div>
+        <div class="win-body" id="constitution-body"></div>
+      </section>
+
+      <section class="window" data-win="protocol" hidden style="left: 184px; top: 70px; width: min(820px, 80vw); height: min(560px, 72vh)">
+        <div class="titlebar"><span>protocols.stack</span><div class="win-btns"><button class="win-close" data-win="protocol" aria-label="閉じる"></button><button class="win-min" data-win="protocol" aria-label="最小化"></button><button class="win-max" data-win="protocol" aria-label="最大化"></button></div></div>
+        <div class="win-body" id="protocol-body"></div>
+      </section>
+
+      <section class="window" data-win="arch" hidden style="left: 210px; top: 68px; width: min(760px, 78vw); height: min(540px, 70vh)">
+        <div class="titlebar"><span>power.3phase</span><div class="win-btns"><button class="win-close" data-win="arch" aria-label="閉じる"></button><button class="win-min" data-win="arch" aria-label="最小化"></button><button class="win-max" data-win="arch" aria-label="最大化"></button></div></div>
+        <div class="win-body" id="arch-body"></div>
+      </section>
+
+      <section class="window" data-win="sim" hidden style="left: 176px; top: 64px; width: min(780px, 80vw); height: min(560px, 72vh)">
+        <div class="titlebar"><span>days.1000</span><div class="win-btns"><button class="win-close" data-win="sim" aria-label="閉じる"></button><button class="win-min" data-win="sim" aria-label="最小化"></button><button class="win-max" data-win="sim" aria-label="最大化"></button></div></div>
+        <div class="win-body">
+          <p class="lede">最初の1000日を、先に失敗する</p>
+          <div class="sim-stats">
+            <div class="stat"><div class="k">DAY</div><div class="v" id="stat-day">0</div></div>
+            <div class="stat"><div class="k">GEP</div><div class="v" id="stat-gep">0</div></div>
+            <div class="stat"><div class="k">無縁</div><div class="v" id="stat-muen">23.4%</div></div>
+            <div class="stat"><div class="k">地方神</div><div class="v" id="stat-local">41%</div></div>
+          </div>
+          <div class="boot-actions" style="margin: 0 0 16px; justify-content: flex-start">
+            <button class="btn primary" id="sim-play" type="button">通電</button>
+            <button class="btn" id="sim-step" type="button">1日</button>
+            <button class="btn" id="sim-reset" type="button">遷宮</button>
+          </div>
+          <div class="sim-log" id="sim-log"></div>
+        </div>
+      </section>
+
+      <section class="window" data-win="century" hidden style="left: 188px; top: 70px; width: min(740px, 78vw); height: min(560px, 72vh)">
+        <div class="titlebar"><span>century.2100</span><div class="win-btns"><button class="win-close" data-win="century" aria-label="閉じる"></button><button class="win-min" data-win="century" aria-label="最小化"></button><button class="win-max" data-win="century" aria-label="最大化"></button></div></div>
+        <div class="win-body" id="century-body"></div>
+      </section>
+
+      <section class="window" data-win="term" hidden style="left: 196px; top: 86px; width: min(720px, 78vw); height: min(520px, 70vh)">
+        <div class="titlebar"><span>hounou.sh</span><div class="win-btns"><button class="win-close" data-win="term" aria-label="閉じる"></button><button class="win-min" data-win="term" aria-label="最小化"></button><button class="win-max" data-win="term" aria-label="最大化"></button></div></div>
+        <div class="win-body">
+          <div id="terminal-out"></div>
+          <div class="term-row">
+            <span>神官 $</span>
+            <input id="term-input" type="text" autocomplete="off" spellcheck="false" aria-label="奉納コマンド" />
+          </div>
+        </div>
+      </section>
+
+      <div class="hint">窓は掴んで動かせる · 赤丸で閉じる · Enter で起動</div>
+      <footer class="taskbar">
+        <span class="pill">kernel: 47</span>
+        <span class="pill">kami: 8,000,000+</span>
+        <span class="pill">release: 式年遷宮 / 20y</span>
+        <span class="pill">status: 未完了のまま成功</span>
+      </footer>
+    </div>
+
+    <script src="data/prefectures.js"></script>
+    <script src="data/kami.js"></script>
+    <script src="data/constitution.js"></script>
+    <script src="data/protocols.js"></script>
+    <script src="data/manifesto.js"></script>
+    <script src="data/century.js"></script>
+    <script src="js/field.js"></script>
+    <script src="js/windows.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/sim.js"></script>
+    <script src="js/terminal.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/boot.js"></script>
+  </body>
+</html>
