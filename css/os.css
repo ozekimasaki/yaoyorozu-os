@@ -266,6 +266,14 @@ textarea {
 .win-max {
   background: var(--moss-2);
 }
+.win-pin {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--washi-dim);
+}
+.win-pin.is-on {
+  background: var(--gold);
+  box-shadow: none;
+}
 
 .win-body {
   flex: 1;

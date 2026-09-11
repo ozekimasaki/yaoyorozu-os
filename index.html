@@ -48,12 +48,13 @@
       </header>
       <div id="desktop-icons"></div>
       <div id="window-layer"></div>
-      <div class="hint">/ 鳥居 · ; 窓 · ' 空間送り · ↑↓ 札 · k 柏手 · m 間</div>
+      <div class="hint">/ 鳥居 · ; 窓 · ' 空間 · , 席 · n 告げ · ↑↓ 札 · k 柏手 · m 間</div>
       <footer class="taskbar" id="taskbar">
         <span class="pill" id="space-pill">kernel: 47</span>
         <span class="pill" id="kami-pill">kami: 8,000,000+</span>
         <span class="pill" id="logout-pill">logout: 遷宮まで無効</span>
         <span class="pill" id="ma-pill">status: 間</span>
+        <span class="pill" id="oshi-pill">告げ</span>
         <div class="task-apps"></div>
       </footer>
     </div>
@@ -78,6 +79,12 @@
 
     <div id="win-switcher"></div>
     <div id="space-switcher"></div>
+    <div id="desk-icon-menu" hidden>
+      <button type="button" data-act="open">くぐる</button>
+      <button type="button" data-act="rename">改名</button>
+      <button type="button" data-act="copy">写す</button>
+      <button type="button" data-act="muen">無縁へ</button>
+    </div>
     <div id="eaves-menu" hidden>
       <button type="button" data-act="torii">鳥居</button>
       <button type="button" data-act="ofuda">新しい札</button>
@@ -87,6 +94,11 @@
       <button type="button" data-act="sys">機械</button>
       <button type="button" data-act="muen">無縁</button>
       <button type="button" data-act="ma">間</button>
+    </div>
+    <div id="oshi-list" hidden>
+      <p class="muted">お告げ</p>
+      <div id="oshi-log" class="term-out"></div>
+      <button class="btn" type="button" id="oshi-clear">札を下ろす</button>
     </div>
     <div id="ujiko-drawer" hidden>
       <p class="muted">氏子課</p>
