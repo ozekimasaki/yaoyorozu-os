@@ -82,8 +82,9 @@ export default {
             .join("")}
         </div>
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
-          <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
-          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
+          <input class="search" id="fs-name" placeholder="匡の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
+          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匡を作る</button>
+          <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-rename" ${locked ? "disabled" : ""}>改名</button>
           <button class="btn" type="button" id="fs-muen" ${locked ? "disabled" : ""}>無縁へ</button>
           <button class="btn" type="button" id="fs-restore" ${cwd === "/var/muen" ? "" : "disabled"}>席へ戻す</button>
@@ -113,6 +114,18 @@ export default {
         } catch (e) {
           err = e.message;
           render();
+        }
+      };
+      el.querySelector("#fs-copy").onclick = async () => {
+        const name = (nameEl.value || "").trim();
+        if (!selected || !name) return;
+        try {
+          const dest = kernel.vfs.normalize(`${cwd}/${name}`);
+          await kernel.vfs.copy(selected, dest);
+          kernel.noteRecent(dest);
+          kernel.emit("vfs");
+        } catch (e) {
+          kernel.log(`cp: ${e.message}`, "fs");
         }
       };
       el.querySelector("#fs-rename").onclick = async () => {
