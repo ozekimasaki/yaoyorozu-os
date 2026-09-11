@@ -99,6 +99,26 @@ export function createWm(root, taskbar, kernel) {
     taskMenu.hidden = true;
   });
 
+  function snapEdge(pid, side) {
+    const w = windows.get(pid);
+    if (!w || w.maximized) return;
+    w.el.classList.remove("is-max");
+    if (side === "left") {
+      w.el.style.left = `${INSET.left}px`;
+      w.el.style.top = `${INSET.top}px`;
+      w.el.style.width = `calc(50% - ${INSET.left + 6}px)`;
+      w.el.style.height = `calc(100% - ${INSET.top + INSET.bottom}px)`;
+      kernel.log("窓を左の余白へ寄せた", "wm");
+    } else {
+      w.el.style.left = `calc(50% + 6px)`;
+      w.el.style.top = `${INSET.top}px`;
+      w.el.style.width = `calc(50% - ${INSET.right + 6}px)`;
+      w.el.style.height = `calc(100% - ${INSET.top + INSET.bottom}px)`;
+      kernel.log("窓を右の余白へ寄せた", "wm");
+    }
+    schedulePersist();
+  }
+
   function tile() {
     const vis = [...windows.values()].filter((w) => !w.minimized && !w.el.classList.contains("is-away"));
     if (!vis.length) return 0;
@@ -285,17 +305,9 @@ export function createWm(root, taskbar, kernel) {
         return;
       }
       if (x < edge) {
-        w.el.style.left = `${INSET.left}px`;
-        w.el.style.top = `${INSET.top}px`;
-        w.el.style.width = `calc(50% - ${INSET.left + 6}px)`;
-        w.el.style.height = `calc(100% - ${INSET.top + INSET.bottom}px)`;
-        kernel.log("窓を左の余白へ寄せた", "wm");
+        snapEdge(w.pid, "left");
       } else if (x > vw - edge) {
-        w.el.style.left = `calc(50% + 6px)`;
-        w.el.style.top = `${INSET.top}px`;
-        w.el.style.width = `calc(50% - ${INSET.right + 6}px)`;
-        w.el.style.height = `calc(100% - ${INSET.top + INSET.bottom}px)`;
-        kernel.log("窓を右の余白へ寄せた", "wm");
+        snapEdge(w.pid, "right");
       } else if (y > vh - 40) {
         minimize(w.pid);
       }
@@ -464,5 +476,6 @@ export function createWm(root, taskbar, kernel) {
     hideAll,
     pin,
     tile,
+    snapEdge,
   };
 }
