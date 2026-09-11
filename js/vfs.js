@@ -371,6 +371,19 @@ export function createVfs() {
     return dest;
   }
 
+  async function purgeMuen() {
+    await ensureIndex();
+    const kids = [...(children.get("/var/muen") || [])];
+    let n = 0;
+    for (const p of kids) {
+      const f = cache.get(p);
+      if (!f || f.type === "dir") continue;
+      await remove(p);
+      n += 1;
+    }
+    return n;
+  }
+
   async function restoreFromMuen(path, dest) {
     const src = await getFile(path);
     if (!src) throw new Error("ENOENT");
@@ -427,6 +440,7 @@ export function createVfs() {
     remove,
     moveToMuen,
     restoreFromMuen,
+    purgeMuen,
     allFiles,
     metaGet,
     metaSet,
