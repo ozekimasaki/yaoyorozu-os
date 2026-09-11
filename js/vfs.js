@@ -147,27 +147,78 @@ export function createVfs() {
     });
   }
 
+  async function follow(path, hops = 0) {
+    if (hops > 8) throw new Error("ELOOP");
+    const n = normalize(path);
+    const file = await getFile(n);
+    if (!file) throw new Error("ENOENT");
+    if (file.type === "link") {
+      if (!file.target) throw new Error("ENOENT");
+      return follow(file.target, hops + 1);
+    }
+    return file;
+  }
+
   async function write(path, body, mime = "text/plain") {
     const n = normalize(path);
     if (n === "/") throw new Error("EPERM");
-    await mkdir(parentOf(n));
-    const prev = await getFile(n);
+    let dest = n;
+    let prev = await getFile(n);
+    if (prev && prev.type === "link") {
+      let hops = 0;
+      let cur = prev;
+      while (cur && cur.type === "link") {
+        if (hops > 8) throw new Error("ELOOP");
+        hops += 1;
+        dest = normalize(cur.target);
+        cur = await getFile(dest);
+      }
+      prev = cur;
+    }
     if (prev && prev.type === "dir") throw new Error("EISDIR");
+    await mkdir(parentOf(dest));
     return putFile({
-      path: n,
+      path: dest,
       type: "file",
       body: String(body ?? ""),
       mime,
       origin: prev && prev.origin,
+      exec: !!(prev && prev.exec),
       updated: Date.now(),
     });
   }
 
   async function read(path) {
-    const file = await getFile(normalize(path));
-    if (!file) throw new Error("ENOENT");
+    const file = await follow(path);
     if (file.type === "dir") throw new Error("EISDIR");
     return file;
+  }
+
+  async function link(target, dest) {
+    const to = normalize(dest);
+    if (to === "/") throw new Error("EPERM");
+    const src = normalize(target);
+    if (await getFile(to)) throw new Error("EEXIST");
+    await mkdir(parentOf(to));
+    return putFile({
+      path: to,
+      type: "link",
+      target: src,
+      body: src,
+      mime: "inode/symlink",
+      updated: Date.now(),
+    });
+  }
+
+  async function touch(path) {
+    const n = normalize(path);
+    const prev = await getFile(n);
+    if (prev && prev.type === "link") return touch(prev.target);
+    if (prev) {
+      prev.updated = Date.now();
+      return putFile(prev);
+    }
+    return write(n, "");
   }
 
   async function ls(path) {
@@ -262,10 +313,19 @@ export function createVfs() {
     return { bytes, files, dirs };
   }
 
+  async function chmod(path, exec) {
+    const f = await follow(path);
+    if (f.type === "dir") throw new Error("EISDIR");
+    f.exec = !!exec;
+    f.updated = Date.now();
+    return putFile(f);
+  }
+
   async function copy(from, to) {
     const src = await getFile(from);
     if (!src) throw new Error("ENOENT");
     if (src.type === "dir") throw new Error("EISDIR");
+    if (src.type === "link") return link(src.target, to);
     return write(to, src.body, src.mime || "text/plain");
   }
 
@@ -273,7 +333,10 @@ export function createVfs() {
     const src = await getFile(from);
     if (!src) throw new Error("ENOENT");
     if (src.type === "dir") throw new Error("EXDEV");
-    await write(to, src.body, src.mime);
+    const dest = normalize(to);
+    if (await getFile(dest)) throw new Error("EEXIST");
+    await mkdir(parentOf(dest));
+    await putFile({ ...src, path: dest, updated: Date.now() });
     await remove(from);
   }
 
@@ -284,10 +347,12 @@ export function createVfs() {
     await mkdir("/var/muen");
     await putFile({
       path: dest,
-      type: "file",
+      type: src.type,
       body: src.body || "",
       mime: src.mime || "text/plain",
       origin: normalize(path),
+      target: src.target,
+      exec: !!src.exec,
       updated: Date.now(),
     });
     await remove(path);
@@ -301,7 +366,11 @@ export function createVfs() {
     if (!n.startsWith("/var/muen/")) throw new Error("EXDEV");
     const name = nameOf(n).replace(/^\d+-/, "");
     const to = dest ? normalize(dest) : src.origin || `/var/restored/${name}`;
-    await write(to, src.body, src.mime || "text/plain");
+    if (src.type === "link") {
+      await link(src.target, to);
+    } else {
+      await write(to, src.body, src.mime || "text/plain");
+    }
     await remove(n);
     return to;
   }
@@ -336,6 +405,10 @@ export function createVfs() {
     find,
     grep,
     usage,
+    follow,
+    link,
+    touch,
+    chmod,
     copy,
     rename,
     remove,
