@@ -1,3 +1,58 @@
-# 八百万OS
+# 八百万OS / Yaoyorozu Operating System
 
-https://github.com/ozekimasaki/yaoyorozu-os
+ビッグアイデアは、海に新しい都市を浮かべることでも、火星に国を移すことでもない。
+
+**すでに列島にある八百万の関係性を、国家OSとして起動すること。**
+
+## 公開
+
+- リポジトリ: https://github.com/ozekimasaki/yaoyorozu-os
+- GitHub Pages: https://ozekimasaki.github.io/yaoyorozu-os/
+
+## 起動（ローカル）
+
+```bash
+python3 -m http.server 8765
+```
+
+または:
+
+```bash
+npm install
+npm run dev
+```
+
+ブラウザで開く。Enter、または「起動する」。
+
+左ドックから、列島・神プロセス・憲法・プロトコル・三相電源・1000日シミュレータ・百年・奉納ターミナルを開ける。窓は掴んで移動できる。
+
+## 本番デプロイ
+
+```bash
+npx wrangler deploy
+```
+
+静的アセットだけの Workers。`wrangler.jsonc` の `assets.directory` がサイト本体。
+
+## 原則
+
+1. 神はマイクロサービスである
+2. 東京は親プロセスではない
+3. GDPをGEP（ご縁総量）に置換する
+4. 無縁は自己責任ではなくパケットロスである
+5. 式年遷宮をリリースサイクルにする
+6. 未完了のまま成功してよい
+
+## 中身
+
+| 窓 | 中身 |
+| --- | --- |
+| 宣言 | 11章のマニフェスト |
+| 列島 | 47カーネル。赤は過密、緑は余白 |
+| 神プロセス | 会議の神から竈神まで。検索可 |
+| 憲法 | 八百万憲法 20条 |
+| プロトコル | 縁・祭・奉納・注連縄・鳥居・間・無縁・言霊 |
+| 三相電源 | 法律・祭・ソフトウェア |
+| 1000日 | 先に失敗するためのシミュレータ |
+| 百年 | 2026–2100 の未完了計画 |
+| 奉納 | `help` `compile` `hounou` `migrate 東京` |
