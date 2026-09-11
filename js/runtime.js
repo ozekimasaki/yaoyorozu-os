@@ -55,17 +55,30 @@ export function launch(appId, opts = {}) {
   return win;
 }
 
-export function openPath(path) {
-  kernel.noteRecent(path);
-  const file = path;
-  if (file.endsWith(".gate")) {
-    return kernel.vfs.read(path).then((f) => launch(f.body.trim()));
+export async function openPath(path) {
+  try {
+    const f = await kernel.readPath(path);
+    kernel.noteRecent(f.path || path);
+    if (f.mime === "gate/app" || (f.path || path).endsWith(".gate")) {
+      return launch(String(f.body || "").trim());
+    }
+    if (f.mime === "text/proc" || (f.path || path).startsWith("/proc/")) {
+      return launch("editor", { path: f.path || path });
+    }
+    if ((f.path || path).startsWith("/mnt/") && (f.path || path).includes("/shrines/")) {
+      return launch("editor", { path: f.path || path });
+    }
+    if (
+      (f.path || path).startsWith("/etc") ||
+      (f.path || path).endsWith(".txt") ||
+      (f.path || path).endsWith(".yaoyorozu") ||
+      (f.path || path).endsWith(".ofuda")
+    ) {
+      return launch("editor", { path: f.path || path });
+    }
+    return launch("fs", { path: f.path || path });
+  } catch (err) {
+    kernel.log(`open ${path}: ${err.message}`, "fs");
+    return launch("fs", { path });
   }
-  if (path.startsWith("/mnt/") && path.includes("/shrines/")) {
-    return launch("editor", { path });
-  }
-  if (path.startsWith("/etc") || path.endsWith(".txt") || path.endsWith(".yaoyorozu") || path.endsWith(".ofuda")) {
-    return launch("editor", { path });
-  }
-  return launch("fs", { path });
 }
