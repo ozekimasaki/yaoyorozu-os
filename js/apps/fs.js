@@ -78,11 +78,18 @@ export default {
       }
       const parent = kernel.vfs.parentOf(cwd);
       const locked = isVirtual(cwd);
-      const sig = `${cwd}\n${selected}\n${err}\n${locked}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
+      let used = "";
+      try {
+        const u = await kernel.vfs.usage(cwd);
+        used = ` · ${u.files}札 ${u.bytes}B`;
+      } catch (e) {
+        used = "";
+      }
+      const sig = `${cwd}\n${selected}\n${err}\n${locked}\n${used}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
       if (sig === lastSig && el.querySelector(".fs-tree")) return;
       lastSig = sig;
       el.innerHTML = `
-        <p class="muted">cwd ${cwd}${err ? ` · ${err}` : ""}</p>
+        <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
         <div class="fs-tree">
           ${cwd !== "/" ? `<button type="button" data-path="${parent}" data-type="dir">../</button>` : ""}
           ${entries
@@ -95,6 +102,7 @@ export default {
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
           <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
+          <button class="btn" type="button" id="fs-new" ${locked ? "disabled" : ""}>札を作る</button>
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
           <button class="btn" type="button" id="fs-rename" ${locked ? "disabled" : ""}>改名</button>
@@ -117,6 +125,18 @@ export default {
         btn.ondblclick = () => openPath(btn.dataset.path, btn.dataset.type);
       });
       const nameEl = el.querySelector("#fs-name");
+      el.querySelector("#fs-new").onclick = async () => {
+        const name = (nameEl.value || `${Date.now()}.ofuda`).trim();
+        const dest = kernel.vfs.normalize(`${cwd}/${name.includes(".") ? name : `${name}.ofuda`}`);
+        try {
+          await kernel.vfs.write(dest, "");
+          kernel.noteRecent(dest);
+          kernel.emit("vfs");
+          launch("editor", { path: dest });
+        } catch (e) {
+          kernel.log(`write: ${e.message}`, "fs");
+        }
+      };
       el.querySelector("#fs-mkdir").onclick = async () => {
         const name = (nameEl.value || "").trim();
         if (!name) return;

@@ -96,6 +96,12 @@ export default {
         clearTimeout(autosaveT);
         if (!readonly) autosaveT = setTimeout(() => persist(true).catch(() => {}), 1800);
       });
+      ta.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+          e.preventDefault();
+          persist(false).catch((err) => kernel.log(`write: ${err.message}`, "fs"));
+        }
+      });
       el.querySelector("#ed-find-go").onclick = () => {
         const q = el.querySelector("#ed-find").value;
         if (!q) return;
