@@ -3,12 +3,17 @@ const HELP = `八百万OS 奉納シェル
   whoami / 名簿        氏子
   oncall               今日の当直
   ps                   神プロセス
-  ls [path]            縁fs
+  ls [-l] [path]       縁fs
   cat <path>           読む
   write <path> <text>  書く
   mkdir <path>         匣を作る
   mv <from> <to>       名を移す
   rm <path>            無縁へ送る
+  restore <path> [to]  無縁から戻す
+  find [path] [名]     探す
+  grep <pat> [path]    札の中
+  stat <path>          属性
+  df / du [path]       器の量
   cd [path]            匣を移る
   pwd                  今の匣
   history              奉納の履歴
@@ -40,6 +45,12 @@ const COMMANDS = [
   "mkdir",
   "mv",
   "rm",
+  "restore",
+  "find",
+  "grep",
+  "stat",
+  "df",
+  "du",
   "cd",
   "pwd",
   "history",
@@ -158,9 +169,68 @@ export default {
             );
             break;
           case "ls": {
-            const path = resolve(rest[0]);
+            const long = rest[0] === "-l";
+            const path = resolve(long ? rest[1] : rest[0]);
             const rows = await kernel.vfs.ls(path);
-            out(rows.map((f) => `${f.type === "dir" ? "d" : "-"} ${f.name}`).join("\n") || "（空）");
+            if (long) {
+              out(
+                rows
+                  .map((f) => {
+                    const sz = f.type === "dir" ? 0 : (f.body || "").length;
+                    const t = f.updated ? new Date(f.updated).toISOString().slice(0, 16).replace("T", " ") : "";
+                    return `${f.type === "dir" ? "d" : "-"} ${String(sz).padStart(6)} ${t} ${f.name}`;
+                  })
+                  .join("\n") || "（空）"
+              );
+            } else {
+              out(rows.map((f) => `${f.type === "dir" ? "d" : "-"} ${f.name}`).join("\n") || "（空）");
+            }
+            break;
+          }
+          case "find": {
+            let path = cwd;
+            let needle = "";
+            if (rest.length === 1) {
+              if (rest[0].startsWith("/") || rest[0] === "." || rest[0] === "..") path = resolve(rest[0]);
+              else needle = rest[0];
+            } else if (rest.length >= 2) {
+              path = resolve(rest[0]);
+              needle = rest.slice(1).join(" ");
+            }
+            const rows = await kernel.vfs.find(path, needle);
+            out(rows.map((f) => f.path).join("\n") || "（空）");
+            break;
+          }
+          case "grep": {
+            const pat = rest[0];
+            const path = resolve(rest[1] || ".");
+            const hits = await kernel.vfs.grep(path, pat);
+            out(hits.join("\n") || "（空）");
+            break;
+          }
+          case "stat": {
+            const path = resolve(rest[0]);
+            const f = await kernel.vfs.getFile(path);
+            if (!f) throw new Error("ENOENT");
+            out(`path=${f.path}\ntype=${f.type}\nbytes=${(f.body || "").length}\nmime=${f.mime || ""}\nupdated=${f.updated || ""}\norigin=${f.origin || ""}`);
+            break;
+          }
+          case "df": {
+            const u = await kernel.vfs.usage("/");
+            out(`縁fs  files=${u.files} dirs=${u.dirs} bytes=${u.bytes}`);
+            break;
+          }
+          case "du": {
+            const path = resolve(rest[0] || ".");
+            const u = await kernel.vfs.usage(path);
+            out(`${path}  files=${u.files} dirs=${u.dirs} bytes=${u.bytes}`);
+            break;
+          }
+          case "restore": {
+            const dest = await kernel.vfs.restoreFromMuen(resolve(rest[0]), rest[1] ? resolve(rest[1]) : undefined);
+            kernel.noteRecent(dest);
+            out(`restore → ${dest}`);
+            kernel.emit("vfs");
             break;
           }
           case "cat": {
@@ -276,7 +346,7 @@ export default {
             kernel.logout();
             break;
           case "reboot":
-            out("式年遷宮を前倒ししています。人は残し、権威のホコリは捨てます。");
+            out("式年遷宮を前倒しています。人は残し、権威のホコリは捨てます。");
             setTimeout(() => window.location.reload(), 500);
             break;
           case "cd":
