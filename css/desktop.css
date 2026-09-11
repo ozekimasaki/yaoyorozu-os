@@ -31,6 +31,10 @@
   box-shadow: inset 0 0 0 1px var(--gold);
 }
 
+.desk-icon.is-cut {
+  opacity: 0.42;
+}
+
 #desktop:focus {
   outline: none;
 }
@@ -350,8 +354,13 @@
   cursor: pointer;
 }
 
-#win-switcher button:hover {
+#win-switcher button:hover,
+#win-switcher button.is-on {
   border-color: var(--gold);
+}
+
+#win-switcher button.is-on {
+  box-shadow: inset 0 0 0 1px var(--gold);
 }
 
 #win-switcher small {
