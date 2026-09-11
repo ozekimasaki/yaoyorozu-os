@@ -243,6 +243,10 @@ class Kernel extends EventTarget {
       const path = `${desk}/${name}`;
       if (!(await this.vfs.getFile(path))) await this.vfs.write(path, app, "gate/app");
     }
+    const rc = `${home}/.hounourc`;
+    if (!(await this.vfs.getFile(rc))) {
+      await this.vfs.write(rc, "# 奉納の始めに読む。空でよい。\nalias ll=ls -l\n", "text/plain");
+    }
   }
 
   defaultState(saved) {
@@ -308,6 +312,8 @@ class Kernel extends EventTarget {
         SPACE: (saved && saved.currentSpace) || "shimane",
       },
       maLocked: !!(saved && saved.maLocked),
+      oshi: (saved && saved.oshi) || [],
+      oshiUnread: (saved && saved.oshiUnread) || 0,
       appProcs: [],
     };
   }
@@ -356,6 +362,8 @@ class Kernel extends EventTarget {
       sim: s.sim,
       hounou: s.hounou,
       muenPackets: s.muenPackets,
+      oshi: s.oshi,
+      oshiUnread: s.oshiUnread,
     };
   }
 
@@ -393,6 +401,36 @@ class Kernel extends EventTarget {
     this.emit("clip");
     this.commit(true);
     return rec;
+  }
+
+  noteOshi(text, tag = "kern") {
+    const t = String(text || "").trim();
+    if (!t) return null;
+    if (!this.state.oshi) this.state.oshi = [];
+    const rec = { t: t.slice(0, 180), tag, at: Date.now() };
+    if (this.state.oshi[0] && this.state.oshi[0].t === rec.t && this.state.oshi[0].tag === tag) {
+      this.state.oshi[0].at = rec.at;
+    } else {
+      this.state.oshi.unshift(rec);
+      this.state.oshi = this.state.oshi.slice(0, 32);
+      this.state.oshiUnread = (this.state.oshiUnread || 0) + 1;
+    }
+    this.emit("oshi", rec);
+    this.commit();
+    return rec;
+  }
+
+  readOshi() {
+    this.state.oshiUnread = 0;
+    this.emit("oshi-read");
+    this.commit();
+  }
+
+  clearOshi() {
+    this.state.oshi = [];
+    this.state.oshiUnread = 0;
+    this.emit("oshi");
+    this.commit(true);
   }
 
   noteRecent(path) {
@@ -532,6 +570,7 @@ class Kernel extends EventTarget {
     if (this.state.maLocked) return;
     this.state.maLocked = true;
     this.log("間に入った。ログアウトではない", "ma");
+    this.noteOshi("間に入った。ログアウトではない", "ma");
     this.emit("ma", true);
     this.commit();
   }
@@ -647,6 +686,7 @@ class Kernel extends EventTarget {
     const oncall = this.state.oncall;
     const job = this.applySyscall(status, oncall);
     this.log(`kashiwa ${official ? "official" : "reauth"} ${status} next=${job.kind}`, "auth");
+    this.noteOshi(`柏手 ${status}`, "auth");
     this.commit();
     this.emit("auth");
     this.emit("change");
