@@ -14,6 +14,7 @@ import ma from "./apps/ma.js";
 import cal from "./apps/cal.js";
 import clip from "./apps/clip.js";
 import sys from "./apps/sys.js";
+import muen from "./apps/muen.js";
 import { bindTorii } from "./apps/torii.js";
 import { bindKashiwa } from "./kashiwa.js";
 import { startField } from "./field.js";
@@ -33,6 +34,7 @@ register(ma);
 register(cal);
 register(clip);
 register(sys);
+register(muen);
 
 function landColor(cpu) {
   if (cpu >= 85) return "#4f7d61";
@@ -51,6 +53,24 @@ function applyJob(job) {
   if (job.kind === "hold" && job.article) openPath("/etc/ofuda/constitution.20");
 }
 
+let lastDeskSig = "";
+let deskPos = null;
+
+async function loadDeskPos() {
+  if (deskPos) return deskPos;
+  try {
+    deskPos = (await kernel.vfs.metaGet("deskPos")) || {};
+  } catch (err) {
+    deskPos = {};
+  }
+  return deskPos;
+}
+
+function saveDeskPos() {
+  if (!deskPos) return;
+  kernel.vfs.metaSet("deskPos", deskPos);
+}
+
 async function paintDesktop() {
   const desk = document.getElementById("desktop");
   const pref = kernel.spacePref();
@@ -58,20 +78,63 @@ async function paintDesktop() {
   document.getElementById("space-pill").textContent = `kernel: ${pref.name}`;
   document.getElementById("kami-pill").textContent = `kami: ${kernel.state.processes.filter((p) => p.kind !== "app").length}`;
   const icons = document.getElementById("desktop-icons");
-  icons.innerHTML = "";
+  let rows = [];
   try {
-    const rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/desktop`);
-    for (const f of rows) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "desk-icon";
-      btn.textContent = f.name.replace(".gate", "");
-      btn.onclick = () => openPath(f.path);
-      icons.appendChild(btn);
-    }
+    rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/desktop`);
   } catch (err) {
-    /* empty desktop is fine */
+    rows = [];
   }
+  const sig = rows.map((f) => f.path).join("\n");
+  if (sig === lastDeskSig && icons.children.length) return;
+  lastDeskSig = sig;
+  const pos = await loadDeskPos();
+  icons.innerHTML = "";
+  rows.forEach((f, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "desk-icon";
+    btn.dataset.path = f.path;
+    btn.textContent = f.name.replace(".gate", "");
+    const saved = pos[f.path];
+    const left = saved ? saved.x : 18;
+    const top = saved ? saved.y : 58 + i * 52;
+    btn.style.left = `${left}px`;
+    btn.style.top = `${top}px`;
+    let dragging = false;
+    let moved = false;
+    let ox = 0;
+    let oy = 0;
+    let sx = left;
+    let sy = top;
+    btn.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      moved = false;
+      sx = btn.offsetLeft;
+      sy = btn.offsetTop;
+      ox = e.clientX - sx;
+      oy = e.clientY - sy;
+      btn.setPointerCapture(e.pointerId);
+    });
+    btn.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const x = Math.max(8, e.clientX - ox);
+      const y = Math.max(48, e.clientY - oy);
+      if (Math.abs(x - sx) + Math.abs(y - sy) > 6) moved = true;
+      btn.style.left = `${x}px`;
+      btn.style.top = `${y}px`;
+    });
+    btn.addEventListener("pointerup", () => {
+      dragging = false;
+      if (moved) {
+        pos[f.path] = { x: btn.offsetLeft, y: btn.offsetTop };
+        deskPos = pos;
+        saveDeskPos();
+        return;
+      }
+      openPath(f.path);
+    });
+    icons.appendChild(btn);
+  });
 }
 
 let lastClock = "";
@@ -118,7 +181,7 @@ async function startDesktop() {
   startIrq(document.getElementById("irq-layer"), kernel, field, launch);
 
   document.querySelector(".brand").addEventListener("click", () => torii.open());
-  document.getElementById("space-pill").addEventListener("click", () => launch("map"));
+  document.getElementById("space-pill").addEventListener("click", () => toggleSpaces());
   document.getElementById("kami-pill").addEventListener("click", () => launch("proc"));
   document.getElementById("logout-pill").addEventListener("click", () => {
     try {
@@ -214,6 +277,7 @@ async function startDesktop() {
       document.getElementById("win-switcher").classList.remove("open");
       document.getElementById("eaves-menu").hidden = true;
       document.getElementById("ujiko-drawer").hidden = true;
+      document.getElementById("space-switcher").classList.remove("open");
     }
     if (kernel.state.maLocked) {
       if (e.key === "k") kashiwa.open();
@@ -247,9 +311,13 @@ async function startDesktop() {
       e.preventDefault();
       kernel.maSleep();
     }
+    if (e.key === "'" || e.key === "’") {
+      e.preventDefault();
+      toggleSpaces();
+    }
   });
 
-  document.querySelector(".hint").textContent = "/ 鳥居 · ; 窓送り · [ ] 空間 · k 柏手 · m 間";
+  document.querySelector(".hint").textContent = "/ 鳥居 · ; 窓 · ' 空間送り · [ ] 隣県 · k 柏手 · m 間";
 
   const switcher = document.getElementById("win-switcher");
   function toggleSwitcher() {
@@ -277,6 +345,28 @@ async function startDesktop() {
     });
   }
 
+  const spaces = document.getElementById("space-switcher");
+  function toggleSpaces() {
+    if (spaces.classList.contains("open")) {
+      spaces.classList.remove("open");
+      return;
+    }
+    const here = kernel.state.currentSpace;
+    spaces.innerHTML = kernel.state.prefs
+      .map(
+        (p) =>
+          `<button type="button" class="${p.id === here ? "is-here" : ""}" data-id="${p.id}">${p.name}<small>未使用CPU ${p.unusedCpu}% · ${p.season}</small></button>`
+      )
+      .join("");
+    spaces.classList.add("open");
+    spaces.querySelectorAll("[data-id]").forEach((btn) => {
+      btn.onclick = () => {
+        kernel.setSpace(btn.dataset.id);
+        spaces.classList.remove("open");
+      };
+    });
+  }
+
   const eaves = document.getElementById("eaves-menu");
   desktop.addEventListener("contextmenu", (e) => {
     if (e.target.closest(".window") || e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
@@ -293,6 +383,7 @@ async function startDesktop() {
     if (act === "sys") launch("sys");
     if (act === "clip") launch("clip");
     if (act === "ma") kernel.maSleep();
+    if (act === "muen") launch("muen");
     if (act === "ofuda") {
       const path = `/home/${kernel.state.ujiko}/desktop/${Date.now()}.ofuda`;
       kernel.vfs.write(path, "名を書け。空のスローガンはコンパイルされない。", "text/plain").then(() => {
@@ -305,8 +396,10 @@ async function startDesktop() {
     eaves.hidden = true;
     switcher.classList.remove("open");
     document.getElementById("ujiko-drawer").hidden = true;
+    document.getElementById("space-switcher").classList.remove("open");
   });
   switcher.addEventListener("click", (e) => e.stopPropagation());
+  spaces.addEventListener("click", (e) => e.stopPropagation());
   eaves.addEventListener("click", (e) => e.stopPropagation());
 
   window.addEventListener("beforeunload", () => {
