@@ -314,6 +314,7 @@ class Kernel extends EventTarget {
       maLocked: !!(saved && saved.maLocked),
       oshi: (saved && saved.oshi) || [],
       oshiUnread: (saved && saved.oshiUnread) || 0,
+      termCwd: (saved && saved.termCwd) || `/home/${ujiko}`,
       appProcs: [],
     };
   }
@@ -364,6 +365,7 @@ class Kernel extends EventTarget {
       muenPackets: s.muenPackets,
       oshi: s.oshi,
       oshiUnread: s.oshiUnread,
+      termCwd: s.termCwd,
     };
   }
 
