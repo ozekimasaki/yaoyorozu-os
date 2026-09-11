@@ -1,0 +1,1 @@
+  <g class="okinawa-callout" pointer-events="none">

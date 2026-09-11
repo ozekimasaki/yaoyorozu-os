@@ -1,0 +1,1 @@
+    <text x="52" y="440" fill="#e6c96a" font-size="7" font-family="serif">沖縄</text>
