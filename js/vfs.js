@@ -210,6 +210,18 @@ export function createVfs() {
     });
   }
 
+  async function append(path, extra) {
+    let prev = "";
+    try {
+      prev = (await follow(path)).body || "";
+    } catch (err) {
+      if (err.message !== "ENOENT") throw err;
+    }
+    const add = String(extra ?? "");
+    const body = prev ? `${prev}\n${add}` : add;
+    return write(path, body);
+  }
+
   async function touch(path) {
     const n = normalize(path);
     const prev = await getFile(n);
@@ -408,6 +420,7 @@ export function createVfs() {
     follow,
     link,
     touch,
+    append,
     chmod,
     copy,
     rename,

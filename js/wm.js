@@ -4,6 +4,7 @@ function geomOf(w) {
   return {
     appId: w.appId,
     space: w.space,
+    pinned: !w.space,
     left: `${w.el.offsetLeft}px`,
     top: `${w.el.offsetTop}px`,
     width: `${w.el.offsetWidth}px`,
@@ -87,21 +88,60 @@ export function createWm(root, taskbar, kernel) {
     taskButtons();
   }
 
-  function minimize(pid) {
+  function minimize(pid, quiet = false) {
     const w = windows.get(pid);
     if (!w) return;
     w.minimized = true;
     w.el.classList.add("is-min");
     w.el.classList.remove("focused");
-    taskButtons();
+    if (!quiet) taskButtons();
   }
 
-  function restore(pid) {
+  function restore(pid, quiet = false) {
     const w = windows.get(pid);
     if (!w) return;
     w.minimized = false;
     w.el.classList.remove("is-min");
+    if (quiet) return;
     focus(pid);
+  }
+
+  let deskHidden = null;
+
+  function hideAll() {
+    if (deskHidden) {
+      for (const pid of deskHidden) restore(pid, true);
+      const last = deskHidden[deskHidden.length - 1];
+      deskHidden = null;
+      if (last) focus(last);
+      else taskButtons();
+      return true;
+    }
+    const ids = [];
+    for (const w of windows.values()) {
+      if (!w.minimized && !w.el.classList.contains("is-away")) {
+        ids.push(w.pid);
+        minimize(w.pid, true);
+      }
+    }
+    if (!ids.length) return false;
+    deskHidden = ids;
+    const desk = document.getElementById("desktop");
+    if (desk) desk.focus();
+    taskButtons();
+    return true;
+  }
+
+  function pin(pid) {
+    const w = windows.get(pid);
+    if (!w) return;
+    if (w.space) w.space = null;
+    else w.space = kernel.state.currentSpace;
+    const btn = w.el.querySelector(".win-pin");
+    if (btn) btn.classList.toggle("is-on", !w.space);
+    applySpace(kernel.state.currentSpace);
+    schedulePersist();
+    kernel.log(w.space ? `窓 ${w.pid} をこの県へ戻した` : `窓 ${w.pid} を全県に結んだ`, "wm");
   }
 
   function maximize(pid) {
@@ -135,6 +175,7 @@ export function createWm(root, taskbar, kernel) {
     const w = windows.get(pid);
     if (!w) return;
     const lastInSpace =
+      !!w.space &&
       [...windows.values()].filter((x) => x.space === w.space && x.pid !== pid).length === 0;
     if (lastInSpace && !w.zashikiOnce) {
       w.zashikiOnce = true;
@@ -273,6 +314,7 @@ export function createWm(root, taskbar, kernel) {
     }
     el.innerHTML = `
       <div class="titlebar"><span></span><div class="win-btns">
+        <button class="win-pin" type="button" aria-label="全県に結ぶ"></button>
         <button class="win-close" type="button" aria-label="閉じる"></button>
         <button class="win-min" type="button" aria-label="最小化"></button>
         <button class="win-max" type="button" aria-label="最大化"></button>
@@ -297,7 +339,7 @@ export function createWm(root, taskbar, kernel) {
       pid,
       appId,
       title,
-      space: space || kernel.state.currentSpace,
+      space: geom && geom.pinned ? null : space || kernel.state.currentSpace,
       minimized: false,
       maximized: false,
       zashikiOnce: false,
@@ -308,9 +350,14 @@ export function createWm(root, taskbar, kernel) {
     bindDrag(w);
     bindResize(w);
     el.addEventListener("mousedown", () => focus(pid));
+    if (w.space == null) el.querySelector(".win-pin").classList.add("is-on");
     el.querySelector(".win-close").addEventListener("click", () => close(pid));
     el.querySelector(".win-min").addEventListener("click", () => minimize(pid));
     el.querySelector(".win-max").addEventListener("click", () => maximize(pid));
+    el.querySelector(".win-pin").addEventListener("click", (e) => {
+      e.stopPropagation();
+      pin(pid);
+    });
     focus(pid);
     applySpace(kernel.state.currentSpace);
     if (geom && geom.maximized) maximize(pid);
@@ -355,5 +402,7 @@ export function createWm(root, taskbar, kernel) {
     taskButtons,
     persistWindows,
     geomOf,
+    hideAll,
+    pin,
   };
 }
