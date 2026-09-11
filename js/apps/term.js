@@ -1,3 +1,5 @@
+import { openPath } from "../runtime.js";
+
 const HELP = `八百万OS 奉納シェル
   help                 この文
   whoami / 名簿        氏子
@@ -32,6 +34,17 @@ const HELP = `八百万OS 奉納シェル
   date                 祭暦の今日
   top                  CPU上位
   clip [text]          言霊の控え
+  chmod +x <path>      通電する札
+  sh <path>            札を奉納として読む
+  open <path|app>      くぐる
+  alias [名=文]        言霊の略
+  env / export / unset 場の変数
+  ln <先> <名>         結び札
+  touch <path>         時刻を撫でる
+  hold/wake/nice       神を休ませる（殺さない）
+  which <名>           言霊の出所
+  cat /proc/*          核の仮想札
+  cmd | grep|sort|tee  管で繋ぐ
   logout               EPERM
   reboot               遷宮
   ↑↓ 履歴  Tab 補完
@@ -75,6 +88,23 @@ const COMMANDS = [
   "date",
   "top",
   "clip",
+  "chmod",
+  "sh",
+  "open",
+  "alias",
+  "env",
+  "export",
+  "unset",
+  "ln",
+  "touch",
+  "tee",
+  "sort",
+  "uniq",
+  "hold",
+  "wake",
+  "nice",
+  "kill",
+  "which",
   "logout",
   "reboot",
   "clear",
@@ -85,7 +115,7 @@ export default {
   title: "奉納",
   width: "min(720px, 84vw)",
   height: "min(520px, 70vh)",
-  spawn({ kernel }) {
+  spawn({ kernel, launch }) {
     const el = document.createElement("div");
     el.innerHTML = `
       <div class="term-out" id="term-out"></div>
@@ -97,7 +127,12 @@ export default {
     let histCursor = -1;
     let draft = "";
 
+    let sink = null;
     function out(text) {
+      if (sink) {
+        sink.push(String(text));
+        return;
+      }
       outEl.textContent += `${text}\n`;
       if (outEl.textContent.length > 16000) outEl.textContent = outEl.textContent.slice(-12000);
       outEl.scrollTop = outEl.scrollHeight;
@@ -145,17 +180,85 @@ export default {
       }
     }
 
+    function expand(raw) {
+      const env = kernel.state.env || {};
+      return String(raw).replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, a, b) => {
+        const k = a || b;
+        return env[k] != null ? String(env[k]) : "";
+      });
+    }
+
+    async function pipeInto(seg, stdin) {
+      const [a, ...rest] = seg.split(/\s+/);
+      if (a === "grep") sink.push(stdin.split("\n").filter((l) => l.includes(rest[0] || "")).join("\n"));
+      else if (a === "head") sink.push(stdin.split("\n").slice(0, 12).join("\n"));
+      else if (a === "tail") sink.push(stdin.split("\n").slice(-12).join("\n"));
+      else if (a === "sort") sink.push(stdin.split("\n").sort((x, y) => x.localeCompare(y, "ja")).join("\n"));
+      else if (a === "uniq") {
+        const lines = [];
+        for (const l of stdin.split("\n")) {
+          if (lines[lines.length - 1] !== l) lines.push(l);
+        }
+        sink.push(lines.join("\n"));
+      } else if (a === "wc") {
+        sink.push(`${stdin.split("\n").length} ${stdin.split(/\s+/).filter(Boolean).length} ${stdin.length}`);
+      } else if (a === "tee") {
+        const path = resolve(rest[0]);
+        await kernel.vfs.write(path, stdin);
+        kernel.noteRecent(path);
+        kernel.emit("vfs");
+        sink.push(stdin);
+      } else out(`pipe: ${a} には繋げない`);
+    }
+
+    async function runScript(body) {
+      for (const raw of String(body || "").split("\n")) {
+        const line = raw.trim();
+        if (!line || line.startsWith("#")) continue;
+        out(`  > ${line}`);
+        await run(line, false);
+      }
+    }
+
     async function handle(raw) {
-      const line = raw.trim();
-      if (!line) return;
-      kernel.pushHistory(line);
+      const typed = raw.trim();
+      if (!typed) return;
+      const line = expand(typed);
       histCursor = -1;
       draft = "";
-      out(`神官 $ ${line}`);
-      const [a, ...rest] = line.split(/\s+/);
-      const restText = rest.join(" ");
+      out(`神官 $ ${typed}`);
       try {
-        switch (a) {
+        const segs = line.split("|").map((s) => s.trim()).filter(Boolean);
+        if (segs.length > 1) {
+          kernel.pushHistory(typed);
+          let text = "";
+          for (let i = 0; i < segs.length; i += 1) {
+            sink = [];
+            if (i === 0) await run(segs[i], false);
+            else await pipeInto(segs[i], text);
+            text = sink.join("\n");
+            sink = null;
+          }
+          out(text);
+          return;
+        }
+        await run(line, true, typed);
+      } catch (err) {
+        out(err.message || String(err));
+        if (err.message === "EPERM" && !line.startsWith("logout")) kernel.emit("need-auth");
+      }
+    }
+
+    async function run(line, hist, typed) {
+      if (hist) kernel.pushHistory(typed || line);
+      let [a, ...rest] = line.split(/\s+/);
+      const aliases = kernel.state.aliases || {};
+      if (aliases[a]) {
+        const exp = `${aliases[a]} ${rest.join(" ")}`.trim();
+        [a, ...rest] = exp.split(/\s+/);
+      }
+      const restText = rest.join(" ");
+      switch (a) {
           case "help":
             out(HELP);
             break;
@@ -182,19 +285,25 @@ export default {
           case "ls": {
             const long = rest[0] === "-l";
             const path = resolve(long ? rest[1] : rest[0]);
-            const rows = await kernel.vfs.ls(path);
+            const rows = await kernel.listPath(path);
             if (long) {
               out(
                 rows
                   .map((f) => {
+                    const kind = f.type === "dir" ? "d" : f.type === "link" ? "l" : "-";
                     const sz = f.type === "dir" ? 0 : (f.body || "").length;
                     const t = f.updated ? new Date(f.updated).toISOString().slice(0, 16).replace("T", " ") : "";
-                    return `${f.type === "dir" ? "d" : "-"} ${String(sz).padStart(6)} ${t} ${f.name}`;
+                    const arrow = f.type === "link" && f.target ? ` -> ${f.target}` : "";
+                    return `${kind}${f.exec ? "x" : "-"} ${String(sz).padStart(6)} ${t} ${f.name}${arrow}`;
                   })
                   .join("\n") || "（空）"
               );
             } else {
-              out(rows.map((f) => `${f.type === "dir" ? "d" : "-"} ${f.name}`).join("\n") || "（空）");
+              out(
+                rows
+                  .map((f) => `${f.type === "dir" ? "d" : f.type === "link" ? "l" : "-"} ${f.name}`)
+                  .join("\n") || "（空）"
+              );
             }
             break;
           }
@@ -221,9 +330,12 @@ export default {
           }
           case "stat": {
             const path = resolve(rest[0]);
-            const f = await kernel.vfs.getFile(path);
+            const f = kernel.procRead(path) || (await kernel.vfs.getFile(path));
             if (!f) throw new Error("ENOENT");
-            out(`path=${f.path}\ntype=${f.type}\nbytes=${(f.body || "").length}\nmime=${f.mime || ""}\nupdated=${f.updated || ""}\norigin=${f.origin || ""}`);
+            const extra = f.type === "link" ? `\ntarget=${f.target || ""}` : "";
+            out(
+              `path=${f.path}\ntype=${f.type}\nbytes=${(f.body || "").length}\nmime=${f.mime || ""}\nupdated=${f.updated || ""}\norigin=${f.origin || ""}${extra}`
+            );
             break;
           }
           case "df": {
@@ -267,16 +379,38 @@ export default {
           }
           case "head":
           case "tail": {
-            const f = await kernel.vfs.read(resolve(rest[0]));
+            const f = await kernel.readPath(resolve(rest[0]));
             const lines = f.body.split("\n");
             const slice = a === "head" ? lines.slice(0, 12) : lines.slice(-12);
             out(slice.join("\n"));
             break;
           }
           case "wc": {
-            const f = await kernel.vfs.read(resolve(rest[0]));
+            const f = await kernel.readPath(resolve(rest[0]));
             const lines = f.body ? f.body.split("\n").length : 0;
             out(`${lines} ${f.body.split(/\s+/).filter(Boolean).length} ${(f.body || "").length} ${resolve(rest[0])}`);
+            break;
+          }
+          case "sort": {
+            const f = await kernel.readPath(resolve(rest[0]));
+            out(f.body.split("\n").sort((x, y) => x.localeCompare(y, "ja")).join("\n"));
+            break;
+          }
+          case "uniq": {
+            const f = await kernel.readPath(resolve(rest[0]));
+            const lines = [];
+            for (const l of f.body.split("\n")) {
+              if (lines[lines.length - 1] !== l) lines.push(l);
+            }
+            out(lines.join("\n"));
+            break;
+          }
+          case "tee": {
+            const path = resolve(rest[0]);
+            await kernel.vfs.write(path, rest.slice(1).join(" "));
+            kernel.noteRecent(path);
+            out(path);
+            kernel.emit("vfs");
             break;
           }
           case "uptime": {
@@ -285,8 +419,9 @@ export default {
             break;
           }
           case "cat": {
-            const f = await kernel.vfs.read(resolve(rest[0]));
-            kernel.noteRecent(resolve(rest[0]));
+            const path = resolve(rest[0]);
+            const f = await kernel.readPath(path);
+            if (f.mime !== "text/proc") kernel.noteRecent(f.path || path);
             out(f.body.slice(0, 4000));
             break;
           }
@@ -407,13 +542,118 @@ export default {
           case "clear":
             outEl.textContent = "";
             break;
+          case "chmod": {
+            let on = rest[0] === "+x" || rest[0] === "755";
+            let dest = resolve(rest[1] || rest[0]);
+            if (rest[0] === "-x") {
+              on = false;
+              dest = resolve(rest[1]);
+            }
+            await kernel.vfs.chmod(dest, on);
+            out(`${on ? "exec" : "noexec"} ${dest}`);
+            break;
+          }
+          case "sh": {
+            const f = await kernel.vfs.read(resolve(rest[0]));
+            await runScript(f.body);
+            break;
+          }
+          case "open": {
+            const id = rest[0];
+            if (!id) throw new Error("EINVAL");
+            if (id.startsWith("/") || id.startsWith("./") || id.includes(".")) openPath(resolve(id));
+            else launch(id);
+            out(`open ${id}`);
+            break;
+          }
+          case "env":
+            out(
+              Object.entries(kernel.state.env || {})
+                .map(([k, v]) => `${k}=${v}`)
+                .join("\n") || "（空）"
+            );
+            break;
+          case "export": {
+            const eq = restText.indexOf("=");
+            if (eq < 0) throw new Error("EINVAL");
+            kernel.setEnv(restText.slice(0, eq).trim(), restText.slice(eq + 1).trim());
+            out("ok");
+            break;
+          }
+          case "unset":
+            kernel.unsetEnv(rest[0]);
+            out("ok");
+            break;
+          case "ln": {
+            const dest = resolve(rest[1]);
+            await kernel.vfs.link(resolve(rest[0]), dest);
+            kernel.noteRecent(dest);
+            out(`ln ${resolve(rest[0])} -> ${dest}`);
+            kernel.emit("vfs");
+            break;
+          }
+          case "touch": {
+            const path = resolve(rest[0]);
+            await kernel.vfs.touch(path);
+            kernel.noteRecent(path);
+            out(path);
+            kernel.emit("vfs");
+            break;
+          }
+          case "hold": {
+            const kami = kernel.holdKami(rest[0]);
+            out(`SEASON_HOLD ${kami.name} pid=${kami.pid}`);
+            break;
+          }
+          case "wake": {
+            const kami = kernel.wakeKami(rest[0]);
+            out(`running ${kami.name} pid=${kami.pid}`);
+            break;
+          }
+          case "nice": {
+            const kami = kernel.niceKami(rest[0], rest[1] || "1");
+            out(`cpu=${kami.cpu} ${kami.name}`);
+            break;
+          }
+          case "kill":
+            out("EPERM 神は殺せない。hold で季節に送れ。");
+            break;
+          case "which": {
+            const name = rest[0] || "";
+            const aliases = kernel.state.aliases || {};
+            if (aliases[name]) out(`alias ${name}=${aliases[name]}`);
+            else if (COMMANDS.includes(name)) out(`/bin/${name}`);
+            else out("not found");
+            break;
+          }
+          case "alias": {
+            if (!rest[0]) {
+              out(
+                Object.entries(kernel.state.aliases || {})
+                  .map(([k, v]) => `${k}=${v}`)
+                  .join("\n") || "（空）"
+              );
+              break;
+            }
+            const eq = restText.indexOf("=");
+            if (eq < 0) {
+              out((kernel.state.aliases || {})[rest[0]] || "（なし）");
+              break;
+            }
+            kernel.setAlias(restText.slice(0, eq).trim(), restText.slice(eq + 1).trim());
+            out("ok");
+            break;
+          }
           default:
-            out(`command not found: ${a}\n言霊が足りない。help を見よ。`);
+            if (a.startsWith("./") || a.startsWith("/")) {
+              const path = resolve(a);
+              const f = await kernel.vfs.read(path);
+              if (!f.exec) throw new Error("EPERM");
+              await runScript(f.body);
+            } else {
+              out(`command not found: ${a}\n言霊が足りない。help を見よ。`);
+            }
         }
-      } catch (err) {
-        out(err.message || String(err));
-        if (err.message === "EPERM" && a !== "logout") kernel.emit("need-auth");
-      }
     }
 
     out(`八百万OS 奉納シェル。${kernel.state.ujiko} として接続。help / kashiwa / oncall / ps`);
