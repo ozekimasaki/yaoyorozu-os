@@ -41,7 +41,7 @@ export default {
                   <td>${(k.en || 0).toLocaleString("ja-JP")}</td>
                   <td class="row-actions">
                     <button class="btn" data-act="attach">アタッチ</button>
-                    <button class="btn" data-act="harai">神祐い</button>
+                    <button class="btn" data-act="harai">祓い</button>
                   </td>
                 </tr>`;
               })
