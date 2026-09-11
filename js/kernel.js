@@ -460,14 +460,20 @@ class Kernel extends EventTarget {
     }
     this.log(`boot ujiko=${this.state.ujiko} space=${this.state.currentSpace} entropy=${this.state.oncall.entropy}`);
     this.log(`oncall kami=${this.state.oncall.kami.name} kernel=${this.state.oncall.pref.name} article=${this.state.oncall.article}`);
+    this.bootedAt = Date.now();
     this.ready = true;
     this.emit("boot");
     this.emit("change");
     return this;
   }
 
+  pauseClock(on) {
+    this._paused = !!on;
+    if (this.worker) this.worker.postMessage({ type: on ? "stop" : "start" });
+  }
+
   tick() {
-    if (!this.state) return;
+    if (!this.state || this._paused || this.state.maLocked) return;
     const list = this.state.processes;
     const n = list.length;
     if (!n) return;
