@@ -21,11 +21,29 @@ export function createWm(root, taskbar, kernel) {
   let zFore = 8000;
   let cascade = 0;
   let persistT = 0;
+  let exposeSaved = null;
 
   function persistWindows() {
     kernel.vfs.metaSet(
       "windows",
-      [...windows.values()].map((w) => geomOf(w))
+      [...windows.values()].map((w) => {
+        if (exposeSaved && exposeSaved.has(w.pid)) {
+          const g = exposeSaved.get(w.pid);
+          return {
+            appId: w.appId,
+            space: w.space,
+            pinned: !w.space,
+            left: g.left,
+            top: g.top,
+            width: g.width,
+            height: g.shaded ? g.preShadeH || g.height : g.height,
+            maximized: !!g.maximized,
+            shaded: !!g.shaded,
+            fore: !!w.fore,
+          };
+        }
+        return geomOf(w);
+      })
     );
   }
 
@@ -45,7 +63,7 @@ export function createWm(root, taskbar, kernel) {
       const pid = String(w.pid);
       seen.add(pid);
       const cls = `task-app${w.el.classList.contains("focused") ? " is-focus" : ""}${w.minimized ? " is-min" : ""}`;
-      const label = `${w.title} · ${w.pid}`;
+      const label = `${w.title} \u00b7 ${w.pid}`;
       let btn = host.querySelector(`[data-pid="${pid}"]`);
       if (!btn) {
         btn = document.createElement("button");
@@ -54,6 +72,10 @@ export function createWm(root, taskbar, kernel) {
         btn.addEventListener("click", () => {
           const cur = windows.get(Number(btn.dataset.pid));
           if (!cur) return;
+          if (exposeSaved) {
+            endExpose(cur.pid);
+            return;
+          }
           if (cur.minimized) restore(cur.pid);
           else if (cur.el.classList.contains("focused")) minimize(cur.pid);
           else focus(cur.pid);
@@ -82,16 +104,16 @@ export function createWm(root, taskbar, kernel) {
   taskMenu.id = "task-menu";
   taskMenu.hidden = true;
   taskMenu.innerHTML =
-    `<button type="button" data-act="min">しまう</button>` +
-    `<button type="button" data-act="pin">全県に結ぶ</button>` +
-    `<button type="button" data-act="prev">左の県へ</button>` +
-    `<button type="button" data-act="next">右の県へ</button>` +
-    `<button type="button" data-act="shade">巻く</button>` +
-    `<button type="button" data-act="center">中央へ</button>` +
-    `<button type="button" data-act="top">上へ寄せる</button>` +
-    `<button type="button" data-act="bottom">下へ寄せる</button>` +
-    `<button type="button" data-act="fore">手前に結ぶ</button>` +
-    `<button type="button" data-act="close">閉じる</button>`;
+    `<button type="button" data-act="min">\u3057\u307e\u3046</button>` +
+    `<button type="button" data-act="pin">\u5168\u770c\u306b\u7d50\u3076</button>` +
+    `<button type="button" data-act="prev">\u5de6\u306e\u770c\u3078</button>` +
+    `<button type="button" data-act="next">\u53f3\u306e\u770c\u3078</button>` +
+    `<button type="button" data-act="shade">\u5dfb\u304f</button>` +
+    `<button type="button" data-act="center">\u4e2d\u592e\u3078</button>` +
+    `<button type="button" data-act="top">\u4e0a\u3078\u5bc4\u305b\u308b</button>` +
+    `<button type="button" data-act="bottom">\u4e0b\u3078\u5bc4\u305b\u308b</button>` +
+    `<button type="button" data-act="fore">\u624b\u524d\u306b\u7d50\u3076</button>` +
+    `<button type="button" data-act="close">\u9589\u3058\u308b</button>`;
   document.body.appendChild(taskMenu);
   let taskMenuPid = 0;
   function neighborSpace(dir) {
@@ -111,18 +133,18 @@ export function createWm(root, taskbar, kernel) {
     applySpace(kernel.state.currentSpace);
     schedulePersist();
     const pref = kernel.state.prefs.find((p) => p.id === prefId);
-    kernel.log(`窓 ${pid} を${pref ? pref.name : prefId}へ送った`, "wm");
+    kernel.log(`\u7a93 ${pid} \u3092${pref ? pref.name : prefId}\u3078\u9001\u3063\u305f`, "wm");
   }
 
   function showTaskMenu(x, y, pid) {
     taskMenuPid = pid;
     const w = windows.get(pid);
     const pinBtn = taskMenu.querySelector("[data-act=pin]");
-    if (pinBtn) pinBtn.textContent = w && !w.space ? "この県へ戻す" : "全県に結ぶ";
+    if (pinBtn) pinBtn.textContent = w && !w.space ? "\u3053\u306e\u770c\u3078\u623b\u3059" : "\u5168\u770c\u306b\u7d50\u3076";
     const shadeBtn = taskMenu.querySelector("[data-act=shade]");
-    if (shadeBtn) shadeBtn.textContent = w && w.shaded ? "広げる" : "巻く";
+    if (shadeBtn) shadeBtn.textContent = w && w.shaded ? "\u5e83\u3052\u308b" : "\u5dfb\u304f";
     const foreBtn = taskMenu.querySelector("[data-act=fore]");
-    if (foreBtn) foreBtn.textContent = w && w.fore ? "手前を解く" : "手前に結ぶ";
+    if (foreBtn) foreBtn.textContent = w && w.fore ? "\u624b\u524d\u3092\u89e3\u304f" : "\u624b\u524d\u306b\u7d50\u3076";
     taskMenu.style.left = `${x}px`;
     taskMenu.style.top = `${y}px`;
     taskMenu.hidden = false;
@@ -152,6 +174,17 @@ export function createWm(root, taskbar, kernel) {
   document.addEventListener("click", () => {
     taskMenu.hidden = true;
   });
+  function overlayBlocks() {
+    return (
+      document.getElementById("torii-gate")?.classList.contains("open") ||
+      document.getElementById("kashiwa-stage")?.classList.contains("open") ||
+      document.getElementById("win-switcher")?.classList.contains("open") ||
+      document.getElementById("space-switcher")?.classList.contains("open") ||
+      (document.getElementById("recent-list") && !document.getElementById("recent-list").hidden) ||
+      (document.getElementById("keymap") && !document.getElementById("keymap").hidden)
+    );
+  }
+
   document.addEventListener("keydown", (e) => {
     const sameApp =
       (e.shiftKey && (e.code === "Backslash" || e.key === "\\" || e.key === "|")) ||
@@ -163,7 +196,34 @@ export function createWm(root, taskbar, kernel) {
       return;
     }
     const tag = (e.target && e.target.tagName) || "";
-    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    const typing = tag === "INPUT" || tag === "TEXTAREA";
+    if (exposeSaved) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        endExpose();
+        return;
+      }
+      if (e.key === "Enter" && !typing) {
+        const cur = [...windows.values()].find(
+          (x) => x.el.classList.contains("focused") && !x.minimized && !x.el.classList.contains("is-away")
+        );
+        e.preventDefault();
+        endExpose(cur ? cur.pid : undefined);
+        return;
+      }
+      if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey && !typing) {
+        e.preventDefault();
+        endExpose();
+        return;
+      }
+    } else if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey && !typing) {
+      if (document.activeElement && document.activeElement.classList.contains("desk-icon")) return;
+      if (overlayBlocks()) return;
+      e.preventDefault();
+      expose();
+      return;
+    }
+    if (typing) return;
     if (document.activeElement && document.activeElement.classList.contains("desk-icon")) return;
     if (!e.shiftKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
     const w = [...windows.values()].find(
@@ -175,6 +235,7 @@ export function createWm(root, taskbar, kernel) {
   });
 
   function snapEdge(pid, side) {
+    if (exposeSaved) endExpose(pid);
     const w = windows.get(pid);
     if (!w || w.maximized) return;
     if (w.shaded) {
@@ -188,33 +249,36 @@ export function createWm(root, taskbar, kernel) {
       w.el.style.top = `${INSET.top}px`;
       w.el.style.width = `calc(50% - ${INSET.left + 6}px)`;
       w.el.style.height = `calc(100% - ${INSET.top + INSET.bottom}px)`;
-      kernel.log("窓を左の余白へ寄せた", "wm");
+      kernel.log("\u7a93\u3092\u5de6\u306e\u4f59\u767d\u3078\u5bc4\u305b\u305f", "wm");
     } else if (side === "right") {
       w.el.style.left = `calc(50% + 6px)`;
       w.el.style.top = `${INSET.top}px`;
       w.el.style.width = `calc(50% - ${INSET.right + 6}px)`;
       w.el.style.height = `calc(100% - ${INSET.top + INSET.bottom}px)`;
-      kernel.log("窓を右の余白へ寄せた", "wm");
+      kernel.log("\u7a93\u3092\u53f3\u306e\u4f59\u767d\u3078\u5bc4\u305b\u305f", "wm");
     } else if (side === "top") {
       w.el.style.left = `${INSET.left}px`;
       w.el.style.top = `${INSET.top}px`;
       w.el.style.width = `calc(100% - ${INSET.left + INSET.right}px)`;
       w.el.style.height = `calc(50% - ${INSET.top / 2 + 8}px)`;
-      kernel.log("窓を上の余白へ寄せた", "wm");
+      kernel.log("\u7a93\u3092\u4e0a\u306e\u4f59\u767d\u3078\u5bc4\u305b\u305f", "wm");
     } else if (side === "bottom") {
       w.el.style.left = `${INSET.left}px`;
       w.el.style.top = `calc(50% + 4px)`;
       w.el.style.width = `calc(100% - ${INSET.left + INSET.right}px)`;
       w.el.style.height = `calc(50% - ${INSET.bottom / 2 + 12}px)`;
-      kernel.log("窓を下の余白へ寄せた", "wm");
+      kernel.log("\u7a93\u3092\u4e0b\u306e\u4f59\u767d\u3078\u5bc4\u305b\u305f", "wm");
     }
     schedulePersist();
   }
 
-  function tile() {
-    const vis = [...windows.values()].filter((w) => !w.minimized && !w.el.classList.contains("is-away"));
-    if (!vis.length) return 0;
+  function visibleWins() {
+    return [...windows.values()].filter((w) => !w.minimized && !w.el.classList.contains("is-away"));
+  }
+
+  function layoutGrid(vis, persist) {
     const n = vis.length;
+    if (!n) return 0;
     const cols = Math.ceil(Math.sqrt(n));
     const rows = Math.ceil(n / cols);
     const availW = window.innerWidth - INSET.left - INSET.right;
@@ -229,15 +293,92 @@ export function createWm(root, taskbar, kernel) {
       const r = (i / cols) | 0;
       w.el.style.left = `${INSET.left + c * cw}px`;
       w.el.style.top = `${INSET.top + r * rh}px`;
-      w.el.style.width = `${Math.max(320, cw - 8)}px`;
-      w.el.style.height = `${Math.max(220, rh - 8)}px`;
+      w.el.style.width = `${Math.max(240, cw - 16)}px`;
+      w.el.style.height = `${Math.max(160, rh - 16)}px`;
     });
-    schedulePersist();
-    kernel.log(`窓を${n}席に並べた`, "wm");
+    if (persist) schedulePersist();
+    return n;
+  }
+
+  function isExpose() {
+    return !!exposeSaved;
+  }
+
+  function expose() {
+    if (exposeSaved) {
+      endExpose();
+      return false;
+    }
+    const vis = visibleWins();
+    if (!vis.length) return false;
+    exposeSaved = new Map();
+    for (const w of vis) {
+      exposeSaved.set(w.pid, {
+        left: w.el.style.left,
+        top: w.el.style.top,
+        width: w.el.style.width,
+        height: w.el.style.height,
+        maximized: !!w.maximized,
+        shaded: !!w.shaded,
+        preShadeH: w.preShadeH,
+        prev: w.prev ? { ...w.prev } : null,
+      });
+    }
+    layoutGrid(vis, false);
+    root.classList.add("is-expose");
+    document.getElementById("desktop")?.classList.add("is-expose");
+    kernel.log(`\u4fef\u77b0 ${vis.length}`, "wm");
+    return true;
+  }
+
+  function restoreExposeGeom(w, saved) {
+    if (!saved) return;
+    w.maximized = saved.maximized;
+    w.shaded = saved.shaded;
+    w.preShadeH = saved.preShadeH;
+    w.prev = saved.prev;
+    w.el.classList.toggle("is-max", w.maximized);
+    w.el.classList.toggle("is-shade", w.shaded);
+    if (w.maximized) {
+      w.el.style.left = `${INSET.left}px`;
+      w.el.style.top = `${INSET.top}px`;
+      w.el.style.width = `calc(100% - ${INSET.left + INSET.right}px)`;
+      w.el.style.height = `calc(100% - ${INSET.top + INSET.bottom}px)`;
+      return;
+    }
+    w.el.style.left = saved.left;
+    w.el.style.top = saved.top;
+    w.el.style.width = saved.width;
+    w.el.style.height = w.shaded ? "36px" : saved.height;
+  }
+
+  function endExpose(pid) {
+    if (!exposeSaved) return false;
+    const saved = exposeSaved;
+    exposeSaved = null;
+    root.classList.remove("is-expose");
+    document.getElementById("desktop")?.classList.remove("is-expose");
+    for (const w of windows.values()) {
+      const g = saved.get(w.pid);
+      if (g) restoreExposeGeom(w, g);
+    }
+    if (pid) {
+      restore(pid);
+      focus(pid);
+    }
+    return true;
+  }
+
+  function tile() {
+    if (exposeSaved) endExpose();
+    const vis = visibleWins();
+    const n = layoutGrid(vis, true);
+    if (n) kernel.log(`\u7a93\u3092${n}\u5e2d\u306b\u4e26\u3079\u305f`, "wm");
     return n;
   }
 
   function applySpace(spaceId) {
+    if (exposeSaved) endExpose();
     let first = null;
     for (const w of windows.values()) {
       const here = !w.space || w.space === spaceId;
@@ -286,6 +427,7 @@ export function createWm(root, taskbar, kernel) {
   let deskHidden = null;
 
   function hideAll() {
+    if (exposeSaved) endExpose();
     if (deskHidden) {
       for (const pid of deskHidden) restore(pid, true);
       const last = deskHidden[deskHidden.length - 1];
@@ -318,7 +460,7 @@ export function createWm(root, taskbar, kernel) {
     if (btn) btn.classList.toggle("is-on", !w.space);
     applySpace(kernel.state.currentSpace);
     schedulePersist();
-    kernel.log(w.space ? `窓 ${w.pid} をこの県へ戻した` : `窓 ${w.pid} を全県に結んだ`, "wm");
+    kernel.log(w.space ? `\u7a93 ${w.pid} \u3092\u3053\u306e\u770c\u3078\u623b\u3057\u305f` : `\u7a93 ${w.pid} \u3092\u5168\u770c\u306b\u7d50\u3093\u3060`, "wm");
   }
 
   function raise(pid) {
@@ -332,7 +474,7 @@ export function createWm(root, taskbar, kernel) {
     }
     focus(pid);
     schedulePersist();
-    kernel.log(w.fore ? `窓 ${pid} を手前に結んだ` : `窓 ${pid} の手前を解いた`, "wm");
+    kernel.log(w.fore ? `\u7a93 ${pid} \u3092\u624b\u524d\u306b\u7d50\u3093\u3060` : `\u7a93 ${pid} \u306e\u624b\u524d\u3092\u89e3\u3044\u305f`, "wm");
   }
 
   function center(pid) {
@@ -350,7 +492,7 @@ export function createWm(root, taskbar, kernel) {
     w.el.style.left = `${left}px`;
     w.el.style.top = `${top}px`;
     schedulePersist();
-    kernel.log(`窓 ${pid} を中央へ寄せた`, "wm");
+    kernel.log(`\u7a93 ${pid} \u3092\u4e2d\u592e\u3078\u5bc4\u305b\u305f`, "wm");
   }
 
   function shade(pid) {
@@ -361,16 +503,17 @@ export function createWm(root, taskbar, kernel) {
       w.preShadeH = w.el.style.height || `${w.el.offsetHeight}px`;
       w.el.style.height = "36px";
       w.el.classList.add("is-shade");
-      kernel.log(`窓 ${pid} を巻いた`, "wm");
+      kernel.log(`\u7a93 ${pid} \u3092\u5dfb\u3044\u305f`, "wm");
     } else {
       w.el.classList.remove("is-shade");
       w.el.style.height = w.preShadeH || "min(520px, 72vh)";
-      kernel.log(`窓 ${pid} を広げた`, "wm");
+      kernel.log(`\u7a93 ${pid} \u3092\u5e83\u3052\u305f`, "wm");
     }
     schedulePersist();
   }
 
   function maximize(pid) {
+    if (exposeSaved) endExpose(pid);
     const w = windows.get(pid);
     if (!w) return;
     if (w.shaded) {
@@ -403,6 +546,7 @@ export function createWm(root, taskbar, kernel) {
   }
 
   function close(pid) {
+    if (exposeSaved) endExpose();
     const w = windows.get(pid);
     if (!w) return;
     const lastInSpace =
@@ -410,7 +554,7 @@ export function createWm(root, taskbar, kernel) {
       [...windows.values()].filter((x) => x.space === w.space && x.pid !== pid).length === 0;
     if (lastInSpace && !w.zashikiOnce) {
       w.zashikiOnce = true;
-      kernel.log("座敷童: この空間の最後の窓を、一度止めた", "proc");
+      kernel.log("\u5ea7\u6577\u7ae5: \u3053\u306e\u7a7a\u9593\u306e\u6700\u5f8c\u306e\u7a93\u3092\u3001\u4e00\u5ea6\u6b62\u3081\u305f", "proc");
       kernel.emit("irq", { kind: "zashiki", pid });
       return false;
     }
@@ -433,6 +577,12 @@ export function createWm(root, taskbar, kernel) {
     let oy = 0;
     bar.addEventListener("pointerdown", (e) => {
       if (e.target.closest("button")) return;
+      if (exposeSaved) {
+        e.preventDefault();
+        e.stopPropagation();
+        endExpose(w.pid);
+        return;
+      }
       dragging = true;
       focus(w.pid);
       ox = e.clientX - w.el.offsetLeft;
@@ -481,6 +631,10 @@ export function createWm(root, taskbar, kernel) {
       handle.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (exposeSaved) {
+          endExpose(w.pid);
+          return;
+        }
         focus(w.pid);
         const dir = handle.dataset.rz;
         const start = {
@@ -526,6 +680,7 @@ export function createWm(root, taskbar, kernel) {
   }
 
   function create({ appId, title, pid, space, width, height, geom, mount, onClose, onFocus, onDrop }) {
+    if (exposeSaved) endExpose();
     const el = document.createElement("section");
     el.className = "window focused";
     el.dataset.app = appId;
@@ -546,10 +701,10 @@ export function createWm(root, taskbar, kernel) {
     }
     el.innerHTML = `
       <div class="titlebar"><span></span><div class="win-btns">
-        <button class="win-pin" type="button" aria-label="全県に結ぶ"></button>
-        <button class="win-close" type="button" aria-label="閉じる"></button>
-        <button class="win-min" type="button" aria-label="最小化"></button>
-        <button class="win-max" type="button" aria-label="最大化"></button>
+        <button class="win-pin" type="button" aria-label="\u5168\u770c\u306b\u7d50\u3076"></button>
+        <button class="win-close" type="button" aria-label="\u9589\u3058\u308b"></button>
+        <button class="win-min" type="button" aria-label="\u6700\u5c0f\u5316"></button>
+        <button class="win-max" type="button" aria-label="\u6700\u5927\u5316"></button>
       </div></div>
       <div class="win-body"></div>
       <div class="rz n" data-rz="n"></div>
@@ -585,7 +740,14 @@ export function createWm(root, taskbar, kernel) {
     windows.set(pid, w);
     bindDrag(w);
     bindResize(w);
-    el.addEventListener("mousedown", () => focus(pid));
+    el.addEventListener("mousedown", (e) => {
+      if (exposeSaved) {
+        e.stopPropagation();
+        endExpose(pid);
+        return;
+      }
+      focus(pid);
+    });
     if (w.space == null) el.querySelector(".win-pin").classList.add("is-on");
     el.querySelector(".win-close").addEventListener("click", () => close(pid));
     el.querySelector(".win-min").addEventListener("click", () => minimize(pid));
@@ -639,7 +801,7 @@ export function createWm(root, taskbar, kernel) {
     const next = same[(i + 1) % same.length];
     restore(next.pid);
     focus(next.pid);
-    kernel.log(`同じアプリの窓 ${next.pid}`, "wm");
+    kernel.log(`\u540c\u3058\u30a2\u30d7\u30ea\u306e\u7a93 ${next.pid}`, "wm");
   }
 
   function list() {
@@ -656,6 +818,20 @@ export function createWm(root, taskbar, kernel) {
   }
 
   kernel.addEventListener("space", () => applySpace(kernel.state.currentSpace));
+  const deskHost = document.getElementById("desktop");
+  if (deskHost) {
+    deskHost.addEventListener(
+      "mousedown",
+      (e) => {
+        if (!exposeSaved) return;
+        if (e.target.closest(".window")) return;
+        if (e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
+        if (e.target.closest("#task-menu") || e.target.closest("#eaves-menu")) return;
+        endExpose();
+      },
+      true
+    );
+  }
 
   return {
     create,
@@ -681,5 +857,8 @@ export function createWm(root, taskbar, kernel) {
     shade,
     center,
     raise,
+    expose,
+    endExpose,
+    isExpose,
   };
 }
