@@ -227,6 +227,12 @@
   overflow-wrap: anywhere;
 }
 
+.ed-hits {
+  min-width: 2.4em;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
 .warn {
   color: var(--vermilion-2);
   font-size: 12px;
