@@ -22,27 +22,98 @@ export function createWm(root, taskbar, kernel) {
   let cascade = 0;
   let persistT = 0;
   let exposeSaved = null;
+  let phoneMode = false;
+
+  function captureDesk(w) {
+    if (phoneMode || !w) return;
+    w.deskGeom = {
+      left: w.el.style.left,
+      top: w.el.style.top,
+      width: w.el.style.width,
+      height: w.shaded ? w.preShadeH || w.el.style.height : w.el.style.height,
+      maximized: !!w.maximized,
+      shaded: !!w.shaded,
+    };
+  }
+
+  function applyPhoneScene(w) {
+    if (!w) return;
+    if (!w.deskGeom) captureDesk(w);
+    w.el.classList.add("is-phone-scene");
+    w.el.classList.remove("is-max", "is-shade");
+    w.shaded = false;
+    w.maximized = false;
+    w.el.style.left = "0px";
+    w.el.style.top = "0px";
+    w.el.style.width = "100%";
+    w.el.style.height = "100%";
+  }
+
+  function applyDeskScene(w) {
+    if (!w) return;
+    w.el.classList.remove("is-phone-scene", "is-phone-back");
+    const g = w.deskGeom;
+    if (!g) return;
+    w.maximized = !!g.maximized;
+    w.shaded = !!g.shaded;
+    w.el.classList.toggle("is-max", w.maximized);
+    w.el.classList.toggle("is-shade", w.shaded);
+    w.el.style.left = g.left;
+    w.el.style.top = g.top;
+    w.el.style.width = g.width;
+    w.el.style.height = w.shaded ? "36px" : g.height;
+  }
+
+  function setPhone(on) {
+    const next = !!on;
+    if (next === phoneMode) {
+      if (next) {
+        for (const w of windows.values()) applyPhoneScene(w);
+      }
+      return;
+    }
+    phoneMode = next;
+    if (phoneMode) {
+      for (const w of windows.values()) applyPhoneScene(w);
+    } else {
+      for (const w of windows.values()) applyDeskScene(w);
+      document.getElementById("desktop")?.classList.remove("is-app");
+    }
+    taskButtons();
+  }
 
   function persistWindows() {
     kernel.vfs.metaSet(
       "windows",
       [...windows.values()].map((w) => {
-        if (exposeSaved && exposeSaved.has(w.pid)) {
-          const g = exposeSaved.get(w.pid);
-          return {
-            appId: w.appId,
-            space: w.space,
-            pinned: !w.space,
-            left: g.left,
-            top: g.top,
-            width: g.width,
-            height: g.shaded ? g.preShadeH || g.height : g.height,
-            maximized: !!g.maximized,
-            shaded: !!g.shaded,
-            fore: !!w.fore,
-          };
+        if (!phoneMode) {
+          if (exposeSaved && exposeSaved.has(w.pid)) {
+            const g = exposeSaved.get(w.pid);
+            w.deskGeom = {
+              left: g.left,
+              top: g.top,
+              width: g.width,
+              height: g.shaded ? g.preShadeH || g.height : g.height,
+              maximized: !!g.maximized,
+              shaded: !!g.shaded,
+            };
+          } else {
+            captureDesk(w);
+          }
         }
-        return geomOf(w);
+        const g = w.deskGeom || geomOf(w);
+        return {
+          appId: w.appId,
+          space: w.space,
+          pinned: !w.space,
+          left: g.left,
+          top: g.top,
+          width: g.width,
+          height: g.height,
+          maximized: !!g.maximized,
+          shaded: !!g.shaded,
+          fore: !!w.fore,
+        };
       })
     );
   }
@@ -235,6 +306,7 @@ export function createWm(root, taskbar, kernel) {
   });
 
   function snapEdge(pid, side) {
+    if (phoneMode) return;
     if (exposeSaved) endExpose(pid);
     const w = windows.get(pid);
     if (!w || w.maximized) return;
@@ -305,6 +377,7 @@ export function createWm(root, taskbar, kernel) {
   }
 
   function expose() {
+    if (phoneMode) return false;
     if (exposeSaved) {
       endExpose();
       return false;
@@ -370,6 +443,7 @@ export function createWm(root, taskbar, kernel) {
   }
 
   function tile() {
+    if (phoneMode) return 0;
     if (exposeSaved) endExpose();
     const vis = visibleWins();
     const n = layoutGrid(vis, true);
@@ -392,7 +466,21 @@ export function createWm(root, taskbar, kernel) {
 
   function focus(pid) {
     const w = windows.get(pid);
-    if (!w || w.minimized || w.el.classList.contains("is-away")) return;
+    if (!w || w.el.classList.contains("is-away")) return;
+    if (phoneMode) {
+      for (const other of windows.values()) {
+        if (other.pid === pid) {
+          other.minimized = false;
+          other.el.classList.remove("is-min", "is-phone-back");
+        } else {
+          other.minimized = true;
+          other.el.classList.add("is-min", "is-phone-back");
+          other.el.classList.remove("focused");
+        }
+      }
+      document.getElementById("desktop")?.classList.add("is-app");
+    }
+    if (w.minimized) return;
     for (const other of windows.values()) other.el.classList.remove("focused");
     if (w.fore) {
       zFore += 1;
@@ -420,6 +508,7 @@ export function createWm(root, taskbar, kernel) {
     if (!w) return;
     w.minimized = false;
     w.el.classList.remove("is-min");
+    if (phoneMode) w.el.classList.remove("is-phone-back");
     if (quiet) return;
     focus(pid);
   }
@@ -428,6 +517,20 @@ export function createWm(root, taskbar, kernel) {
 
   function hideAll() {
     if (exposeSaved) endExpose();
+    if (phoneMode) {
+      let had = false;
+      for (const w of windows.values()) {
+        if (!w.minimized || !w.el.classList.contains("is-phone-back")) had = true;
+        w.minimized = true;
+        w.el.classList.add("is-min", "is-phone-back");
+        w.el.classList.remove("focused");
+      }
+      document.getElementById("desktop")?.classList.remove("is-app");
+      const desk = document.getElementById("desktop");
+      if (desk) desk.focus();
+      taskButtons();
+      return had;
+    }
     if (deskHidden) {
       for (const pid of deskHidden) restore(pid, true);
       const last = deskHidden[deskHidden.length - 1];
@@ -478,6 +581,7 @@ export function createWm(root, taskbar, kernel) {
   }
 
   function center(pid) {
+    if (phoneMode) return;
     const w = windows.get(pid);
     if (!w || w.maximized) return;
     if (w.shaded) {
@@ -496,6 +600,7 @@ export function createWm(root, taskbar, kernel) {
   }
 
   function shade(pid) {
+    if (phoneMode) return;
     const w = windows.get(pid);
     if (!w || w.maximized) return;
     w.shaded = !w.shaded;
@@ -513,6 +618,7 @@ export function createWm(root, taskbar, kernel) {
   }
 
   function maximize(pid) {
+    if (phoneMode) return;
     if (exposeSaved) endExpose(pid);
     const w = windows.get(pid);
     if (!w) return;
@@ -577,6 +683,10 @@ export function createWm(root, taskbar, kernel) {
     let oy = 0;
     bar.addEventListener("pointerdown", (e) => {
       if (e.target.closest("button")) return;
+      if (phoneMode) {
+        focus(w.pid);
+        return;
+      }
       if (exposeSaved) {
         e.preventDefault();
         e.stopPropagation();
@@ -631,6 +741,7 @@ export function createWm(root, taskbar, kernel) {
       handle.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (phoneMode) return;
         if (exposeSaved) {
           endExpose(w.pid);
           return;
@@ -733,6 +844,14 @@ export function createWm(root, taskbar, kernel) {
       fore: !!(geom && geom.fore),
       preShadeH: "",
       zashikiOnce: false,
+      deskGeom: {
+        left: el.style.left,
+        top: el.style.top,
+        width: el.style.width,
+        height: el.style.height,
+        maximized: !!(geom && geom.maximized),
+        shaded: !!(geom && geom.shaded),
+      },
       onClose,
       onFocus,
       onDrop,
@@ -750,12 +869,16 @@ export function createWm(root, taskbar, kernel) {
     });
     if (w.space == null) el.querySelector(".win-pin").classList.add("is-on");
     el.querySelector(".win-close").addEventListener("click", () => close(pid));
-    el.querySelector(".win-min").addEventListener("click", () => minimize(pid));
+    el.querySelector(".win-min").addEventListener("click", () => {
+      if (phoneMode) hideAll();
+      else minimize(pid);
+    });
     el.querySelector(".win-max").addEventListener("click", () => maximize(pid));
     el.querySelector(".win-pin").addEventListener("click", (e) => {
       e.stopPropagation();
       pin(pid);
     });
+    if (phoneMode) applyPhoneScene(w);
     focus(pid);
     applySpace(kernel.state.currentSpace);
     if (geom && geom.maximized) maximize(pid);
@@ -860,5 +983,7 @@ export function createWm(root, taskbar, kernel) {
     expose,
     endExpose,
     isExpose,
+    setPhone,
+    isPhone: () => phoneMode,
   };
 }
