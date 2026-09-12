@@ -259,4 +259,73 @@ function windowAt(x, y) {
   const stack = document.elementsFromPoint(x, y);
   if (icons) icons.style.pointerEvents = prev;
   for (const n of stack) {
-    if (n.id === "desk-marquee") continu
+    if (n.id === "desk-marquee") continue;
+    const win = n.closest && n.closest(".window");
+    if (win && !win.classList.contains("is-away") && !win.classList.contains("is-min")) return win;
+  }
+  return null;
+}
+
+function clearDropMarks() {
+  document.querySelectorAll(".window.is-drop").forEach((n) => n.classList.remove("is-drop"));
+}
+
+async function dropOnWindow(winEl, paths) {
+  const wm = getWm();
+  const w = wm ? wm.list().find((x) => x.el === winEl) : null;
+  if (!w || !paths.length) return;
+  if (typeof w.onDrop === "function") {
+    await w.onDrop(paths);
+    wm.focus(w.pid);
+    kernel.log(`札を${w.title}へ落とした`, "desk");
+    return;
+  }
+  openPath(paths[0]);
+}
+
+async function duplicateDesk() {
+  const paths = selectedDeskPaths();
+  if (!paths.length) return;
+  deskClipboard = { mode: "copy", paths };
+  await pasteDesk();
+}
+
+function copyDesk(cut) {
+  const paths = selectedDeskPaths();
+  if (!paths.length) return;
+  deskClipboard = kernel.clipVfs(cut ? "cut" : "copy", paths);
+  paintDeskMarks();
+  kernel.log(cut ? "卓を切った" : "卓を写した", "desk");
+}
+
+async function pasteDesk() {
+  const clip = kernel.state.vfsClip || deskClipboard;
+  if (!clip.paths.length) return;
+  deskClipboard = clip;
+  const desk = `/home/${kernel.state.ujiko}/desktop`;
+  let rows = [];
+  try {
+    rows = await kernel.vfs.ls(desk);
+  } catch (err) {
+    rows = [];
+  }
+  const taken = new Set(rows.map((r) => r.name));
+  let n = 0;
+  for (const src of deskClipboard.paths) {
+    const name = uniqueDeskName(kernel.vfs.nameOf(src), taken);
+    taken.add(name);
+    const dest = kernel.vfs.normalize(`${desk}/${name}`);
+    try {
+      if (deskClipboard.mode === "cut") {
+        try {
+          await kernel.vfs.rename(src, dest);
+        } catch (err) {
+          if (err.message === "EXDEV" || err.message === "EISDIR") {
+            kernel.log("匣の切りは写して残す", "desk");
+            await copyTree(src, dest);
+          } else {
+            await copyTree(src, dest);
+            await kernel.vfs.moveToMuen(src);
+          }
+        }
+      } els
