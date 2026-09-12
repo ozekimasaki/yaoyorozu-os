@@ -199,7 +199,7 @@ export default {
               kids
                 .slice(0, 16)
                 .map((k) => `${k.type === "dir" ? "▸" : k.type === "link" ? "↦" : "·"} ${k.name}`)
-                .join("\n") || "（空の匣）";
+                .join("\n") || "（空の\u5323）";
             sig = `${path}|dir|${kids.length}|${node.updated || 0}`;
           } else if (node.type === "link") {
             text = `↦ ${node.target || ""}`;
@@ -253,7 +253,7 @@ export default {
 
     async function pasteHere() {
       if (isVirtual(cwd)) {
-        kernel.log("仮想匣には貼れない", "fs");
+        kernel.log("仮想\u5323には貼れない", "fs");
         return;
       }
       const clip = kernel.state.vfsClip;
@@ -306,7 +306,7 @@ export default {
 
     async function ingest(paths) {
       if (isVirtual(cwd)) {
-        kernel.log("仮想匣には落とせない", "fs");
+        kernel.log("仮想\u5323には落とせない", "fs");
         return;
       }
       let rows = [];
@@ -358,6 +358,25 @@ export default {
       paintSel();
       paintPeek();
       btns[i].focus();
+    }
+
+    function jumpName(ch) {
+      const needle = String(ch || "").toLocaleLowerCase("ja");
+      if (!needle) return;
+      const btns = fileBtns();
+      const n = btns.length;
+      if (!n) return;
+      let from = btns.findIndex((b) => b.dataset.path === lastFsPick);
+      if (from < 0) from = -1;
+      for (let i = 1; i <= n; i += 1) {
+        const btn = btns[(from + i) % n];
+        const name = kernel.vfs.nameOf(btn.dataset.path || "").toLocaleLowerCase("ja");
+        if (name.startsWith(needle)) {
+          setPick(btn.dataset.path);
+          btn.focus();
+          return;
+        }
+      }
     }
 
     async function goPath(raw) {
@@ -472,7 +491,7 @@ export default {
       bodyEl.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
         <div class="fs-crumbs">${crumbs(cwd)}</div>
-        <input class="search" id="fs-go" value="${cwd}" aria-label="匣の道" style="margin:8px 0;max-width:100%" />
+        <input class="search" id="fs-go" value="${cwd}" aria-label="\u5323の道" style="margin:8px 0;max-width:100%" />
         <input class="search" id="fs-filter" placeholder="名で絞る" aria-label="名で絞る" style="margin:0 0 8px;max-width:100%" />
         <div class="fs-tree">
           ${cwd !== "/" ? `<button type="button" data-path="${parent}" data-type="dir" data-up="1">../</button>` : ""}
@@ -487,8 +506,8 @@ export default {
           <button class="btn" type="button" id="fs-back" ${histI <= 0 ? "disabled" : ""}>戻る</button>
           <button class="btn" type="button" id="fs-fwd" ${histI >= hist.length - 1 ? "disabled" : ""}>進む</button>
           <button class="btn" type="button" id="fs-sort">${sortKey === "updated" ? "時順" : "名順"}</button>
-          <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
-          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
+          <input class="search" id="fs-name" placeholder="\u5323の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
+          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>\u5323を作る</button>
           <button class="btn" type="button" id="fs-new" ${locked ? "disabled" : ""}>札を作る</button>
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-cut" ${locked ? "disabled" : ""}>切る</button>
@@ -733,6 +752,10 @@ export default {
         const rows = fileBtns();
         const last = rows[rows.length - 1];
         if (last) setPick(last.dataset.path, e);
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey && !e.isComposing) {
+        e.preventDefault();
+        e.stopPropagation();
+        jumpName(e.key);
       } else if (e.key === "Enter" && (lastFsPick || selected.size)) {
         e.preventDefault();
         const path = lastFsPick || selectedPaths()[0];
