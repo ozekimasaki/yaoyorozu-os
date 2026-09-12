@@ -63,6 +63,8 @@ const HELP = `八百万OS 奉納シェル
   cat /proc/oto        \u4eca\u9cf4\u308b\u5ea7
   konoyo [bind|wake|unbind|take|send] \u6b64\u5cb8
   cat /proc/konoyo     \u6b64\u5cb8\u306e\u7d50
+  watari [open|join|far|send|close] \u6e21\u308a
+  cat /proc/watari     \u6e21\u308a\u306e\u821f
   kill [-STOP|-CONT]   \u7a93\u3092\u4f11\u307e\u305b\u308b
   cat /proc/apps       \u7a93\u306e\u4f11\u6b62
   logout               EPERM
@@ -146,6 +148,7 @@ const COMMANDS = [
   "share",
   "oto",
   "konoyo",
+  "watari",
 ];
 
 export default {
@@ -665,7 +668,7 @@ export default {
             kernel.logout();
             break;
           case "reboot":
-            out("式年遷宮を前倒ししています。人は残し、権威のホコリは捨てます。");
+            out("式年遷宮を前倒しています。人は残し、権威のホコリは捨てます。");
             setTimeout(() => window.location.reload(), 500);
             break;
           case "cd":
@@ -776,6 +779,48 @@ export default {
               break;
             }
             out("konoyo [bind|unbind|wake|take|send]");
+            break;
+          }
+          case "watari": {
+            const w = kernel.watari;
+            if (!w) throw new Error("ENOSYS");
+            const sub = rest[0] || "";
+            if (!sub || sub === "stat") {
+              out(w.procText());
+              break;
+            }
+            if (sub === "open") {
+              await w.open({ via: "shrine", kotoba: rest[1] || "" });
+              out(w.procText());
+              break;
+            }
+            if (sub === "join") {
+              await w.join({ via: "shrine", kotoba: rest[1] || "" });
+              out(w.procText());
+              break;
+            }
+            if (sub === "far") {
+              const joinFar = rest[1] === "join";
+              const kotoba = joinFar ? rest[2] : rest[1];
+              if (joinFar) await w.join({ via: "kotoba", kotoba: kotoba || "" });
+              else await w.open({ via: "kotoba", kotoba: kotoba || "" });
+              out(w.procText());
+              break;
+            }
+            if (sub === "send") {
+              const raw = rest.slice(1).join(" ");
+              if (!raw) throw new Error("EINVAL");
+              if (raw.startsWith("/") || raw.includes(".")) await w.sendPath(resolve(raw));
+              else await w.sendText(raw);
+              out(w.procText());
+              break;
+            }
+            if (sub === "close") {
+              await w.close();
+              out(w.procText());
+              break;
+            }
+            out("watari [open|join|far|send|close]");
             break;
           }
           case "share": {
