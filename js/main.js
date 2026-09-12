@@ -193,4 +193,70 @@ async function paintDesktop() {
             g.el.style.top = `${snapped.y}px`;
             pos[g.path] = snapped;
           }
-          des
+          deskPos = pos;
+          saveDeskPos();
+          return;
+        }
+        if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
+          if (deskSelected.has(f.path)) deskSelected.delete(f.path);
+          else deskSelected.add(f.path);
+          paintDeskMarks();
+          return;
+        }
+        deskSelected = new Set([f.path]);
+        paintDeskMarks();
+        openPath(f.path);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    });
+    icons.appendChild(btn);
+  });
+  paintDeskMarks();
+}
+
+function paintDeskMarks() {
+  const cut = deskClipboard.mode === "cut" ? new Set(deskClipboard.paths) : null;
+  document.querySelectorAll(".desk-icon").forEach((el) => {
+    const p = el.dataset.path;
+    el.classList.toggle("is-on", deskSelected.has(p) || p === lastDeskPick);
+    el.classList.toggle("is-cut", !!(cut && cut.has(p)));
+  });
+}
+
+function selectedDeskPaths() {
+  if (deskSelected.size) return [...deskSelected];
+  if (lastDeskPick) return [lastDeskPick];
+  return [];
+}
+
+function snapDesk(x, y) {
+  const gx = 120;
+  const gy = 64;
+  const col = Math.max(0, Math.round((x - 18) / gx));
+  const row = Math.max(0, Math.round((y - 58) / gy));
+  return { x: 18 + col * gx, y: 58 + row * gy };
+}
+
+function uniqueDeskName(name, taken) {
+  if (!taken.has(name)) return name;
+  const dot = name.lastIndexOf(".");
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+  let i = 2;
+  while (taken.has(`${stem}-${i}${ext}`)) i += 1;
+  return `${stem}-${i}${ext}`;
+}
+
+async function copyTree(from, to) {
+  return kernel.vfs.copyTree(from, to);
+}
+
+function windowAt(x, y) {
+  const icons = document.getElementById("desktop-icons");
+  const prev = icons ? icons.style.pointerEvents : "";
+  if (icons) icons.style.pointerEvents = "none";
+  const stack = document.elementsFromPoint(x, y);
+  if (icons) icons.style.pointerEvents = prev;
+  for (const n of stack) {
+    if (n.id === "desk-marquee") continu
