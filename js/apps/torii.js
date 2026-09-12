@@ -1,4 +1,4 @@
-import { apps, launch, openPath } from "../runtime.js";
+import { apps, launch, openPath, getWm } from "../runtime.js";
 
 export function bindTorii(gate, kernel) {
   const search = gate.querySelector("#torii-search");
@@ -12,6 +12,12 @@ export function bindTorii(gate, kernel) {
   function catalog(q) {
     const query = (q || "").trim();
     const rows = [];
+    const wm = getWm();
+    if (wm) {
+      for (const w of wm.list().filter((x) => !x.el.classList.contains("is-away"))) {
+        rows.push({ kind: "win", id: String(w.pid), title: w.title, hint: `窓 ${w.appId}` });
+      }
+    }
     for (const app of apps()) {
       rows.push({ kind: "app", id: app.id, title: app.title, hint: "くぐる" });
     }
@@ -78,20 +84,33 @@ export function bindTorii(gate, kernel) {
       return;
     }
     lastSig = sig;
+    if (!list.dataset.bound) {
+      list.dataset.bound = "1";
+      list.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-i]");
+        if (btn) enter(items[Number(btn.dataset.i)]);
+      });
+    }
     list.innerHTML = items
       .map(
         (r, i) =>
           `<button type="button" class="torii-item${i === cursor ? " is-on" : ""}" data-i="${i}"><strong>${r.title}</strong><small>${r.hint} · ${r.kind}</small></button>`
       )
       .join("");
-    list.querySelectorAll(".torii-item").forEach((btn) => {
-      btn.onclick = () => enter(items[Number(btn.dataset.i)]);
-    });
   }
 
   function enter(item) {
     if (!item) return;
     close();
+    if (item.kind === "win") {
+      const wm = getWm();
+      const pid = Number(item.id);
+      if (wm && pid) {
+        wm.restore(pid);
+        wm.focus(pid);
+      }
+      return;
+    }
     if (item.kind === "app") launch(item.id);
     else if (item.kind === "space") {
       kernel.setSpace(item.id);
@@ -130,6 +149,26 @@ export function bindTorii(gate, kernel) {
     if (e.key === "ArrowUp") {
       e.preventDefault();
       cursor = Math.max(0, cursor - 1);
+      draw();
+    }
+    if (e.key === "Home") {
+      e.preventDefault();
+      cursor = 0;
+      draw();
+    }
+    if (e.key === "End") {
+      e.preventDefault();
+      cursor = Math.max(0, items.length - 1);
+      draw();
+    }
+    if (e.key === "PageDown") {
+      e.preventDefault();
+      cursor = Math.min(items.length - 1, cursor + 8);
+      draw();
+    }
+    if (e.key === "PageUp") {
+      e.preventDefault();
+      cursor = Math.max(0, cursor - 8);
       draw();
     }
     if (e.key === "Enter") {
