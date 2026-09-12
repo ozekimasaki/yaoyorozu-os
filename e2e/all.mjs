@@ -1,2 +1,1 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
+PLACEHOLDER_WILL_FAIL_HASH
