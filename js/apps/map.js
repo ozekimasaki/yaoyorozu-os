@@ -167,14 +167,14 @@ export default {
         node.tabIndex = -1;
         const p = kernel.state.prefs.find((x) => x.id === node.dataset.pref);
         if (!p) return;
-        node.addEventListener("click", () => select(p, true));
+        node.addEventListener("click", () => select(p, false));
         node.addEventListener("mouseenter", () => {
           callout.textContent = `${p.name} · 未使用 ${p.unusedCpu}%`;
         });
       });
       selectEl.onchange = () => {
         const p = kernel.state.prefs.find((x) => x.id === selectEl.value);
-        if (p) select(p, true);
+        if (p) select(p, false);
       };
       select(kernel.spacePref(), false);
     }
