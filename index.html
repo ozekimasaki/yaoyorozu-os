@@ -48,7 +48,7 @@
       </header>
       <div id="desktop-icons"></div>
       <div id="window-layer"></div>
-      <div class="hint">/ 鳥居 · ; 窓 · ' 空間 · , 席 · . 並べ · n 告げ · k 柏手 · m 間 · 空欄 覗く · 囲う · 落とす</div>
+      <div class="hint">/ 鳥居 · ; 窓 · ' 空間 · ? 操作 · 空欄 覗く · 囲う · 落とす</div>
       <div id="desk-marquee" hidden></div>
       <footer class="taskbar" id="taskbar">
         <span class="pill" id="space-pill">kernel: 47</span>
@@ -117,6 +117,29 @@
       <p class="torii-head">間</p>
       <p class="muted">ログアウトではない。機械は眠っている。柏手か、下の文で起こす。</p>
       <button class="btn primary" type="button" id="ma-wake">間を終える</button>
+    </div>
+    <div id="keymap" hidden>
+      <p class="torii-head">操作</p>
+      <p class="muted">この機械の鍵。ログアウトはない。</p>
+      <div class="keymap-grid">
+        <div><kbd>/</kbd> 鳥居</div>
+        <div><kbd>;</kbd> 窓送り</div>
+        <div><kbd>'</kbd> 空間</div>
+        <div><kbd>[ ]</kbd> 隣県</div>
+        <div><kbd>Shift+[ ]</kbd> 窓を隣県へ</div>
+        <div><kbd>,</kbd> 席を空ける</div>
+        <div><kbd>.</kbd> 窓を並べる</div>
+        <div><kbd>n</kbd> お告げ</div>
+        <div><kbd>k</kbd> 柏手</div>
+        <div><kbd>m</kbd> 間</div>
+        <div><kbd>空欄</kbd> 覗く</div>
+        <div><kbd>Ctrl+Z</kbd> 無縁を戻す</div>
+        <div><kbd>Ctrl+C/X/V</kbd> 写し切り</div>
+        <div><kbd>Ctrl+N</kbd> 新しい札</div>
+        <div><kbd>F2</kbd> 改名</div>
+        <div><kbd>Delete</kbd> 無縁へ</div>
+        <div><kbd>Esc</kbd> 閉じる</div>
+      </div>
     </div>
     <div id="desk-peek" hidden>
       <p class="muted" id="desk-peek-path"></p>
