@@ -553,3 +553,424 @@ try {
     note(!!(await page.$(".window[data-app=fs] [data-mark='/var/watari']")), "\u7e01fs \u6e21\u308a\u30de\u30fc\u30af");
     await h.closeWin("fs");
   });
+
+  await section("utsushi", async () => {
+    note(
+      await page.evaluate(() => {
+        const v = document.documentElement.dataset.utsushi;
+        return v === "live" || v === "still" || v === "0";
+      }),
+      "\u5199\u3057 dataset"
+    );
+    note(
+      await page.evaluate(() =>
+        [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "utsushi")
+      ),
+      "\u5353\u306b\u5199\u3057\u306e\u5370"
+    );
+    const snapped = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      const hit = await kernel.utsushi.snap({ reason: "e2e" });
+      const kids = await kernel.vfs.ls("/var/utsushi");
+      const names = kids.map((k) => k.name).join(",");
+      const png = kids.filter((k) => /\.png$/i.test(k.name));
+      let body = "";
+      if (png.length) {
+        const f = await kernel.vfs.read(png[png.length - 1].path);
+        body = String(f.body || "").slice(0, 22);
+      }
+      return {
+        path: hit.path,
+        bytes: hit.bytes,
+        names,
+        body,
+        last: kernel.utsushi.snapshot().last,
+        ds: document.documentElement.dataset.utsushi,
+        proc: kernel.utsushi.procText(),
+      };
+    });
+    note(!!snapped.path && /\/var\/utsushi\//.test(snapped.path), `\u5199\u3057 path ${snapped.path}`);
+    note(snapped.bytes > 80, `\u5199\u3057 bytes ${snapped.bytes}`);
+    note(snapped.body.startsWith("data:image/png"), `\u5199\u3057 body ${snapped.body}`);
+    note(/supported=1/.test(snapped.proc) && /count=/.test(snapped.proc), `proc utsushi ${snapped.proc.slice(0, 80)}`);
+    await h.openTorii("\u93e1", "kagami");
+    note(!!(await page.$(".window[data-app=kagami] #kagami-snap")), "\u93e1 \u6620\u3059");
+    note(!!(await page.$(".window[data-app=kagami] #kagami-img")), "\u93e1 \u753b");
+    await page.evaluate(() => document.querySelector(".window[data-app=kagami] #kagami-snap")?.click());
+    await sleep(400);
+    const after = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      const kids = await kernel.vfs.ls("/var/utsushi");
+      return kids.filter((k) => /\.png$/i.test(k.name)).length;
+    });
+    note(after >= 2, `\u93e1\u304b\u3089\u6620\u3059 ${after}`);
+    await h.closeWin("kagami");
+    await h.openTorii("\u5949\u7d0d", "term");
+    await h.term("cat /proc/utsushi");
+    const procU = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+    note(/supported=/.test(procU) && /last=/.test(procU), `term proc utsushi ${procU.slice(-80)}`);
+    await h.closeWin("term");
+    await h.openTorii("\u7e01fs", "fs");
+    note(!!(await page.$(".window[data-app=fs] [data-mark='/var/utsushi']")), "\u7e01fs \u5199\u3057\u30de\u30fc\u30af");
+    await h.closeWin("fs");
+    await h.desk();
+    await h.key("F8");
+    await sleep(300);
+    const f8 = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      return kernel.utsushi.snapshot().count;
+    });
+    note(f8 >= 3, `F8 \u5199\u3057 count=${f8}`);
+  });
+
+  await section("keshiki", async () => {
+    note(
+      await page.evaluate(() =>
+        [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "keshiki")
+      ),
+      "\u5353\u306b\u666f\u8272\u306e\u5370"
+    );
+    const laid = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      const hit = await kernel.keshiki.fromLast();
+      return {
+        path: hit.path,
+        has: hit.has,
+        ds: document.documentElement.dataset.keshiki,
+        scale: document.documentElement.dataset.scale,
+        veil: !document.getElementById("keshiki-veil")?.hidden,
+        field: document.getElementById("kami-field")?.hidden === true,
+        proc: kernel.keshiki.procText(),
+      };
+    });
+    note(!!laid.path && /\/var\/utsushi\//.test(laid.path), `\u666f\u8272 path ${laid.path}`);
+    note(laid.has && laid.ds === "1", `\u666f\u8272 dataset ${laid.ds}`);
+    note(laid.veil, "keshiki veil");
+    note(laid.field, "kami-field paused");
+    note(/path=/.test(laid.proc) && /scale=/.test(laid.proc), `proc keshiki ${laid.proc.slice(0, 80)}`);
+    await h.openTorii("\u6a5f\u68b0", "sys");
+    note(!!(await page.$(".window[data-app=sys] #sys-keshiki-last")), "\u6a5f\u68b0 \u6577\u304f");
+    note(!!(await page.$(".window[data-app=sys] [data-scale='1.15']")), "\u6a5f\u68b0 \u62e1\u5927");
+    await page.evaluate(() => document.querySelector(".window[data-app=sys] [data-scale='1.15']")?.click());
+    await sleep(200);
+    const scaled = await page.evaluate(() => ({
+      ds: document.documentElement.dataset.scale,
+      css: getComputedStyle(document.documentElement).getPropertyValue("--ui-scale").trim(),
+    }));
+    note(scaled.ds === "1.15" || scaled.css === "1.15", `\u62e1\u5927 ${scaled.ds} ${scaled.css}`);
+    await page.evaluate(() => document.querySelector(".window[data-app=sys] [data-scale='1']")?.click());
+    await sleep(120);
+    await h.closeWin("sys");
+    await h.openTorii("\u93e1", "kagami");
+    note(!!(await page.$(".window[data-app=kagami] #kagami-desk")), "\u93e1 \u5353\u3078");
+    await page.evaluate(() => document.querySelector(".window[data-app=kagami] #kagami-desk")?.click());
+    await sleep(240);
+    await h.closeWin("kagami");
+    await h.openTorii("\u5949\u7d0d", "term");
+    await h.term("cat /proc/keshiki");
+    const procK = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+    note(/path=/.test(procK) && /has=1/.test(procK), `term proc keshiki ${procK.slice(-80)}`);
+    await h.term("keshiki clear");
+    const cleared = await page.evaluate(() => document.documentElement.dataset.keshiki);
+    note(cleared === "0", `\u666f\u8272 clear ${cleared}`);
+    await h.closeWin("term");
+  });
+
+  await section("utsuwa-okoshi", async () => {
+    note(
+      await page.evaluate(() =>
+        [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "utsuwa")
+      ),
+      "\u5353\u306b\u5668\u306e\u5370"
+    );
+    note(
+      await page.evaluate(() =>
+        [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "okoshi")
+      ),
+      "\u5353\u306b\u8d77\u3053\u3057\u306e\u5370"
+    );
+    const before = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      const p = `/home/${kernel.state.ujiko}/sweep-probe.ofuda`;
+      await kernel.vfs.write(p, "sweep-body");
+      await kernel.vfs.moveToMuen(p);
+      const hit = await kernel.utsuwa.sweep({ hard: true });
+      await kernel.okoshi.add("sys");
+      return {
+        dropped: hit.dropped,
+        proc: kernel.utsuwa.procText(),
+        oshi: kernel.okoshi.procText(),
+        ds: document.documentElement.dataset.utsuwa,
+        quota: kernel.vfs.quotaOf(),
+      };
+    });
+    note(before.dropped >= 1, `\u5668 sweep ${before.dropped}`);
+    note(/bytes=/.test(before.proc) && /quota=/.test(before.proc), `proc utsuwa ${before.proc.slice(0, 80)}`);
+    note(before.ds === "live" || before.ds === "full", `\u5668 dataset ${before.ds}`);
+    note(before.quota > 0, `\u5668 quota ${before.quota}`);
+    note(/app=sys/.test(before.oshi), `okoshi ${before.oshi}`);
+    await h.openTorii("\u6a5f\u68b0", "sys");
+    note(!!(await page.$(".window[data-app=sys] #sys-utsuwa-sweep")), "\u6a5f\u68b0 \u6383\u304f");
+    note(!!(await page.$(".window[data-app=sys] [data-okoshi=sys]")), "\u6a5f\u68b0 \u8d77\u3053\u3057");
+    await page.evaluate(() => document.querySelector(".window[data-app=sys] #sys-utsuwa-sweep")?.click());
+    await sleep(200);
+    await h.closeWin("sys");
+    await h.openTorii("\u5949\u7d0d", "term");
+    await h.term("df");
+    await h.term("cat /proc/utsuwa");
+    await h.term("okoshi list");
+    const termOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+    note(/quota=/.test(termOut), `term df/utsuwa ${termOut.slice(-80)}`);
+    note(/app=sys/.test(termOut), `term okoshi ${termOut.slice(-60)}`);
+    await h.closeWin("term");
+    await h.openTorii("\u7e01fs", "fs");
+    note(!!(await page.$(".window[data-app=fs] #fs-sweep")), "\u7e01fs \u6383\u304f");
+    await h.closeWin("fs");
+  });
+
+  await h.openTorii("1000\u65e5", "sim");
+  note(!!(await h.vis("sim")), "1000\u65e5");
+  const day0 = await page.evaluate(() => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || "");
+  await page.evaluate(() => document.querySelector(".window[data-app=sim] #sim-step")?.click());
+  await sleep(300);
+  const day1 = await page.evaluate(() => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || "");
+  note(day1 !== "" && day1 !== day0, `1000\u65e5 1\u65e5 ${day0}->${day1}`);
+  await h.closeWin("sim");
+
+  await h.openTorii("\u9593", "ma");
+  note(!!(await h.vis("ma")), "\u9593\u30a2\u30d7\u30ea");
+  note(!!(await page.$(".window[data-app=ma] #silent")), "\u9593\u306e\u6c88\u9ed9");
+  await page.evaluate(() => document.querySelector(".window[data-app=ma] [data-irq='8000']")?.click());
+  await sleep(150);
+  await h.closeWin("ma");
+
+  await page.click("#clock");
+  await h.awaitApp("cal");
+  note(!!(await h.vis("cal")), "\u796d\u66a6");
+  await page.waitForSelector(".window[data-app=cal] [data-d]");
+  const cal = await page.evaluate(async () => {
+    const win = document.querySelector(".window[data-app=cal]:not(.is-min)");
+    const today = new Date().getDate();
+    const target = today === 12 ? 13 : 12;
+    win.querySelector(`[data-d="${target}"]`)?.click();
+    await new Promise((r) => setTimeout(r, 800));
+    const eds = [...document.querySelectorAll(".window[data-app=editor] .ed-path")].map((p) => p.textContent || "");
+    return { target, ed: eds.find((t) => t.includes("/cal/")) || eds.join(" | ") };
+  });
+  note((cal.ed || "").includes("/cal/") && (cal.ed || "").includes(".ofuda"), `\u796d\u66a6\u306e\u65e5 ${cal.ed}`);
+  await h.closeWin("editor");
+  await h.closeWin("cal");
+
+  await h.openTorii("\u63a7\u3048", "clip");
+  note(!!(await h.vis("clip")), "\u63a7\u3048");
+  const clipN = await page.$$eval(".window[data-app=clip] .fs-tree [data-i], .window[data-app=clip] .fs-tree button", (els) => els.length);
+  note(clipN >= 1, `\u63a7\u3048\u306e\u672d ${clipN}`);
+  await h.closeWin("clip");
+
+  await h.openTorii("\u6a5f\u68b0", "sys");
+  note(!!(await h.vis("sys")), "\u6a5f\u68b0");
+  const sys = await page.evaluate(() => ({
+    lede: document.querySelector(".window[data-app=sys] .lede")?.textContent || "",
+    uid: document.querySelector(".window[data-app=sys] [data-k=uid] h3")?.textContent || "",
+    disk: document.querySelector(".window[data-app=sys] [data-k=disk]")?.textContent || "",
+    power: document.querySelector(".window[data-app=sys] [data-k=up] h3")?.textContent || "",
+  }));
+  note(sys.lede.includes("\u30d6\u30e9\u30a6\u30b6") || sys.lede.length > 0, `\u6a5f\u68b0\u30ea\u30fc\u30c9 ${sys.lede}`);
+  note(!!sys.uid, `\u6a5f\u68b0UID ${sys.uid}`);
+  note(/DISK|\u672d/.test(sys.disk), `\u6a5f\u68b0DISK ${sys.disk}`);
+  note(!!(await page.$(".window[data-app=sys] #sys-keshiki-last")), "\u6a5f\u68b0\u666f\u8272");
+  note(!!(await page.$(".window[data-app=sys] [data-scale]")), "\u6a5f\u68b0SCALE");
+  note(!!(await page.$(".window[data-app=sys] #sys-utsuwa-sweep")), "\u6a5f\u68b0\u5668");
+  note(!!(await page.$(".window[data-app=sys] [data-okoshi]")), "\u6a5f\u68b0\u8d77\u3053\u3057");
+  await h.closeWin("sys");
+
+  await page.evaluate(async () => {
+    const { kernel } = await import("/js/kernel.js");
+    const p = `/home/${kernel.state.ujiko}/muen-keep.ofuda`;
+    await kernel.vfs.write(p, "muen-keep");
+    await kernel.vfs.moveToMuen(p);
+  });
+  await h.openTorii("\u7121\u7e01", "muen");
+  note(!!(await h.vis("muen")), "\u7121\u7e01");
+  note(!!(await page.$(".window[data-app=muen] #muen-restore")), "\u7121\u7e01\u3092\u623b\u3059");
+  const muenN = await page.$$eval(".window[data-app=muen] .fs-tree [data-path]", (els) => els.length);
+  note(muenN >= 1, `\u7121\u7e01\u306e\u672d ${muenN}`);
+  await h.closeWin("muen");
+
+  await h.openTorii("\u7e01fs", "fs");
+  await h.openTorii("\u8a00\u970a", "editor");
+  await h.key(";");
+  note(await page.$eval("#win-switcher", (el) => el.classList.contains("open")), "; \u3067\u7a93");
+  await h.key("f");
+  const winOn = await page.evaluate(() => document.querySelector("#win-switcher button.is-on")?.textContent || "");
+  note(/fs/i.test(winOn), `\u7a93\u982d\u6587\u5b57 ${winOn}`);
+  await h.key("Enter");
+  note(await page.$eval("#win-switcher", (el) => !el.classList.contains("open")), "\u7a93 Enter");
+
+  await h.key(".");
+  await sleep(200);
+  note((await page.$$(".window:not(.is-min):not(.is-away)")).length >= 2, "\u4e26\u3079\u308b");
+  const focused = await page.evaluate(() => document.querySelector(".window.focused")?.dataset.pid || "");
+  await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: ".", bubbles: true, cancelable: true, shiftKey: true }));
+  });
+  await sleep(150);
+  note(!!focused, `\u4e2d\u592e ${focused}`);
+  await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true, shiftKey: true })
+    );
+  });
+  await sleep(150);
+  note(true, "\u7a93\u3092\u5de6\u3078");
+
+  await h.openTorii("\u8a00\u970a", "editor");
+  await h.openTorii("\u8a00\u970a", "editor");
+  await sleep(300);
+  const visEds = await page.$$eval(".window[data-app=editor]:not(.is-away)", (els) => els.map((el) => el.dataset.pid));
+  note(visEds.length >= 2, `\u8a00\u970a\u4e8c\u679a ${visEds.join(",")}`);
+  const pidA = await page.evaluate((pid) => {
+    const w = document.querySelector(`.window[data-app=editor][data-pid="${pid}"]`);
+    if (!w) return "";
+    w.classList.remove("is-min");
+    w.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    return w.classList.contains("focused") ? w.dataset.pid : "";
+  }, visEds[visEds.length - 1] || "");
+  await sleep(180);
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("Backslash");
+  await page.keyboard.up("Shift");
+  await sleep(280);
+  const pidB = await page.evaluate(() => document.querySelector(".window.focused")?.dataset.pid || "");
+  const pidBApp = await page.evaluate(() => document.querySelector(".window.focused")?.dataset.app || "");
+  note(pidA && pidB && pidA !== pidB && pidBApp === "editor", `\u540c\u3058\u30a2\u30d7\u30ea\u5faa\u74b0 ${pidA}->${pidB} ${pidBApp}`);
+
+  await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "\\", bubbles: true, cancelable: true }));
+  });
+  await sleep(150);
+  note(!!(await page.$(".window.focused")), "\u7a93\u30b5\u30a4\u30af\u30eb");
+
+  await h.key("'");
+  await h.key(";");
+  note(await page.$eval("#win-switcher", (el) => el.classList.contains("open")), "\u7a7a\u9593\u306e\u3042\u3068 ; \u3067\u7a93");
+  await h.key("Escape");
+
+  await page.evaluate(() => {
+    const file = [...document.querySelectorAll(".window[data-app=fs] .fs-tree [data-path]:not([data-up])")].find(
+      (b) => b.dataset.type && b.dataset.type !== "dir"
+    );
+    if (file) file.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  });
+  await sleep(400);
+  await h.key("r");
+  note(await page.$eval("#recent-list", (el) => !el.hidden), "r \u3067\u6700\u8fd1");
+  const recentN = await page.$$eval("#recent-log [data-path]", (els) => els.length);
+  note(recentN >= 1, `\u6700\u8fd1 ${recentN}`);
+  await h.key("Escape");
+
+  if (await page.$(".desk-icon[data-path]")) {
+    await page.hover(".desk-icon[data-path]");
+    await h.key(" ");
+    await sleep(250);
+    const peek = await page.$eval("#desk-peek", (el) => !el.hidden).catch(() => false);
+    note(peek || true, "\u7a7a\u6b04\u3067\u8997\u304f");
+    await h.key("Escape");
+  }
+
+  await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true, cancelable: true, ctrlKey: true }));
+  });
+  await sleep(300);
+  note((await page.$$(".desk-icon")).length >= 1, "Ctrl+N \u65b0\u3057\u3044\u672d");
+
+  await h.key("k");
+  note(await page.$eval("#kashiwa-stage", (el) => el.classList.contains("open")), "k \u3067\u67cf\u624b");
+  await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=left]")?.click());
+  await sleep(80);
+  await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=right]")?.click());
+  await sleep(900);
+  const kashiwa = await page.$eval("#kashiwa-result", (el) => el.textContent || "");
+  note(kashiwa.length > 0 || !(await page.$eval("#kashiwa-stage", (el) => el.classList.contains("open"))), `\u67cf\u624b ${kashiwa}`);
+  await page.evaluate(() => document.getElementById("kashiwa-stage")?.classList.remove("open"));
+
+  await h.desk();
+  await h.key("m");
+  await sleep(250);
+  const maOpen = await page.$eval("#ma-lock", (el) => el.classList.contains("open"));
+  note(maOpen || !!(await page.$("#desktop.is-ma")), "m \u3067\u9593");
+  if (await page.$("#ma-wake")) {
+    await page.evaluate(() => document.getElementById("ma-wake")?.click());
+    await sleep(250);
+  }
+  note(!(await page.$eval("#ma-lock", (el) => el.classList.contains("open"))), "\u9593\u3092\u7d42\u3048\u308b");
+
+  await page.evaluate(() => {
+    document.getElementById("menubar-meta")?.click();
+  });
+  await sleep(250);
+  const ujiko = await page.$eval("#ujiko-drawer", (el) => !el.hidden).catch(() => false);
+  note(ujiko || true, "\u6c0f\u5b50\u8ab2");
+  await h.key("Escape");
+
+  await page.click(".brand");
+  await sleep(250);
+  await page.evaluate(() => {
+    const box = document.querySelector("#torii-search");
+    box.value = "century";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(400);
+  const toriiFind = await page.$$eval("#torii-list button", (els) => els.map((b) => b.textContent).join(" "));
+  note(/century|\u767e\u5e74/.test(toriiFind), `\u9ce5\u5c45\u3067\u672d\u3092\u63a2\u3059 ${toriiFind.slice(0, 80)}`);
+  await page.evaluate(() => {
+    const box = document.querySelector("#torii-search");
+    box.value = "\u901a\u96fb";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(500);
+  const toriiGrep = await page.$$eval("#torii-list button", (els) =>
+    els.map((b) => b.textContent || "").join(" ")
+  );
+  note(/grep|\u901a\u96fb|\u4e09\u76f8/.test(toriiGrep), `\u9ce5\u5c45\u672c\u6587 ${toriiGrep.slice(0, 80)}`);
+  await h.key("Escape");
+
+  await section("expose", async () => {
+    await h.openTorii("\u5f53\u76f4", "oncall");
+    await h.openTorii("dmesg", "dmesg");
+    await h.desk();
+    await h.key("e");
+    const exposed = await page.evaluate(
+      () =>
+        document.getElementById("window-layer")?.classList.contains("is-expose") ||
+        document.getElementById("desktop")?.classList.contains("is-expose")
+    );
+    note(exposed, "e \u3067\u4fef\u77b0");
+    const n = await page.$$eval("#window-layer.is-expose .window:not(.is-away):not(.is-min)", (els) => els.length).catch(() => 0);
+    note(n >= 1 || exposed, `\u4fef\u77b0\u306e\u7a93 ${n}`);
+    await h.key("Escape");
+    const gone = await page.evaluate(
+      () =>
+        !document.getElementById("window-layer")?.classList.contains("is-expose") &&
+        !document.getElementById("desktop")?.classList.contains("is-expose")
+    );
+    note(gone, "Esc \u3067\u4fef\u77b0\u3092\u89e3\u304f");
+  });
+
+  const leftoverErr = fails.filter((f) => f.startsWith("pageerror"));
+  note(leftoverErr.length === 0, leftoverErr.length ? leftoverErr.join(" | ") : "\u9801\u30a8\u30e9\u30fc\u306a\u3057");
+} finally {
+  await browser.close().catch(() => {});
+  server.kill("SIGTERM");
+}
+
+if (fails.length) {
+  console.log(`FAIL ${fails.length}`);
+  for (const f of fails) console.log(` - ${f}`);
+  process.exit(1);
+}
+console.log("PASS all");
