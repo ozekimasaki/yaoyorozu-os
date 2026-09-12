@@ -59,6 +59,9 @@ let deskPos = null;
 let deskSelected = new Set();
 let deskClipboard = { mode: "copy", paths: [] };
 let switcherIndex = 0;
+let muenUndo = [];
+let deskTypeQ = "";
+let deskTypeT = 0;
 
 async function loadDeskPos() {
   if (deskPos) return deskPos;
@@ -242,7 +245,7 @@ async function pasteDesk() {
           await kernel.vfs.rename(src, dest);
         } catch (err) {
           if (err.message === "EXDEV" || err.message === "EISDIR") {
-            kernel.log("匣の切りは写して残す", "desk");
+            kernel.log("匭の切りは写して残す", "desk");
             await copyTree(src, dest);
           } else {
             await copyTree(src, dest);
@@ -291,18 +294,120 @@ function tidyDesk() {
   kernel.log("札を揃えた", "desk");
 }
 
-async function muenSelected() {
-  const paths = selectedDeskPaths();
+async function sendToMuen(paths) {
   for (const p of paths) {
     try {
-      await kernel.vfs.moveToMuen(p);
+      const dest = await kernel.vfs.moveToMuen(p);
+      muenUndo.push({ dest, origin: p });
     } catch (err) {
       kernel.log(`muen: ${err.message}`, "fs");
     }
   }
+  muenUndo = muenUndo.slice(-16);
   deskSelected.clear();
   lastDeskPick = "";
   kernel.emit("vfs");
+}
+
+async function muenSelected() {
+  await sendToMuen(selectedDeskPaths());
+}
+
+async function undoMuen() {
+  const rec = muenUndo.pop();
+  if (!rec) {
+    kernel.log("戻す札はない", "desk");
+    return;
+  }
+  try {
+    const to = await kernel.vfs.restoreFromMuen(rec.dest, rec.origin);
+    lastDeskPick = to;
+    deskSelected = new Set([to]);
+    kernel.noteRecent(to);
+    kernel.emit("vfs");
+    kernel.log(`無縁から戻した ${to}`, "desk");
+  } catch (err) {
+    kernel.log(`戻す: ${err.message}`, "desk");
+  }
+}
+
+async function newDeskOfuda() {
+  const path = `/home/${kernel.state.ujiko}/desktop/${Date.now()}.ofuda`;
+  await kernel.vfs.write(path, "名を書け。空のスローガンはコンパイルされない。", "text/plain");
+  lastDeskPick = path;
+  kernel.emit("vfs");
+  launch("editor", { path });
+}
+
+async function newDeskBox() {
+  const path = `/home/${kernel.state.ujiko}/desktop/匭-${Date.now()}`;
+  await kernel.vfs.mkdir(path);
+  lastDeskPick = path;
+  kernel.emit("vfs");
+}
+
+function typeDeskJump(ch) {
+  clearTimeout(deskTypeT);
+  deskTypeQ += ch;
+  deskTypeT = setTimeout(() => {
+    deskTypeQ = "";
+  }, 900);
+  const q = deskTypeQ.toLowerCase();
+  const icons = [...document.querySelectorAll(".desk-icon")];
+  const hit = icons.find((el) => {
+    const label = (el.textContent || "").toLowerCase();
+    const name = kernel.vfs.nameOf(el.dataset.path || "").toLowerCase();
+    return label.startsWith(q) || name.startsWith(q);
+  });
+  if (!hit) return;
+  lastDeskPick = hit.dataset.path || "";
+  deskSelected = new Set(lastDeskPick ? [lastDeskPick] : []);
+  paintDeskMarks();
+  hit.focus();
+}
+
+async function peekDesk() {
+  const path = lastDeskPick || selectedDeskPaths()[0];
+  const box = document.getElementById("desk-peek");
+  if (!box) return;
+  if (!path) {
+    box.hidden = true;
+    return;
+  }
+  if (!box.hidden && box.dataset.path === path) {
+    box.hidden = true;
+    return;
+  }
+  const title = document.getElementById("desk-peek-path");
+  const body = document.getElementById("desk-peek-body");
+  title.textContent = path;
+  box.dataset.path = path;
+  try {
+    const node = await kernel.vfs.getFile(path);
+    if (!node) {
+      body.textContent = "ENOENT";
+    } else if (node.type === "dir") {
+      const kids = await kernel.vfs.ls(path);
+      body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匭）";
+    } else if (node.type === "link") {
+      body.textContent = `↦ ${node.target || node.body || ""}`;
+    } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
+      body.textContent = `くぐると起動: ${String(node.body).trim()}`;
+    } else {
+      body.textContent = String(node.body || "").split("\n").slice(0, 24).join("\n") || "（空の札）";
+    }
+  } catch (err) {
+    body.textContent = err.message;
+  }
+  box.hidden = false;
+}
+
+function closeDeskPeek() {
+  const box = document.getElementById("desk-peek");
+  if (box) {
+    box.hidden = true;
+    box.dataset.path = "";
+  }
 }
 
 async function renamePicked() {
@@ -457,7 +562,7 @@ async function startDesktop() {
   const paintUjiko = (reset = false) => {
     const lines = kernel.state.dmesg || [];
     if (reset || ujikoLen > lines.length) {
-      ujikoLog.textContent = lines.slice(-16).join("\n") || "（氏子課は沈黙）";
+      ujikoLog.textContent = lines.slice(-16).join("\n") || "（氏子課は沈默）";
       ujikoLen = lines.length;
       ujikoLog.scrollTop = ujikoLog.scrollHeight;
       return;
@@ -465,7 +570,7 @@ async function startDesktop() {
     if (lines.length === ujikoLen) return;
     const add = lines.slice(ujikoLen);
     ujikoLen = lines.length;
-    if (!ujikoLog.textContent || ujikoLog.textContent === "（氏子課は沈黙）") ujikoLog.textContent = add.join("\n");
+    if (!ujikoLog.textContent || ujikoLog.textContent === "（氏子課は沈默）") ujikoLog.textContent = add.join("\n");
     else ujikoLog.textContent += `\n${add.join("\n")}`;
     const shown = ujikoLog.textContent.split("\n");
     if (shown.length > 16) ujikoLog.textContent = shown.slice(-16).join("\n");
@@ -508,6 +613,7 @@ async function startDesktop() {
       document.getElementById("desk-icon-menu").hidden = true;
       const tm = document.getElementById("task-menu");
       if (tm) tm.hidden = true;
+      closeDeskPeek();
     }
     if (kernel.state.maLocked) {
       if (e.key === "k") kashiwa.open();
@@ -519,7 +625,24 @@ async function startDesktop() {
       if (w) getWm().close(w.pid);
       return;
     }
+    if (e.key === "F5") {
+      e.preventDefault();
+      lastDeskSig = "";
+      paintDesktop();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N")) {
+      e.preventDefault();
+      if (e.shiftKey) newDeskBox();
+      else newDeskOfuda();
+      return;
+    }
     if (typing) return;
+    if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && onDesktopKeys() && !overlaysOpen()) {
+      e.preventDefault();
+      undoMuen();
+      return;
+    }
     const switcherOpen = document.getElementById("win-switcher").classList.contains("open");
     if (switcherOpen) {
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
@@ -635,6 +758,19 @@ async function startDesktop() {
       } else if (e.key === "F2") {
         e.preventDefault();
         renamePicked();
+      } else if (e.key === " ") {
+        e.preventDefault();
+        peekDesk();
+      } else if (
+        e.key.length === 1 &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !"/;'[]\\kmn,.、。’；。".includes(e.key) &&
+        !e.isComposing
+      ) {
+        e.preventDefault();
+        typeDeskJump(e.key);
       }
     }
   });
@@ -682,7 +818,7 @@ async function startDesktop() {
   }
 
   document.querySelector(".hint").textContent =
-    "/ 鳥居 · ; 窓 · ' 空間 · , 席 · . 並べ · n 告げ · k 柏手 · m 間 · Ctrl+W 閉じる";
+    "/ 鳥居 · ; 窓 · ' 空間 · , 席 · . 並べ · n 告げ · k 柏手 · m 間 · 空欄 覗く · Ctrl+Z 戻す";
 
   const switcher = document.getElementById("win-switcher");
   function paintSwitcher(keepIndex) {
@@ -879,14 +1015,13 @@ async function startDesktop() {
       }
       return;
     }
+    if (act === "peek") {
+      lastDeskPick = path;
+      peekDesk();
+      return;
+    }
     if (act === "muen") {
-      try {
-        await kernel.vfs.moveToMuen(path);
-        lastDeskPick = "";
-        kernel.emit("vfs");
-      } catch (err) {
-        kernel.log(`muen: ${err.message}`, "fs");
-      }
+      await sendToMuen([path]);
     }
   });
   eaves.addEventListener("click", (e) => {
@@ -898,23 +1033,14 @@ async function startDesktop() {
     if (act === "clip") launch("clip");
     if (act === "ma") kernel.maSleep();
     if (act === "muen") launch("muen");
-    if (act === "box") {
-      const path = `/home/${kernel.state.ujiko}/desktop/匣-${Date.now()}`;
-      kernel.vfs.mkdir(path).then(() => kernel.emit("vfs"));
-    }
+    if (act === "box") newDeskBox();
     if (act === "tile") {
       const wm = getWm();
       if (wm) wm.tile();
     }
     if (act === "tidy") tidyDesk();
     if (act === "paste") pasteDesk();
-    if (act === "ofuda") {
-      const path = `/home/${kernel.state.ujiko}/desktop/${Date.now()}.ofuda`;
-      kernel.vfs.write(path, "名を書け。空のスローガンはコンパイルされない。", "text/plain").then(() => {
-        kernel.emit("vfs");
-        launch("editor", { path });
-      });
-    }
+    if (act === "ofuda") newDeskOfuda();
   });
   document.addEventListener("click", () => {
     eaves.hidden = true;
