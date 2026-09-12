@@ -40,6 +40,16 @@ export function defaultAssoc() {
     { match: ".m4a", app: "oto" },
     { match: ".webm", app: "oto" },
     { match: ".mp4", app: "oto" },
+    { match: ".png", app: "kagami" },
+    { match: ".jpg", app: "kagami" },
+    { match: ".jpeg", app: "kagami" },
+    { match: ".webp", app: "kagami" },
+    { match: ".gif", app: "kagami" },
+    { match: ".utsushi", app: "kagami" },
+    { match: "image/png", app: "kagami" },
+    { match: "image/jpeg", app: "kagami" },
+    { match: "image/webp", app: "kagami" },
+    { match: "image/gif", app: "kagami" },
   ];
 }
 
@@ -72,12 +82,23 @@ export function resolveOpen(path, file, table) {
   }
   if (n.startsWith("/proc/") || mime === "text/proc") return { app: "editor", why: "proc" };
   if (type === "link") return { app: "fs", why: "link" };
+  if (
+    ext === ".png" ||
+    ext === ".jpg" ||
+    ext === ".jpeg" ||
+    ext === ".webp" ||
+    ext === ".gif" ||
+    ext === ".utsushi" ||
+    mime.startsWith("image/")
+  ) {
+    return { app: "kagami", why: "image" };
+  }
   return { app: "fs", why: "default" };
 }
 
 export function handlersFor(path, file, table, appIds) {
   const primary = resolveOpen(path, file, table);
-  const extra = ["editor", "fs", "term", "clip", "oto"];
+  const extra = ["editor", "fs", "term", "clip", "oto", "kagami"];
   const seen = new Set();
   const out = [];
   for (const id of [primary.app, ...extra]) {
