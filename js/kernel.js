@@ -414,6 +414,13 @@ class Kernel extends EventTarget {
     return rec;
   }
 
+  clearClip() {
+    if (!this.state.clipboard || !this.state.clipboard.length) return;
+    this.state.clipboard = [];
+    this.emit("clip");
+    this.commit(true);
+  }
+
   clipVfs(mode, paths) {
     this.state.vfsClip = { mode: mode === "cut" ? "cut" : "copy", paths: [...(paths || [])] };
     if (paths && paths.length) this.clipPush(paths.join("\n"));
@@ -428,11 +435,11 @@ class Kernel extends EventTarget {
     const rec = { t: t.slice(0, 180), tag, at: Date.now() };
     if (this.state.oshi[0] && this.state.oshi[0].t === rec.t && this.state.oshi[0].tag === tag) {
       this.state.oshi[0].at = rec.at;
-    } else {
-      this.state.oshi.unshift(rec);
-      this.state.oshi = this.state.oshi.slice(0, 32);
-      this.state.oshiUnread = (this.state.oshiUnread || 0) + 1;
+      return this.state.oshi[0];
     }
+    this.state.oshi.unshift(rec);
+    this.state.oshi = this.state.oshi.slice(0, 32);
+    this.state.oshiUnread = (this.state.oshiUnread || 0) + 1;
     this.emit("oshi", rec);
     this.commit();
     return rec;
