@@ -66,3 +66,34 @@ let marquee = null;
 
 function endMarquee() {
   if (!marquee) return;
+  marquee = null;
+  const band = document.getElementById("desk-marquee");
+  if (band) band.hidden = true;
+}
+
+async function loadDeskPos() {
+  if (deskPos) return deskPos;
+  try {
+    deskPos = (await kernel.vfs.metaGet("deskPos")) || {};
+  } catch (err) {
+    deskPos = {};
+  }
+  return deskPos;
+}
+
+function saveDeskPos() {
+  if (!deskPos) return;
+  kernel.vfs.metaSet("deskPos", deskPos);
+}
+
+async function paintDesktop() {
+  const desk = document.getElementById("desktop");
+  const pref = kernel.spacePref();
+  desk.style.setProperty("--space-land", landColor(pref.unusedCpu));
+  const spaceText = `kernel: ${pref.name}`;
+  const kamiText = `kami: ${kernel.state.processes.filter((p) => p.kind !== "app").length}`;
+  const spaceEl = document.getElementById("space-pill");
+  const kamiEl = document.getElementById("kami-pill");
+  if (spaceEl.textContent !== spaceText) spaceEl.textContent = spaceText;
+  if (kamiEl.textContent !== kamiText) kamiEl.textContent = kamiText;
+  const icons = document.g
