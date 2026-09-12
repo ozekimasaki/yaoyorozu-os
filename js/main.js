@@ -62,6 +62,14 @@ let switcherIndex = 0;
 let muenUndo = [];
 let deskTypeQ = "";
 let deskTypeT = 0;
+let marquee = null;
+
+function endMarquee() {
+  if (!marquee) return;
+  marquee = null;
+  const band = document.getElementById("desk-marquee");
+  if (band) band.hidden = true;
+}
 
 async function loadDeskPos() {
   if (deskPos) return deskPos;
@@ -149,10 +157,28 @@ async function paintDesktop() {
         g.el.style.left = `${Math.max(8, g.x + dx)}px`;
         g.el.style.top = `${Math.max(48, g.y + dy)}px`;
       }
+      clearDropMarks();
+      if (moved) {
+        const win = windowAt(e.clientX, e.clientY);
+        if (win) win.classList.add("is-drop");
+      }
     });
     btn.addEventListener("pointerup", (e) => {
       dragging = false;
       lastDeskPick = f.path;
+      const win = moved ? windowAt(e.clientX, e.clientY) : null;
+      clearDropMarks();
+      if (moved && win) {
+        for (const g of group) {
+          g.el.style.left = `${g.x}px`;
+          g.el.style.top = `${g.y}px`;
+        }
+        dropOnWindow(
+          win,
+          group.map((g) => g.path)
+        );
+        return;
+      }
       if (moved) {
         for (const g of group) {
           pos[g.path] = { x: g.el.offsetLeft, y: g.el.offsetTop };
@@ -202,17 +228,35 @@ function uniqueDeskName(name, taken) {
 }
 
 async function copyTree(from, to) {
-  const src = await kernel.vfs.getFile(from);
-  if (!src) throw new Error("ENOENT");
-  if (src.type === "dir") {
-    await kernel.vfs.mkdir(to);
-    const kids = await kernel.vfs.ls(from);
-    for (const k of kids) {
-      await copyTree(k.path, kernel.vfs.normalize(`${to}/${k.name}`));
-    }
+  return kernel.vfs.copyTree(from, to);
+}
+
+function windowAt(x, y) {
+  const stack = document.elementsFromPoint(x, y);
+  for (const n of stack) {
+    if (n.classList && n.classList.contains("desk-icon")) continue;
+    if (n.id === "desk-marquee") continue;
+    const win = n.closest && n.closest(".window");
+    if (win && !win.classList.contains("is-away") && !win.classList.contains("is-min")) return win;
+  }
+  return null;
+}
+
+function clearDropMarks() {
+  document.querySelectorAll(".window.is-drop").forEach((n) => n.classList.remove("is-drop"));
+}
+
+async function dropOnWindow(winEl, paths) {
+  const wm = getWm();
+  const w = wm ? wm.list().find((x) => x.el === winEl) : null;
+  if (!w || !paths.length) return;
+  if (typeof w.onDrop === "function") {
+    await w.onDrop(paths);
+    wm.focus(w.pid);
+    kernel.log(`札を${w.title}へ落とした`, "desk");
     return;
   }
-  await kernel.vfs.copy(from, to);
+  openPath(paths[0]);
 }
 
 async function duplicateDesk() {
@@ -373,8 +417,7 @@ function typeDeskJump(ch) {
   hit.focus();
 }
 
-async function peekDesk() {
-  const path = lastDeskPick || selectedDeskPaths()[0];
+async function peekPath(path) {
   const box = document.getElementById("desk-peek");
   if (!box) return;
   if (!path) {
@@ -407,6 +450,10 @@ async function peekDesk() {
     body.textContent = err.message;
   }
   box.hidden = false;
+}
+
+async function peekDesk() {
+  await peekPath(lastDeskPick || selectedDeskPaths()[0]);
 }
 
 function closeDeskPeek() {
@@ -458,6 +505,33 @@ async function maybeOpenInitGates() {
   if (!gates.length) return;
   sessionStorage.setItem("y8-init-opened", "1");
   for (const g of gates) await openPath(g.path);
+}
+
+let lastUsageText = "";
+let usageTimer = 0;
+
+function scheduleUsage() {
+  if (usageTimer) return;
+  usageTimer = setTimeout(() => {
+    usageTimer = 0;
+    paintUsage();
+  }, 280);
+}
+
+async function paintUsage() {
+  const pill = document.getElementById("disk-pill");
+  if (!pill) return;
+  try {
+    const u = await kernel.vfs.usage(`/home/${kernel.state.ujiko}`);
+    const text = `器: ${u.files}札`;
+    if (text === lastUsageText) return;
+    lastUsageText = text;
+    pill.textContent = text;
+  } catch (err) {
+    if (lastUsageText) return;
+    lastUsageText = "器: —";
+    pill.textContent = lastUsageText;
+  }
 }
 
 let lastClock = "";
@@ -515,11 +589,16 @@ async function startDesktop() {
   });
   document.getElementById("ma-pill").addEventListener("click", () => kernel.maSleep());
   document.getElementById("clock").addEventListener("click", () => launch("cal"));
+  const diskPill = document.getElementById("disk-pill");
+  if (diskPill) {
+    diskPill.addEventListener("click", () => launch("fs", { path: `/home/${kernel.state.ujiko}` }));
+  }
 
   fillNorito();
   clock();
   setInterval(clock, 1000);
   await paintDesktop();
+  scheduleUsage();
 
   const meta = document.getElementById("menubar-meta");
   const paintMeta = () => {
@@ -529,7 +608,13 @@ async function startDesktop() {
   paintMeta();
   kernel.addEventListener("auth", paintMeta);
   kernel.addEventListener("boot", paintMeta);
-  kernel.addEventListener("vfs", paintDesktop);
+  kernel.addEventListener("vfs", () => {
+    paintDesktop();
+    scheduleUsage();
+  });
+  kernel.addEventListener("peek", (ev) => {
+    peekPath(ev.detail);
+  });
   kernel.addEventListener("space", () => {
     paintDesktop();
     clock();
@@ -621,6 +706,7 @@ async function startDesktop() {
       const tm = document.getElementById("task-menu");
       if (tm) tm.hidden = true;
       closeDeskPeek();
+      endMarquee();
     }
     if (kernel.state.maLocked) {
       if (e.key === "k") kashiwa.open();
@@ -671,6 +757,16 @@ async function startDesktop() {
     if (e.key === "/") {
       e.preventDefault();
       torii.open();
+    }
+    if (e.shiftKey && (e.code === "BracketLeft" || e.code === "BracketRight") && !overlaysOpen()) {
+      const w = focusedWin();
+      const wm = getWm();
+      if (w && wm && wm.sendSpace) {
+        e.preventDefault();
+        const next = wm.neighborSpace(e.code === "BracketLeft" ? -1 : 1);
+        if (next) wm.sendSpace(w.pid, next.id);
+        return;
+      }
     }
     if (e.key === "[") {
       const i = kernel.state.prefs.findIndex((p) => p.id === kernel.state.currentSpace);
@@ -831,7 +927,7 @@ async function startDesktop() {
   }
 
   document.querySelector(".hint").textContent =
-    "/ 鳥居 · ; 窓 · ' 空間 · , 席 · . 並べ · n 告げ · k 柏手 · m 間 · 空欄 覗く · Ctrl+Z 戻す";
+    "/ 鳥居 · ; 窓 · ' 空間 · , 席 · . 並べ · n 告げ · k 柏手 · m 間 · 空欄 覗く · 囲う · 落とす";
 
   const switcher = document.getElementById("win-switcher");
   function paintSwitcher(keepIndex) {
@@ -954,15 +1050,65 @@ async function startDesktop() {
   const eaves = document.getElementById("eaves-menu");
   const iconMenu = document.getElementById("desk-icon-menu");
   let iconMenuPath = "";
-  desktop.addEventListener("mousedown", (e) => {
+  const band = document.getElementById("desk-marquee");
+
+  function rectsOverlap(a, b) {
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  }
+
+  function paintMarquee(x, y) {
+    if (!marquee || !band) return;
+    const x1 = Math.min(marquee.x0, x);
+    const y1 = Math.min(marquee.y0, y);
+    const w = Math.abs(x - marquee.x0);
+    const h = Math.abs(y - marquee.y0);
+    band.style.left = `${x1}px`;
+    band.style.top = `${y1}px`;
+    band.style.width = `${w}px`;
+    band.style.height = `${h}px`;
+    if (w < 4 && h < 4) return;
+    const box = { left: x1, top: y1, right: x1 + w, bottom: y1 + h };
+    const next = new Set(marquee.add ? marquee.start : []);
+    document.querySelectorAll(".desk-icon").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (rectsOverlap(box, r)) next.add(el.dataset.path);
+    });
+    deskSelected = next;
+    if (next.size) lastDeskPick = [...next][next.size - 1];
+    paintDeskMarks();
+  }
+
+  desktop.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
     if (e.target.closest(".window") || e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
     if (e.target.closest(".desk-icon")) return;
+    if (e.target.closest("#desk-peek")) return;
     desktop.focus();
-    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    const add = e.shiftKey || e.ctrlKey || e.metaKey;
+    if (!add) {
       deskSelected.clear();
       lastDeskPick = "";
       paintDeskMarks();
     }
+    marquee = { x0: e.clientX, y0: e.clientY, add, start: new Set(deskSelected) };
+    if (band) {
+      band.hidden = false;
+      band.style.left = `${e.clientX}px`;
+      band.style.top = `${e.clientY}px`;
+      band.style.width = "0px";
+      band.style.height = "0px";
+    }
+    desktop.setPointerCapture(e.pointerId);
+  });
+  desktop.addEventListener("pointermove", (e) => {
+    if (!marquee) return;
+    paintMarquee(e.clientX, e.clientY);
+  });
+  desktop.addEventListener("pointerup", () => {
+    endMarquee();
+  });
+  desktop.addEventListener("pointercancel", () => {
+    endMarquee();
   });
   desktop.addEventListener("contextmenu", (e) => {
     if (e.target.closest(".window") || e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
