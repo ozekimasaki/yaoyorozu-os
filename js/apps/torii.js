@@ -1,4 +1,5 @@
 import { apps, launch, openPath, getWm } from "../runtime.js";
+import { guessIcon, iconMark } from "../icons.js";
 
 export function bindTorii(gate, kernel) {
   const search = gate.querySelector("#torii-search");
@@ -16,11 +17,11 @@ export function bindTorii(gate, kernel) {
     const wm = getWm();
     if (wm) {
       for (const w of wm.list().filter((x) => !x.el.classList.contains("is-away"))) {
-        rows.push({ kind: "win", id: String(w.pid), title: w.title, hint: `\u7a93 ${w.appId}` });
+        rows.push({ kind: "win", id: String(w.pid), title: w.title, hint: `\u7a93 ${w.appId}`, icon: w.appId });
       }
     }
     for (const app of apps()) {
-      rows.push({ kind: "app", id: app.id, title: app.title, hint: "\u304f\u3050\u308b" });
+      rows.push({ kind: "app", id: app.id, title: app.title, hint: "\u304f\u3050\u308b", icon: app.id });
     }
     for (const p of kernel.state.prefs) {
       rows.push({ kind: "space", id: p.id, title: p.name, hint: "\u7a7a\u9593" });
@@ -40,6 +41,13 @@ export function bindTorii(gate, kernel) {
     );
     if (!query) return rows;
     return rows.filter((r) => `${r.title}${r.hint}${r.id}`.includes(query));
+  }
+
+  function rowIcon(r) {
+    if (r.icon) return r.icon;
+    if (r.kind === "space") return "spaces";
+    if (r.kind === "kami") return "proc";
+    return guessIcon({ path: r.id, name: r.title });
   }
 
   async function draw() {
@@ -127,7 +135,7 @@ export function bindTorii(gate, kernel) {
     list.innerHTML = items
       .map(
         (r, i) =>
-          `<button type="button" class="torii-item${i === cursor ? " is-on" : ""}" data-i="${i}"><strong>${r.title}</strong><small>${r.hint} \u00b7 ${r.kind}</small></button>`
+          `<button type="button" class="torii-item${i === cursor ? " is-on" : ""}" data-i="${i}">${iconMark(rowIcon(r))}<span class="torii-copy"><strong>${r.title}</strong><small>${r.hint} \u00b7 ${r.kind}</small></span></button>`
       )
       .join("");
   }
