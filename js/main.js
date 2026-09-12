@@ -468,8 +468,6 @@ async function peekPath(path) {
       const kids = await kernel.vfs.ls(path);
       body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匣）";
     } else if (node.type === "link") {
-      body.textContent = `�k.name}`).join("\n") || "（空の匣）";
-    } else if (node.type === "link") {
       body.textContent = `↦ ${node.target || node.body || ""}`;
     } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
       body.textContent = `くぐると起動: ${String(node.body).trim()}`;
@@ -539,77 +537,4 @@ async function showFileStat(path) {
       if (node.type === "dir") {
         try {
           const u = await kernel.vfs.usage(path);
-          lines.push(`量  匣${u.dirs} · 札${u.files} · ${u.bytes}B`);
-        } catch (err) {
-          lines.push("量  —");
-        }
-      }
-      if (node.origin) lines.push(`元  ${node.origin}`);
-      lines.push(`時  ${fmtWhen(node.updated)}`);
-      const text = lines.join("\n");
-      if (body.textContent !== text) body.textContent = text;
-    }
-  } catch (err) {
-    body.textContent = err.message;
-  }
-  box.hidden = false;
-}
-
-function closeFileStat() {
-  const box = document.getElementById("file-stat");
-  if (box) {
-    box.hidden = true;
-    box.dataset.path = "";
-  }
-}
-
-function closeRecent() {
-  const box = document.getElementById("recent-list");
-  if (box) box.hidden = true;
-}
-
-function copyPathNow(path) {
-  const p = path || lastDeskPick || selectedDeskPaths()[0];
-  if (!p) return;
-  kernel.clipPush(p);
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(p).catch(() => {});
-  }
-  kernel.log(`道を写した ${p}`, "desk");
-}
-
-function openPickedBox() {
-  const path = lastDeskPick || selectedDeskPaths()[0];
-  const dest = path ? kernel.vfs.parentOf(path) : `/home/${kernel.state.ujiko}/desktop`;
-  launch("fs", { path: dest || "/" });
-}
-
-async function renamePicked() {
-  const path = lastDeskPick || selectedDeskPaths()[0];
-  if (!path) return;
-  const cur = kernel.vfs.nameOf(path);
-  const name = window.prompt("新しい名", cur);
-  if (!name || name === cur) return;
-  const dest = kernel.vfs.normalize(`${kernel.vfs.parentOf(path)}/${name}`);
-  try {
-    await kernel.vfs.rename(path, dest);
-    lastDeskPick = dest;
-    deskSelected = new Set([dest]);
-    kernel.noteRecent(dest);
-    kernel.emit("vfs");
-  } catch (err) {
-    kernel.log(`rename: ${err.message}`, "fs");
-  }
-}
-
-function focusedWin() {
-  const wm = getWm();
-  if (!wm) return null;
-  return (
-    wm.list().find((w) => w.el.classList.contains("focused") && !w.minimized && !w.el.classList.contains("is-away")) ||
-    null
-  );
-}
-
-async function maybeOpenInitGates() {
-  if (sessionStorage.getItem("y8-i
+          lines.push(`量 
