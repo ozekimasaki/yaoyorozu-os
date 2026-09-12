@@ -252,8 +252,16 @@ try {
   await h.term("file e2e-probe.ofuda");
   await h.term("clip e2e-clip");
   await h.term("rm e2e-probe.ofuda");
+  await h.term("cron every 2 e2e-toki");
+  await sleep(2600);
+  await h.term("cron");
+  await h.term("at +2 e2e-at");
+  await h.term("atq");
   const termOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
   note(/e2e|etc|ofuda|ujiko|home/i.test(termOut), `\u5949\u7d0d\u51fa\u529b ${termOut.slice(-80)}`);
+  note(/e2e-toki|every 2/.test(termOut), `\u6642\u5831 cron ${termOut.includes("e2e-toki")}`);
+  const oshiN = await page.evaluate(() => (document.getElementById("oshi-pill")?.textContent || "").length);
+  note(oshiN >= 1, `\u6642\u5831\u304a\u544a\u3052 ${oshiN}`);
   await h.closeWin("term");
 
   await h.openTorii("1000\u65e5", "sim");
