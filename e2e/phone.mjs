@@ -162,9 +162,57 @@ try {
     return el && !el.hidden;
   }), "\u901a\u77e5\u5e55");
   note(!!(await page.$("#phone-shade [data-shade=ma]")), "\u5e55\u306e\u9593");
+  note(!!(await page.$("#phone-shade-journal")), "\u5e55\u306e\u65e5\u8a8c");
   await h.shot("shade");
   await page.evaluate(() => document.getElementById("phone-shade-hit")?.click());
   await sleep(160);
+
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(240);
+  const splitOk = await page.evaluate(() => {
+    const btns = [...document.querySelectorAll("#phone-recents [data-split]")];
+    if (btns.length < 2) return false;
+    btns[0].click();
+    btns[1].click();
+    return true;
+  });
+  note(splitOk, "\u4e26\u3076");
+  await sleep(360);
+  const splitScene = await page.evaluate(() => {
+    const a = document.querySelector(".window.is-phone-split-a:not(.is-min)");
+    const b = document.querySelector(".window.is-phone-split-b:not(.is-min)");
+    return { a: a?.dataset.app || "", b: b?.dataset.app || "" };
+  });
+  note(!!splitScene.a && !!splitScene.b && splitScene.a !== splitScene.b, `\u5206\u5272 ${splitScene.a}+${splitScene.b}`);
+  await h.shot("split");
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(240);
+  note(!(await front("oncall")) && !(await front("term")), "\u5206\u5272\u304b\u3089\u30db\u30fc\u30e0");
+
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(240);
+  const beforeCards = await page.$$eval("#phone-recents .phone-card", (els) => els.length).catch(() => 0);
+  await page.evaluate(() => {
+    const card = document.querySelector("#phone-recents .phone-card");
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + 80;
+    card.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 11 }));
+    card.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, cancelable: true, clientX: x, clientY: y - 130, pointerId: 11 }));
+    card.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, clientX: x, clientY: y - 130, pointerId: 11 }));
+  });
+  await sleep(280);
+  let afterCards = await page.$$eval("#phone-recents .phone-card", (els) => els.length).catch(() => 0);
+  if (beforeCards && afterCards >= beforeCards) {
+    await page.evaluate(() => document.querySelector("#phone-recents [data-close]")?.click());
+    await sleep(200);
+    afterCards = await page.$$eval("#phone-recents .phone-card", (els) => els.length).catch(() => 0);
+  }
+  note(beforeCards === 0 || afterCards < beforeCards, `\u30ab\u30fc\u30c9\u9589\u3058 ${beforeCards}->${afterCards}`);
+  await page.evaluate(() => {
+    document.getElementById("phone-recents").hidden = true;
+  });
 
   await page.setViewport({ width: 844, height: 390, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await sleep(300);
