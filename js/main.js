@@ -328,4 +328,87 @@ async function pasteDesk() {
             await kernel.vfs.moveToMuen(src);
           }
         }
-      } els
+      } else {
+        await copyTree(src, dest);
+      }
+      n += 1;
+    } catch (err) {
+      kernel.log(`貼る: ${err.message}`, "desk");
+    }
+  }
+  if (deskClipboard.mode === "cut") {
+    deskClipboard = { mode: "copy", paths: [] };
+    kernel.clipVfs("copy", []);
+  }
+  deskSelected.clear();
+  kernel.emit("vfs");
+  kernel.log(`卓に貼った ×${n}`, "desk");
+}
+
+function selectAllDesk() {
+  document.querySelectorAll(".desk-icon").forEach((el) => {
+    if (el.dataset.path) deskSelected.add(el.dataset.path);
+  });
+  paintDeskMarks();
+}
+
+function tidyDesk() {
+  const icons = [...document.querySelectorAll(".desk-icon")].sort((a, b) => {
+    const dy = a.offsetTop - b.offsetTop;
+    if (Math.abs(dy) > 24) return dy;
+    return a.offsetLeft - b.offsetLeft;
+  });
+  const pos = deskPos || {};
+  icons.forEach((el, i) => {
+    const col = i % 8;
+    const row = (i / 8) | 0;
+    const x = 18 + col * 120;
+    const y = 58 + row * 64;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    pos[el.dataset.path] = { x, y };
+  });
+  deskPos = pos;
+  saveDeskPos();
+  kernel.log("札を揃えた", "desk");
+}
+
+async function sendToMuen(paths) {
+  for (const p of paths) {
+    try {
+      const dest = await kernel.vfs.moveToMuen(p);
+      muenUndo.push({ dest, origin: p });
+    } catch (err) {
+      kernel.log(`muen: ${err.message}`, "fs");
+    }
+  }
+  muenUndo = muenUndo.slice(-16);
+  deskSelected.clear();
+  lastDeskPick = "";
+  kernel.emit("vfs");
+}
+
+async function muenSelected() {
+  await sendToMuen(selectedDeskPaths());
+}
+
+async function undoMuen() {
+  const rec = muenUndo.pop();
+  if (!rec) {
+    kernel.log("戻す札はない", "desk");
+    return;
+  }
+  try {
+    const to = await kernel.vfs.restoreFromMuen(rec.dest, rec.origin);
+    lastDeskPick = to;
+    deskSelected = new Set([to]);
+    kernel.noteRecent(to);
+    kernel.emit("vfs");
+    kernel.log(`無縁から戻した ${to}`, "desk");
+  } catch (err) {
+    kernel.log(`戻す: ${err.message}`, "desk");
+  }
+}
+
+async function newDeskOfuda() {
+  const path = `/home/${kernel.stat
