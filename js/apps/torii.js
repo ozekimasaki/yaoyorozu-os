@@ -6,6 +6,8 @@ export function bindTorii(gate, kernel) {
   let items = [];
   let cursor = 0;
   let lastSig = "";
+  let findCache = { q: "", rows: [] };
+  let drawGen = 0;
 
   function catalog(q) {
     const query = (q || "").trim();
@@ -33,8 +35,40 @@ export function bindTorii(gate, kernel) {
     return rows.filter((r) => `${r.title}${r.hint}${r.id}`.includes(query));
   }
 
-  function draw() {
-    items = catalog(search.value);
+  async function draw() {
+    const gen = (drawGen += 1);
+    const q = (search.value || "").trim();
+    let rows = catalog(q);
+    if (q.length >= 2) {
+      if (findCache.q !== q) {
+        try {
+          const hits = await kernel.vfs.find("/", q);
+          if (gen !== drawGen) return;
+          const seen = new Set(rows.map((r) => r.id));
+          findCache = {
+            q,
+            rows: hits
+              .slice(0, 24)
+              .filter((f) => !seen.has(f.path))
+              .map((f) => ({
+                kind: "file",
+                id: f.path,
+                title: f.name || f.path,
+                hint: f.path,
+              })),
+          };
+        } catch (err) {
+          if (gen !== drawGen) return;
+          findCache = { q, rows: [] };
+        }
+      }
+      const seen = new Set(rows.map((r) => r.id));
+      for (const r of findCache.rows) {
+        if (!seen.has(r.id)) rows.push(r);
+      }
+    }
+    if (gen !== drawGen) return;
+    items = rows;
     cursor = Math.min(cursor, Math.max(0, items.length - 1));
     const sig = items.map((r) => `${r.kind}:${r.id}`).join("\n");
     if (sig === lastSig && list.children.length) {
