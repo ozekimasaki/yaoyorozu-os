@@ -1,0 +1,57 @@
+.kagami-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.kagami-stage {
+  min-height: 240px;
+  background: #100e0b;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin: 0 0 10px;
+}
+
+#kagami-img {
+  max-width: 100%;
+  max-height: min(52vh, 420px);
+  display: block;
+}
+
+.kagami-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kagami-list button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--washi);
+  cursor: pointer;
+  padding: 4px 8px;
+  font: inherit;
+}
+
+.kagami-list button.is-on {
+  border-color: var(--gold);
+  color: var(--gold-2);
+}
+
+#utsushi-pill {
+  cursor: pointer;
+}
+
+#norito-veil.is-flash {
+  background: rgba(244, 234, 216, 0.38);
+  color: transparent;
+  animation: none;
+}
+
+html.is-utsushi #desktop {
+  filter: brightness(1.18);
+}
