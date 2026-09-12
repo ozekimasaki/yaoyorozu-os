@@ -24,6 +24,7 @@ export default {
     let histI = 0;
     let usedCache = { sig: "", text: "" };
     let sortKey = "name";
+    let nameFilter = "";
 
     function pushCwd(p) {
       if (p === hist[histI]) return;
@@ -39,12 +40,25 @@ export default {
     }
 
     function fileBtns() {
-      return [...el.querySelectorAll(".fs-tree [data-path]:not([data-up])")];
+      return [...el.querySelectorAll(".fs-tree [data-path]:not([data-up])")].filter((b) => !b.hidden);
     }
 
     function paintSel() {
       el.querySelectorAll("[data-path]").forEach((b) => {
         b.classList.toggle("is-on", !b.dataset.up && selected.has(b.dataset.path));
+      });
+    }
+
+    function applyFilter() {
+      const q = nameFilter.trim().toLowerCase();
+      el.querySelectorAll(".fs-tree [data-path]:not([data-up])").forEach((b) => {
+        if (!q) {
+          b.hidden = false;
+          return;
+        }
+        const label = (b.textContent || "").toLowerCase();
+        const path = (b.dataset.path || "").toLowerCase();
+        b.hidden = !(label.includes(q) || path.includes(q));
       });
     }
 
@@ -295,29 +309,32 @@ export default {
       const parent = kernel.vfs.parentOf(cwd);
       const locked = isVirtual(cwd);
       entries = sortEntries(entries);
-      const listSig = `${cwd}\n${err}\n${locked}\n${sortKey}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
+      const usageSig = `${cwd}\n${err}\n${locked}\n${sortKey}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
+      const listSig = usageSig;
       if (listSig === lastSig && el.querySelector(".fs-tree")) {
         paintSel();
+        applyFilter();
         return;
       }
       lastSig = listSig;
       let used = usedCache.text;
       if (locked) {
         used = "";
-        usedCache = { sig: listSig, text: used };
-      } else if (usedCache.sig !== listSig) {
+        usedCache = { sig: usageSig, text: used };
+      } else if (usedCache.sig !== usageSig) {
         try {
           const u = await kernel.vfs.usage(cwd);
           used = ` · ${u.files}札 ${u.bytes}B`;
         } catch (e) {
           used = "";
         }
-        usedCache = { sig: listSig, text: used };
+        usedCache = { sig: usageSig, text: used };
       }
       el.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
         <div class="fs-crumbs">${crumbs(cwd)}</div>
         <input class="search" id="fs-go" value="${cwd}" aria-label="匣の道" style="margin:8px 0;max-width:100%" />
+        <input class="search" id="fs-filter" placeholder="名で絞る" aria-label="名で絞る" style="margin:0 0 8px;max-width:100%" />
         <div class="fs-tree">
           ${cwd !== "/" ? `<button type="button" data-path="${parent}" data-type="dir" data-up="1">../</button>` : ""}
           ${entries
@@ -337,6 +354,7 @@ export default {
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-cut" ${locked ? "disabled" : ""}>切る</button>
           <button class="btn" type="button" id="fs-paste" ${locked ? "disabled" : ""}>貼る</button>
+          <button class="btn" type="button" id="fs-stat">属性</button>
           <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
           <button class="btn" type="button" id="fs-rename" ${locked ? "disabled" : ""}>改名</button>
           <button class="btn" type="button" id="fs-muen" ${locked ? "disabled" : ""}>無縁へ</button>
@@ -377,6 +395,18 @@ export default {
           goPath(goEl.value.trim());
         }
       });
+      const filterEl = el.querySelector("#fs-filter");
+      if (filterEl) {
+        filterEl.value = nameFilter;
+        filterEl.addEventListener("input", () => {
+          nameFilter = filterEl.value;
+          applyFilter();
+        });
+      }
+      applyFilter();
+      el.querySelector("#fs-stat").onclick = () => {
+        kernel.emit("stat", lastFsPick || selectedPaths()[0] || cwd);
+      };
       const nameEl = el.querySelector("#fs-name");
       el.querySelector("#fs-new").onclick = async () => {
         const name = (nameEl.value || `${Date.now()}.ofuda`).trim();
@@ -493,6 +523,11 @@ export default {
       if (e.altKey && e.key === "ArrowRight") {
         e.preventDefault();
         forward();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "i" || e.key === "I")) {
+        e.preventDefault();
+        kernel.emit("stat", lastFsPick || selectedPaths()[0] || cwd);
         return;
       }
       if ((e.ctrlKey || e.metaKey) && (e.key === "l" || e.key === "L")) {
