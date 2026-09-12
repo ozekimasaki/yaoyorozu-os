@@ -58,7 +58,24 @@ export function createVfs() {
   const children = new Map();
   const findMemo = new Map();
   const grepMemo = new Map();
+  const watchers = new Set();
   const MEMO_CAP = 24;
+
+  function watch(fn) {
+    if (typeof fn !== "function") return () => {};
+    watchers.add(fn);
+    return () => watchers.delete(fn);
+  }
+
+  function notify(path, op) {
+    for (const fn of watchers) {
+      try {
+        fn(path, op);
+      } catch (err) {
+        /* watcher */
+      }
+    }
+  }
 
   function bustSearch() {
     findMemo.clear();
@@ -86,7 +103,10 @@ export function createVfs() {
 
   function remember(record) {
     cache.set(record.path, record);
-    if (indexReady) bustSearch();
+    if (indexReady) {
+      bustSearch();
+      notify(record.path, "put");
+    }
     if (record.path === "/") return;
     const p = parentOf(record.path);
     if (!children.has(p)) children.set(p, new Set());
@@ -100,6 +120,7 @@ export function createVfs() {
     const set = children.get(p);
     if (set) set.delete(n);
     bustSearch();
+    notify(n, "rm");
   }
 
   async function ready() {
@@ -483,6 +504,7 @@ export function createVfs() {
     allFiles,
     metaGet,
     metaSet,
+    watch,
   };
 }
 
