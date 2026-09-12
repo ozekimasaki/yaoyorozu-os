@@ -47,6 +47,47 @@ export default {
       render();
     }
 
+    function uniqueName(name, taken) {
+      if (!taken.has(name)) return name;
+      const dot = name.lastIndexOf(".");
+      const stem = dot > 0 ? name.slice(0, dot) : name;
+      const ext = dot > 0 ? name.slice(dot) : "";
+      let i = 2;
+      while (taken.has(`${stem}-${i}${ext}`)) i += 1;
+      return `${stem}-${i}${ext}`;
+    }
+
+    async function ingest(paths) {
+      if (isVirtual(cwd)) {
+        kernel.log("仮想匣には落とせない", "fs");
+        return;
+      }
+      let rows = [];
+      try {
+        rows = await kernel.vfs.ls(cwd);
+      } catch (err) {
+        rows = [];
+      }
+      const taken = new Set(rows.map((r) => r.name));
+      let n = 0;
+      for (const src of paths || []) {
+        const name = uniqueName(kernel.vfs.nameOf(src), taken);
+        taken.add(name);
+        const dest = kernel.vfs.normalize(`${cwd}/${name}`);
+        try {
+          await kernel.vfs.copyTree(src, dest);
+          kernel.noteRecent(dest);
+          n += 1;
+        } catch (e) {
+          kernel.log(`落とす: ${e.message}`, "fs");
+        }
+      }
+      if (n) {
+        kernel.emit("vfs");
+        kernel.log(`縁fsに落とした ×${n}`, "fs");
+      }
+    }
+
     function sortEntries(rows) {
       const copy = [...rows];
       if (sortKey === "updated") {
@@ -345,6 +386,9 @@ export default {
       } else if (e.key === "Backspace" && cwd !== "/") {
         e.preventDefault();
         openPath(kernel.vfs.parentOf(cwd), "dir");
+      } else if (e.key === " ") {
+        e.preventDefault();
+        kernel.emit("peek", selected || cwd);
       }
     });
     render();
@@ -353,6 +397,9 @@ export default {
     return {
       el,
       title: "en.fs",
+      onDrop(paths) {
+        ingest(paths);
+      },
       onClose() {
         kernel.removeEventListener("vfs", on);
       },
