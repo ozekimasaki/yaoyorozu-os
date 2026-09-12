@@ -50,11 +50,30 @@ export default {
     render();
     const on = () => render();
     kernel.addEventListener("sim", on);
+    function stopPlay() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
     return {
       el,
       title: "days.1000",
+      onPause() {
+        stopPlay();
+      },
+      onResume() {
+        if (kernel.state.sim.running && !timer) {
+          timer = setInterval(() => {
+            if (!kernel.state.sim.running || kernel.state.sim.day >= 1000) {
+              stopPlay();
+              kernel.state.sim.running = false;
+              return;
+            }
+            kernel.simStep();
+          }, 80);
+        }
+      },
       onClose() {
-        if (timer) clearInterval(timer);
+        stopPlay();
         kernel.removeEventListener("sim", on);
       },
     };
