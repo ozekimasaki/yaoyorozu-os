@@ -56,9 +56,37 @@ export function createVfs() {
   let indexReady = false;
   const cache = new Map();
   const children = new Map();
+  const findMemo = new Map();
+  const grepMemo = new Map();
+  const MEMO_CAP = 24;
+
+  function bustSearch() {
+    findMemo.clear();
+    grepMemo.clear();
+  }
+
+  function memoGet(map, key) {
+    const hit = map.get(key);
+    if (!hit) return null;
+    map.delete(key);
+    map.set(key, hit);
+    return hit;
+  }
+
+  function memoSet(map, key, val) {
+    if (map.has(key)) map.delete(key);
+    map.set(key, val);
+    if (map.size > MEMO_CAP) map.delete(map.keys().next().value);
+  }
+
+  function underRoot(path, root) {
+    if (root === "/") return true;
+    return path === root || path.startsWith(`${root}/`);
+  }
 
   function remember(record) {
     cache.set(record.path, record);
+    if (indexReady) bustSearch();
     if (record.path === "/") return;
     const p = parentOf(record.path);
     if (!children.has(p)) children.set(p, new Set());
@@ -71,6 +99,7 @@ export function createVfs() {
     const p = parentOf(n);
     const set = children.get(p);
     if (set) set.delete(n);
+    bustSearch();
   }
 
   async function ready() {
@@ -252,47 +281,39 @@ export function createVfs() {
     await ensureIndex();
     const n = normalize(root || "/");
     const q = String(needle || "").toLowerCase();
+    const key = `${n}\0${q}`;
+    const cached = memoGet(findMemo, key);
+    if (cached) return cached.slice();
     const out = [];
-    const seen = new Set();
-    const walk = (dir) => {
-      if (seen.has(dir)) return;
-      seen.add(dir);
-      for (const p of children.get(dir) || []) {
-        const f = cache.get(p);
-        if (!f || p === dir) continue;
-        if (!q || p.toLowerCase().includes(q) || nameOf(p).toLowerCase().includes(q)) {
-          out.push({ ...f, name: nameOf(p) });
-        }
-        if (f.type === "dir") walk(p);
-        if (out.length >= 200) return;
+    for (const [p, f] of cache) {
+      if (!underRoot(p, n)) continue;
+      if (p === n && f.type === "dir") continue;
+      if (!q || p.toLowerCase().includes(q) || nameOf(p).toLowerCase().includes(q)) {
+        out.push({ ...f, name: nameOf(p) });
       }
-    };
-    walk(n);
-    return out;
+      if (out.length >= 200) break;
+    }
+    memoSet(findMemo, key, out);
+    return out.slice();
   }
 
   async function grep(root, pat) {
     if (!pat) throw new Error("EINVAL");
     await ensureIndex();
     const n = normalize(root || "/");
+    const key = `${n}\0${pat}`;
+    const cached = memoGet(grepMemo, key);
+    if (cached) return cached.slice();
     const hits = [];
-    const seen = new Set();
-    const walk = (dir) => {
-      if (seen.has(dir)) return;
-      seen.add(dir);
-      for (const p of children.get(dir) || []) {
-        const f = cache.get(p);
-        if (!f || p === dir) continue;
-        if (f.type === "dir") walk(p);
-        else if (typeof f.body === "string" && f.body.includes(pat)) {
-          const line = f.body.split("\n").find((l) => l.includes(pat)) || "";
-          hits.push(`${p}: ${line.slice(0, 140)}`);
-        }
-        if (hits.length >= 80) return;
-      }
-    };
-    walk(n);
-    return hits;
+    for (const [p, f] of cache) {
+      if (!underRoot(p, n)) continue;
+      if (f.type === "dir" || typeof f.body !== "string" || !f.body.includes(pat)) continue;
+      const line = f.body.split("\n").find((l) => l.includes(pat)) || "";
+      hits.push(`${p}: ${line.slice(0, 140)}`);
+      if (hits.length >= 80) break;
+    }
+    memoSet(grepMemo, key, hits);
+    return hits.slice();
   }
 
   async function usage(path) {
