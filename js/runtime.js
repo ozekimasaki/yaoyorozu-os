@@ -95,7 +95,7 @@ export async function openPath(path, opts = {}) {
 }
 
 export function shareTargets() {
-  return ["clip", "editor", "fs", "term", "oto"].filter((id) => registry.has(id));
+  return ["clip", "editor", "fs", "term", "oto", "watari"].filter((id) => registry.has(id));
 }
 
 function deliverOffer(appId, offer) {
@@ -125,6 +125,15 @@ export async function sharePath(path, opts = {}) {
     from: opts.from || "user",
     to: opts.to || "",
   });
+  if (opts.to === "watari" && kernel.watari) {
+    try {
+      await kernel.watari.sendPath(dest);
+    } catch (err) {
+      kernel.log(`watari share: ${err.message}`, "watari");
+      return deliverOffer("watari", offer);
+    }
+    return offer;
+  }
   if (opts.to) return deliverOffer(opts.to, offer);
   return offer;
 }
