@@ -1,4 +1,5 @@
 import { listHandlers, sharePath } from "./runtime.js";
+import { attachOto } from "./oto-kern.js";
 
 const HAND_LABEL = {
   editor: "\u8a00\u970a",
@@ -24,6 +25,7 @@ function applyClass(on) {
 }
 
 export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa, openSpaces }) {
+  attachOto(kernel);
   applyClass(isPhone());
   if (wm && wm.setPhone) wm.setPhone(isPhone());
 
