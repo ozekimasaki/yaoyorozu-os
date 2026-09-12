@@ -1,4 +1,5 @@
 import { createEngine, liveScore, looksMedia, looksVideo, mediaUrl, parseScore } from "../oto-synth.js";
+import { attachOto } from "../oto-kern.js";
 
 function seatId(path, title) {
   return path || `live:${title}`;
@@ -32,6 +33,7 @@ export default {
   width: "min(640px, 86vw)",
   height: "min(580px, 76vh)",
   spawn({ kernel, wm, pid, path: startPath, offer }) {
+    attachOto(kernel);
     const el = document.createElement("div");
     el.className = "oto-app";
     const engine = createEngine();
