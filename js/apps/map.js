@@ -45,6 +45,10 @@ export default {
     const kicker = el.querySelector(".map-kicker");
     let svg = null;
     let lastPaint = "";
+    let lastPanel = "";
+    let viewId = kernel.state.currentSpace;
+    let typeQ = "";
+    let typeT = 0;
 
     kernel.state.prefs.forEach((p) => {
       const opt = document.createElement("option");
@@ -53,8 +57,12 @@ export default {
       selectEl.appendChild(opt);
     });
 
+    function prefOf(id) {
+      return kernel.state.prefs.find((x) => x.id === id) || kernel.spacePref();
+    }
+
     function panelHtml(p) {
-      const live = kernel.state.prefs.find((x) => x.id === p.id) || p;
+      const live = prefOf(p.id);
       return `
         <div class="tag">${live.region} / ${live.code || ""} / 未使用CPU ${live.unusedCpu}%</div>
         <h2>${live.name}</h2>
@@ -69,7 +77,7 @@ export default {
 
     function paint() {
       if (!svg) return;
-      const sig = `${kernel.state.currentSpace}|${kernel.state.prefs.map((p) => `${p.id}:${p.unusedCpu | 0}`).join(",")}`;
+      const sig = `${kernel.state.currentSpace}|${viewId}|${kernel.state.prefs.map((p) => `${p.id}:${p.unusedCpu | 0}`).join(",")}`;
       if (sig === lastPaint && svg.querySelector(".is-selected")) return;
       lastPaint = sig;
       svg.querySelectorAll(".pref").forEach((node) => {
@@ -79,18 +87,53 @@ export default {
         node.classList.add(heatKind(p.unusedCpu));
         node.style.setProperty("--land", landColor(p.unusedCpu));
         node.classList.toggle("is-selected", p.id === kernel.state.currentSpace);
+        node.classList.toggle("is-view", p.id === viewId);
       });
       kicker.textContent = `列島カーネル · 47 · 空間=${kernel.spacePref().name}`;
     }
 
-    function select(p) {
-      if (!p || !svg) return;
-      panel.innerHTML = panelHtml(p);
+    function select(p, enter) {
+      if (!p) return;
+      viewId = p.id;
+      if (lastPanel !== p.id || !panel.querySelector("[data-enter]")) {
+        lastPanel = p.id;
+        panel.innerHTML = panelHtml(p);
+        const btn = panel.querySelector("[data-enter]");
+        if (btn) btn.onclick = () => kernel.setSpace(p.id);
+      }
       callout.textContent = `${p.name} · 未使用 ${p.unusedCpu}%`;
       if (selectEl.value !== p.id) selectEl.value = p.id;
       paint();
-      const enter = panel.querySelector("[data-enter]");
-      if (enter) enter.onclick = () => kernel.setSpace(p.id);
+      if (enter) kernel.setSpace(p.id);
+    }
+
+    function moveView(dir) {
+      const list = kernel.state.prefs;
+      if (!list.length) return;
+      let i = list.findIndex((p) => p.id === viewId);
+      if (i < 0) i = 0;
+      i = (i + dir + list.length) % list.length;
+      select(list[i], false);
+    }
+
+    function jumpName(ch) {
+      if (typeT) clearTimeout(typeT);
+      typeQ += ch;
+      typeT = setTimeout(() => {
+        typeQ = "";
+        typeT = 0;
+      }, 800);
+      const needle = typeQ.toLowerCase();
+      const list = kernel.state.prefs;
+      const cur = Math.max(0, list.findIndex((p) => p.id === viewId));
+      for (let n = 1; n <= list.length; n += 1) {
+        const p = list[(cur + n) % list.length];
+        const keys = `${p.name}\n${p.id}\n${p.code || ""}\n${p.kami || ""}`.toLowerCase();
+        if (keys.split("\n").some((k) => k.startsWith(needle))) {
+          select(p, false);
+          return;
+        }
+      }
     }
 
     async function load() {
@@ -124,31 +167,55 @@ export default {
         node.tabIndex = -1;
         const p = kernel.state.prefs.find((x) => x.id === node.dataset.pref);
         if (!p) return;
-        node.addEventListener("click", () => {
-          select(p);
-          kernel.setSpace(p.id);
-        });
+        node.addEventListener("click", () => select(p, true));
         node.addEventListener("mouseenter", () => {
           callout.textContent = `${p.name} · 未使用 ${p.unusedCpu}%`;
         });
       });
       selectEl.onchange = () => {
         const p = kernel.state.prefs.find((x) => x.id === selectEl.value);
-        if (p) {
-          select(p);
-          kernel.setSpace(p.id);
-        }
+        if (p) select(p, true);
       };
-      const cur = kernel.spacePref();
-      select(cur);
+      select(kernel.spacePref(), false);
     }
+
+    el.tabIndex = -1;
+    el.addEventListener("keydown", (e) => {
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        moveView(1);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        moveView(-1);
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        select(kernel.spacePref(), false);
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        kernel.setSpace(viewId);
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey && !e.isComposing) {
+        e.preventDefault();
+        e.stopPropagation();
+        jumpName(e.key);
+      }
+    });
 
     const onSpot = (ev) => {
       const id = ev.detail;
       const p = kernel.state.prefs.find((x) => x.id === id);
-      if (p) select(p);
+      if (p) select(p, false);
     };
-    const onSpace = () => paint();
+    const onSpace = () => {
+      viewId = kernel.state.currentSpace;
+      const p = kernel.spacePref();
+      if (lastPanel !== p.id) select(p, false);
+      else paint();
+    };
     kernel.addEventListener("spotlight", onSpot);
     kernel.addEventListener("space", onSpace);
     load();
@@ -158,6 +225,12 @@ export default {
       title: "列島.map",
       width: "min(980px, 92vw)",
       height: "min(720px, 82vh)",
+      onFocus() {
+        if (document.activeElement && (document.activeElement.tagName === "SELECT" || document.activeElement.tagName === "INPUT")) {
+          return;
+        }
+        el.focus();
+      },
       onClose() {
         kernel.removeEventListener("spotlight", onSpot);
         kernel.removeEventListener("space", onSpace);
