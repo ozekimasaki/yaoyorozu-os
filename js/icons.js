@@ -27,6 +27,8 @@ const IDS = [
   "utsushi",
   "kagami",
   "keshiki",
+  "utsuwa",
+  "okoshi",
 ];
 
 const KNOWN = new Set(IDS);
@@ -59,6 +61,8 @@ const NAMES = {
   "\u93e1": "kagami",
   "\u6620\u3059": "utsushi",
   "\u666f\u8272": "keshiki",
+  "\u5668": "utsuwa",
+  "\u8d77\u3053\u3057": "okoshi",
 };
 
 const EXT = {
@@ -106,6 +110,8 @@ export function guessIcon(file) {
   if (path === "/var/utsushi") return "utsushi";
   if (path.startsWith("/var/utsushi/")) return "kagami";
   if (path === "/etc/keshiki") return "keshiki";
+  if (path === "/etc/utsuwa") return "utsuwa";
+  if (path === "/etc/okoshi") return "okoshi";
   if (mime.startsWith("image/")) return "kagami";
   if (file && file.type === "dir") return "box";
   return "ofuda";
