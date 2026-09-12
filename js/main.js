@@ -792,4 +792,52 @@ async function startDesktop() {
     paintMeta();
   });
 
-  const drawer = document.
+  const drawer = document.getElementById("ujiko-drawer");
+  const ujikoLog = document.getElementById("ujiko-log");
+  let ujikoLen = 0;
+  const paintUjiko = (reset = false) => {
+    const lines = kernel.state.dmesg || [];
+    if (reset || ujikoLen > lines.length) {
+      ujikoLog.textContent = lines.slice(-16).join("\n") || "（氏子課は沈黙）";
+      ujikoLen = lines.length;
+      ujikoLog.scrollTop = ujikoLog.scrollHeight;
+      return;
+    }
+    if (lines.length === ujikoLen) return;
+    const add = lines.slice(ujikoLen);
+    ujikoLen = lines.length;
+    if (!ujikoLog.textContent || ujikoLog.textContent === "（氏子課は沈黙）") ujikoLog.textContent = add.join("\n");
+    else ujikoLog.textContent += `\n${add.join("\n")}`;
+    const shown = ujikoLog.textContent.split("\n");
+    if (shown.length > 16) ujikoLog.textContent = shown.slice(-16).join("\n");
+    ujikoLog.scrollTop = ujikoLog.scrollHeight;
+  };
+  meta.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = drawer.hidden;
+    drawer.hidden = !open;
+    if (open) paintUjiko(true);
+  });
+  drawer.addEventListener("click", (e) => e.stopPropagation());
+  document.getElementById("ujiko-open-dmesg").addEventListener("click", () => {
+    drawer.hidden = true;
+    launch("dmesg");
+  });
+  kernel.addEventListener("dmesg", () => {
+    if (!drawer.hidden) paintUjiko();
+  });
+  document.addEventListener("copy", () => {
+    const t = window.getSelection && window.getSelection().toString();
+    if (t) kernel.clipPush(t);
+  });
+  kernel.addEventListener("need-auth", () => kashiwa.open());
+  kernel.addEventListener("job", (ev) => applyJob(ev.detail));
+
+  document.addEventListener("keydown", (e) => {
+    const tag = (e.target && e.target.tagName) || "";
+    const inWin = e.target && e.target.closest && e.target.closest(".window");
+    const typing =
+      (tag === "INPUT" || tag === "TEXTAREA") && (!inWin || !inWin.classList.contains("is-min"));
+    if (e.key === "Escape") {
+      document.getElementById("torii-gate").classList.remove("open");
+    
