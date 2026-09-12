@@ -54,6 +54,7 @@ export function launch(appId, opts = {}) {
     onPause: view.onPause,
     onResume: view.onResume,
     onDrop: view.onDrop,
+    onOffer: view.onOffer,
   });
   kernel.log(`exec ${app.id} pid=${proc.pid}`, "runtime");
   return win;
@@ -87,4 +88,39 @@ export async function openPath(path, opts = {}) {
     if (withId && withId !== "gate") return launch(withId, { path });
     return launch("fs", { path });
   }
+}
+
+export function shareTargets() {
+  return ["clip", "editor", "fs", "term"].filter((id) => registry.has(id));
+}
+
+function deliverOffer(appId, offer) {
+  if (!wm) return launch(appId, { path: offer.path, offer });
+  const hit = wm.list().find((w) => w.appId === appId && !w.el.classList.contains("is-away"));
+  if (hit) {
+    if (hit.onOffer) hit.onOffer(offer);
+    wm.restore(hit.pid);
+    wm.focus(hit.pid);
+    return hit;
+  }
+  return launch(appId, { path: offer.path, offer });
+}
+
+export async function sharePath(path, opts = {}) {
+  let file = { path, mime: "", body: "" };
+  try {
+    file = await kernel.readPath(path);
+  } catch (err) {
+    file = { path, mime: "", body: "" };
+  }
+  const dest = file.path || path;
+  const offer = kernel.offerShare({
+    path: dest,
+    mime: file.mime || "",
+    text: opts.text || dest,
+    from: opts.from || "user",
+    to: opts.to || "",
+  });
+  if (opts.to) return deliverOffer(opts.to, offer);
+  return offer;
 }
