@@ -87,23 +87,36 @@ export default {
         clearTimeout(autosaveT);
         if (!readonly) autosaveT = setTimeout(() => persist(true).catch(() => {}), 1800);
       });
-      ta.addEventListener("keydown", (e) => {
-        if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
-          e.preventDefault();
-          persist(false).catch((err) => kernel.log(`write: ${err.message}`, "fs"));
-        }
-      });
-      el.querySelector("#ed-find-go").onclick = () => {
+      function findNext() {
         const q = el.querySelector("#ed-find").value;
         if (!q) return;
-        const i = body.indexOf(q);
+        const from = ta.selectionEnd || 0;
+        let i = body.indexOf(q, from);
+        if (i < 0 || i === ta.selectionStart) i = body.indexOf(q, 0);
         if (i < 0) {
           kernel.log("探る: 見つからない", "kotodama");
           return;
         }
         ta.focus();
         ta.setSelectionRange(i, i + q.length);
-      };
+      }
+      ta.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+          e.preventDefault();
+          persist(false).catch((err) => kernel.log(`write: ${err.message}`, "fs"));
+        }
+        if (e.key === "F3") {
+          e.preventDefault();
+          findNext();
+        }
+      });
+      el.querySelector("#ed-find-go").onclick = () => findNext();
+      el.querySelector("#ed-find").addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === "F3") {
+          e.preventDefault();
+          findNext();
+        }
+      });
       el.querySelector("#save").onclick = async () => {
         try {
           await persist(false);
