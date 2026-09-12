@@ -8,6 +8,7 @@ import { attachUtsushi } from "./utsushi.js";
 import { attachKeshiki } from "./keshiki.js";
 import { attachUtsuwa } from "./utsuwa.js";
 import { attachOkoshi } from "./okoshi.js";
+import { attachKagi } from "./kagi.js";
 import { assocText, defaultAssoc, parseAssoc, resolveOpen } from "./intent.js";
 
 const KAMI_TEMPLATES = [
@@ -692,6 +693,7 @@ class Kernel extends EventTarget {
       "/proc/keshiki": () => (this.keshiki ? this.keshiki.procText() : "path=\nscale=1\nhas=0"),
       "/proc/utsuwa": () => (this.utsuwa ? this.utsuwa.procText() : "bytes=0\nquota=0"),
       "/proc/okoshi": () => (this.okoshi ? this.okoshi.procText() : "count=0"),
+      "/proc/kagi": () => (this.kagi ? this.kagi.procText() : "locked=0\nidle=0"),
     };
     if (!files[n]) return null;
     return { path: n, type: "file", body: files[n](), mime: "text/proc", updated: Date.now() };
@@ -707,7 +709,7 @@ class Kernel extends EventTarget {
     const n = this.vfs.normalize(path);
     if (n === "/proc") {
       const real = await this.vfs.ls("/proc");
-      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps", "journal", "offer", "oto", "konoyo", "watari", "utsushi", "keshiki", "utsuwa", "okoshi"].map((name) => ({
+      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps", "journal", "offer", "oto", "konoyo", "watari", "utsushi", "keshiki", "utsuwa", "okoshi", "kagi"].map((name) => ({
         name,
         path: `/proc/${name}`,
         type: "file",
@@ -802,6 +804,8 @@ class Kernel extends EventTarget {
     if (this.utsuwa && this.utsuwa.ready) await this.utsuwa.ready;
     attachOkoshi(this);
     if (this.okoshi && this.okoshi.ready) await this.okoshi.ready;
+    attachKagi(this);
+    if (this.kagi && this.kagi.ready) await this.kagi.ready;
     this.vfs.watch((path, op) => {
       if (path === "/etc/assoc") this._assoc = null;
       this.emit("vfs", { path, op });
@@ -1162,6 +1166,10 @@ class Kernel extends EventTarget {
       const n = Math.max(256 * 1024, Number(value) || 6 * 1024 * 1024);
       this.state.settings.quota = n;
       if (this.utsuwa && this.utsuwa.setQuota) this.utsuwa.setQuota(n);
+    } else if (k === "kagi.idle") {
+      const n = Number(value) || 0;
+      this.state.settings.kagiIdle = n;
+      if (this.kagi && this.kagi.setIdle) this.kagi.setIdle(n);
     } else throw new Error("EINVAL");
     this.log(`sysctl ${k}=${value}`, "sys");
     this.commit();
