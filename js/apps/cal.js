@@ -29,6 +29,11 @@ export default {
       render();
     }
 
+    function shiftYear(delta) {
+      viewY += delta;
+      render();
+    }
+
     function today() {
       const t = new Date();
       viewY = t.getFullYear();
@@ -56,16 +61,20 @@ export default {
         <p class="lede">${viewY} / ${viewM + 1}</p>
         <p class="muted">季節は法律に優先する。いまは ${season} · ${sekki}。当直県 ${kernel.state.oncall.pref.name}。</p>
         <div class="boot-actions" style="margin:8px 0;justify-content:flex-start">
+          <button class="btn" type="button" id="cal-py">前年</button>
           <button class="btn" type="button" id="cal-prev">前の月</button>
           <button class="btn" type="button" id="cal-today">今日</button>
           <button class="btn" type="button" id="cal-next">次の月</button>
+          <button class="btn" type="button" id="cal-ny">次年</button>
         </div>
         <div class="cal-grid">${["日", "月", "火", "水", "木", "金", "土"].map((w) => `<em>${w}</em>`).join("")}${cells.join("")}</div>
         <p class="muted">祭日はカーネルの合意枠。緊急でない意思決定は、桜と雪のあいだ遅延してよい。</p>
       `;
+      el.querySelector("#cal-py").onclick = () => shiftYear(-1);
       el.querySelector("#cal-prev").onclick = () => shift(-1);
       el.querySelector("#cal-today").onclick = () => today();
       el.querySelector("#cal-next").onclick = () => shift(1);
+      el.querySelector("#cal-ny").onclick = () => shiftYear(1);
     }
 
     el.tabIndex = -1;
@@ -77,6 +86,12 @@ export default {
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
         shift(1);
+      } else if (e.key === "ArrowUp" || e.key === "PageUp") {
+        e.preventDefault();
+        shiftYear(-1);
+      } else if (e.key === "ArrowDown" || e.key === "PageDown") {
+        e.preventDefault();
+        shiftYear(1);
       } else if (e.key === "Home" || e.key === "t" || e.key === "T") {
         e.preventDefault();
         today();
@@ -89,6 +104,10 @@ export default {
     return {
       el,
       title: "matsuri.cal",
+      onFocus() {
+        if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+        el.focus();
+      },
       onClose() {
         kernel.removeEventListener("space", on);
       },
