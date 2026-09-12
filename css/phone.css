@@ -220,7 +220,14 @@ html.is-phone .phone-card-chrome {
   gap: 8px;
 }
 
+html.is-phone .phone-card-chrome .fuda-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+
 html.is-phone .phone-card-chrome strong {
+  flex: 1;
   font-size: 16px;
   letter-spacing: 0.08em;
 }
@@ -287,13 +294,24 @@ html.is-phone .phone-shade-quick {
 
 html.is-phone .phone-shade-quick button {
   appearance: none;
-  min-height: 52px;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: transparent;
   color: var(--washi);
   letter-spacing: 0.08em;
   font-size: 12px;
+}
+
+html.is-phone .phone-shade-quick .fuda-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
 }
 
 html.is-phone .phone-shade-quick button.is-on {
@@ -344,13 +362,10 @@ html.is-phone .desk-icon {
   word-break: break-word;
 }
 
-html.is-phone .desk-icon::before {
-  content: "";
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(194, 58, 43, 0.95), #8a241c);
+html.is-phone .desk-icon .fuda-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25);
 }
 
@@ -430,6 +445,11 @@ html.is-phone #phone-dock button {
   appearance: none;
   flex: 1;
   min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   border: 0;
   background: transparent;
   color: var(--washi-dim);
@@ -437,6 +457,12 @@ html.is-phone #phone-dock button {
   letter-spacing: 0.08em;
   border-radius: 16px;
   cursor: pointer;
+}
+
+html.is-phone #phone-dock .fuda-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
 }
 
 html.is-phone #phone-dock button.is-on,
@@ -537,7 +563,7 @@ html.is-phone .titlebar {
   padding: 0 8px 0 16px;
 }
 
-html.is-phone .titlebar span {
+html.is-phone .titlebar > span {
   font-size: 14px;
 }
 
