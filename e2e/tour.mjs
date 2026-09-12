@@ -119,6 +119,13 @@ try {
     await h.closeWin("oto");
   });
 
+  await section("watari", async () => {
+    await h.openTorii("\u6e21\u308a", "watari");
+    note(!!(await h.vis("watari")), "watari");
+    await h.shot("watari");
+    await h.closeWin("watari");
+  });
+
   await section("fs-term", async () => {
     await h.openTorii("\u7e01fs", "fs");
     note(!!(await h.vis("fs")), "fs");
