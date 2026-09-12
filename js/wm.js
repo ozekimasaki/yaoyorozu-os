@@ -61,6 +61,11 @@ export function createWm(root, taskbar, kernel) {
           e.stopPropagation();
           showTaskMenu(e.clientX, e.clientY, Number(btn.dataset.pid));
         });
+        btn.addEventListener("auxclick", (e) => {
+          if (e.button !== 1) return;
+          e.preventDefault();
+          shade(Number(btn.dataset.pid));
+        });
         host.appendChild(btn);
       }
       if (btn.className !== cls) btn.className = cls;
@@ -80,6 +85,7 @@ export function createWm(root, taskbar, kernel) {
     `<button type="button" data-act="prev">左の県へ</button>` +
     `<button type="button" data-act="next">右の県へ</button>` +
     `<button type="button" data-act="shade">巻く</button>` +
+    `<button type="button" data-act="center">中央へ</button>` +
     `<button type="button" data-act="close">閉じる</button>`;
   document.body.appendChild(taskMenu);
   let taskMenuPid = 0;
@@ -130,6 +136,7 @@ export function createWm(root, taskbar, kernel) {
       if (p) sendSpace(pid, p.id);
     }
     else if (act === "shade") shade(pid);
+    else if (act === "center") center(pid);
     else if (act === "close") close(pid);
   });
   document.addEventListener("click", () => {
@@ -266,6 +273,24 @@ export function createWm(root, taskbar, kernel) {
     kernel.log(w.space ? `窓 ${w.pid} をこの県へ戻した` : `窓 ${w.pid} を全県に結んだ`, "wm");
   }
 
+  function center(pid) {
+    const w = windows.get(pid);
+    if (!w || w.maximized) return;
+    if (w.shaded) {
+      w.shaded = false;
+      w.el.classList.remove("is-shade");
+      w.el.style.height = w.preShadeH || w.el.style.height;
+    }
+    const width = w.el.offsetWidth;
+    const height = w.el.offsetHeight;
+    const left = Math.max(INSET.left, Math.round((window.innerWidth - width) / 2));
+    const top = Math.max(INSET.top, Math.round((window.innerHeight - height - INSET.bottom) / 2));
+    w.el.style.left = `${left}px`;
+    w.el.style.top = `${top}px`;
+    schedulePersist();
+    kernel.log(`窓 ${pid} を中央へ寄せた`, "wm");
+  }
+
   function shade(pid) {
     const w = windows.get(pid);
     if (!w || w.maximized) return;
@@ -360,6 +385,11 @@ export function createWm(root, taskbar, kernel) {
     bar.addEventListener("dblclick", (e) => {
       if (e.target.closest("button")) return;
       shade(w.pid);
+    });
+    bar.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showTaskMenu(e.clientX, e.clientY, w.pid);
     });
     bar.addEventListener("pointerup", (e) => {
       dragging = false;
@@ -558,5 +588,6 @@ export function createWm(root, taskbar, kernel) {
     sendSpace,
     neighborSpace,
     shade,
+    center,
   };
 }
