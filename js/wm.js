@@ -451,14 +451,42 @@ export function createWm(root, taskbar, kernel) {
     return n;
   }
 
+  function setPaused(w, on) {
+    if (!w) return;
+    const next = !!on;
+    if (!!w.paused === next) return;
+    w.paused = next;
+    try {
+      kernel.signalApp(w.pid, next ? "STOP" : "CONT");
+    } catch (err) {
+      /* gone */
+    }
+    if (next) {
+      if (w.onPause) w.onPause();
+    } else if (w.onResume) w.onResume();
+  }
+
+  function pause(pid) {
+    setPaused(windows.get(pid), true);
+  }
+
+  function resume(pid) {
+    setPaused(windows.get(pid), false);
+  }
+
   function applySpace(spaceId) {
     if (exposeSaved) endExpose();
     let first = null;
     for (const w of windows.values()) {
       const here = !w.space || w.space === spaceId;
       w.el.classList.toggle("is-away", !here);
-      if (!here) w.el.classList.remove("focused");
-      else if (!first && !w.minimized) first = w;
+      if (!here) {
+        w.el.classList.remove("focused");
+        setPaused(w, true);
+      } else if (!w.minimized && !phoneMode) {
+        setPaused(w, false);
+      }
+      if (here && !first && !w.minimized) first = w;
     }
     if (first) focus(first.pid);
     else taskButtons();
@@ -476,6 +504,7 @@ export function createWm(root, taskbar, kernel) {
           other.minimized = true;
           other.el.classList.add("is-min", "is-phone-back");
           other.el.classList.remove("focused");
+          setPaused(other, true);
         }
       }
       document.getElementById("desktop")?.classList.add("is-app");
@@ -490,6 +519,8 @@ export function createWm(root, taskbar, kernel) {
       w.el.style.zIndex = String(z);
     }
     w.el.classList.add("focused");
+    w.lastAt = Date.now();
+    setPaused(w, false);
     if (w.onFocus) w.onFocus();
     taskButtons();
   }
@@ -500,6 +531,7 @@ export function createWm(root, taskbar, kernel) {
     w.minimized = true;
     w.el.classList.add("is-min");
     w.el.classList.remove("focused");
+    setPaused(w, true);
     if (!quiet) taskButtons();
   }
 
@@ -509,7 +541,10 @@ export function createWm(root, taskbar, kernel) {
     w.minimized = false;
     w.el.classList.remove("is-min");
     if (phoneMode) w.el.classList.remove("is-phone-back");
-    if (quiet) return;
+    if (quiet) {
+      setPaused(w, false);
+      return;
+    }
     focus(pid);
   }
 
@@ -524,6 +559,7 @@ export function createWm(root, taskbar, kernel) {
         w.minimized = true;
         w.el.classList.add("is-min", "is-phone-back");
         w.el.classList.remove("focused");
+        setPaused(w, true);
       }
       document.getElementById("desktop")?.classList.remove("is-app");
       const desk = document.getElementById("desktop");
@@ -790,7 +826,7 @@ export function createWm(root, taskbar, kernel) {
     });
   }
 
-  function create({ appId, title, pid, space, width, height, geom, mount, onClose, onFocus, onDrop }) {
+  function create({ appId, title, pid, space, width, height, geom, mount, onClose, onFocus, onPause, onResume, onDrop }) {
     if (exposeSaved) endExpose();
     const el = document.createElement("section");
     el.className = "window focused";
@@ -844,6 +880,8 @@ export function createWm(root, taskbar, kernel) {
       fore: !!(geom && geom.fore),
       preShadeH: "",
       zashikiOnce: false,
+      lastAt: Date.now(),
+      paused: false,
       deskGeom: {
         left: el.style.left,
         top: el.style.top,
@@ -854,6 +892,8 @@ export function createWm(root, taskbar, kernel) {
       },
       onClose,
       onFocus,
+      onPause,
+      onResume,
       onDrop,
     };
     windows.set(pid, w);
@@ -972,6 +1012,8 @@ export function createWm(root, taskbar, kernel) {
     persistWindows,
     geomOf,
     hideAll,
+    pause,
+    resume,
     pin,
     tile,
     snapEdge,
