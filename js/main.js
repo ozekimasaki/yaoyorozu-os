@@ -411,4 +411,64 @@ async function undoMuen() {
 }
 
 async function newDeskOfuda() {
-  const path = `/home/${kernel.stat
+  const path = `/home/${kernel.state.ujiko}/desktop/${Date.now()}.ofuda`;
+  await kernel.vfs.write(path, "名を書け。空のスローガンはコンパイルされない。", "text/plain");
+  lastDeskPick = path;
+  kernel.emit("vfs");
+  launch("editor", { path });
+}
+
+async function newDeskBox() {
+  const path = `/home/${kernel.state.ujiko}/desktop/匣-${Date.now()}`;
+  await kernel.vfs.mkdir(path);
+  lastDeskPick = path;
+  kernel.emit("vfs");
+}
+
+function typeDeskJump(ch) {
+  clearTimeout(deskTypeT);
+  deskTypeQ += ch;
+  deskTypeT = setTimeout(() => {
+    deskTypeQ = "";
+  }, 900);
+  const q = deskTypeQ.toLowerCase();
+  const icons = [...document.querySelectorAll(".desk-icon")];
+  const hit = icons.find((el) => {
+    const label = (el.textContent || "").toLowerCase();
+    const name = kernel.vfs.nameOf(el.dataset.path || "").toLowerCase();
+    return label.startsWith(q) || name.startsWith(q);
+  });
+  if (!hit) return;
+  lastDeskPick = hit.dataset.path || "";
+  deskSelected = new Set(lastDeskPick ? [lastDeskPick] : []);
+  paintDeskMarks();
+  hit.focus();
+}
+
+async function peekPath(path) {
+  const box = document.getElementById("desk-peek");
+  if (!box) return;
+  if (!path) {
+    box.hidden = true;
+    return;
+  }
+  if (!box.hidden && box.dataset.path === path) {
+    box.hidden = true;
+    return;
+  }
+  const title = document.getElementById("desk-peek-path");
+  const body = document.getElementById("desk-peek-body");
+  title.textContent = path;
+  box.dataset.path = path;
+  try {
+    const node = path === "/" ? { type: "dir" } : await kernel.vfs.getFile(path);
+    if (!node) {
+      body.textContent = "ENOENT";
+    } else if (node.type === "dir") {
+      const kids = await kernel.vfs.ls(path);
+      body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匣）";
+    } else if (node.type === "link") {
+      body.textContent = `↦ ${node.target || node.body || ""}`;
+    } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
+      body.textContent = `くぐると起動: ${String(node.body).trim()}`;
+   
