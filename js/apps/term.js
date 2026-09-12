@@ -840,6 +840,12 @@ export default {
       onFocus() {
         input.focus();
       },
+      onDrop(paths) {
+        const add = (paths || []).filter(Boolean).join(" ");
+        if (!add) return;
+        input.value = input.value ? `${input.value.replace(/\s+$/, "")} ${add}` : add;
+        input.focus();
+      },
     };
   },
 };
