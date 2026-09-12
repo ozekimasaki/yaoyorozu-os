@@ -278,7 +278,7 @@ async function dropOnWindow(winEl, paths) {
   if (typeof w.onDrop === "function") {
     await w.onDrop(paths);
     wm.focus(w.pid);
-    kernel.log(`札を${w.title}へ落とした`, "desk");
+    kernel.log(`\u672d\u3092${w.title}\u3078\u843d\u3068\u3057\u305f`, "desk");
     return;
   }
   openPath(paths[0]);
@@ -296,7 +296,7 @@ function copyDesk(cut) {
   if (!paths.length) return;
   deskClipboard = kernel.clipVfs(cut ? "cut" : "copy", paths);
   paintDeskMarks();
-  kernel.log(cut ? "卓を切った" : "卓を写した", "desk");
+  kernel.log(cut ? "\u5353\u3092\u5207\u3063\u305f" : "\u5353\u3092\u5199\u3057\u305f", "desk");
 }
 
 async function pasteDesk() {
@@ -322,7 +322,7 @@ async function pasteDesk() {
           await kernel.vfs.rename(src, dest);
         } catch (err) {
           if (err.message === "EXDEV" || err.message === "EISDIR") {
-            kernel.log("匣の切りは写して残す", "desk");
+            kernel.log("\u5323\u306e\u5207\u308a\u306f\u5199\u3057\u3066\u6b8b\u3059", "desk");
             await copyTree(src, dest);
           } else {
             await copyTree(src, dest);
@@ -334,7 +334,7 @@ async function pasteDesk() {
       }
       n += 1;
     } catch (err) {
-      kernel.log(`貼る: ${err.message}`, "desk");
+      kernel.log(`\u8cbc\u308b: ${err.message}`, "desk");
     }
   }
   if (deskClipboard.mode === "cut") {
@@ -343,7 +343,7 @@ async function pasteDesk() {
   }
   deskSelected.clear();
   kernel.emit("vfs");
-  kernel.log(`卓に貼った ×${n}`, "desk");
+  kernel.log(`\u5353\u306b\u8cbc\u3063\u305f \u00d7${n}`, "desk");
 }
 
 function selectAllDesk() {
@@ -371,7 +371,7 @@ function tidyDesk() {
   });
   deskPos = pos;
   saveDeskPos();
-  kernel.log("札を揃えた", "desk");
+  kernel.log("\u672d\u3092\u63c3\u3048\u305f", "desk");
 }
 
 async function sendToMuen(paths) {
@@ -396,7 +396,7 @@ async function muenSelected() {
 async function undoMuen() {
   const rec = muenUndo.pop();
   if (!rec) {
-    kernel.log("戻す札はない", "desk");
+    kernel.log("\u623b\u3059\u672d\u306f\u306a\u3044", "desk");
     return;
   }
   try {
@@ -405,22 +405,22 @@ async function undoMuen() {
     deskSelected = new Set([to]);
     kernel.noteRecent(to);
     kernel.emit("vfs");
-    kernel.log(`無縁から戻した ${to}`, "desk");
+    kernel.log(`\u7121\u7e01\u304b\u3089\u623b\u3057\u305f ${to}`, "desk");
   } catch (err) {
-    kernel.log(`戻す: ${err.message}`, "desk");
+    kernel.log(`\u623b\u3059: ${err.message}`, "desk");
   }
 }
 
 async function newDeskOfuda() {
   const path = `/home/${kernel.state.ujiko}/desktop/${Date.now()}.ofuda`;
-  await kernel.vfs.write(path, "名を書け。空のスローガンはコンパイルされない。", "text/plain");
+  await kernel.vfs.write(path, "\u540d\u3092\u66f8\u3051\u3002\u7a7a\u306e\u30b9\u30ed\u30fc\u30ac\u30f3\u306f\u30b3\u30f3\u30d1\u30a4\u30eb\u3055\u308c\u306a\u3044\u3002", "text/plain");
   lastDeskPick = path;
   kernel.emit("vfs");
   launch("editor", { path });
 }
 
 async function newDeskBox() {
-  const path = `/home/${kernel.state.ujiko}/desktop/匣-${Date.now()}`;
+  const path = `/home/${kernel.state.ujiko}/desktop/\u5323-${Date.now()}`;
   await kernel.vfs.mkdir(path);
   lastDeskPick = path;
   kernel.emit("vfs");
@@ -485,7 +485,7 @@ async function renamePicked() {
   const path = lastDeskPick || selectedDeskPaths()[0];
   if (!path) return;
   const cur = kernel.vfs.nameOf(path);
-  const name = window.prompt("新しい名", cur);
+  const name = window.prompt("\u65b0\u3057\u3044\u540d", cur);
   if (!name || name === cur) return;
   const dest = kernel.vfs.normalize(`${kernel.vfs.parentOf(path)}/${name}`);
   try {
@@ -540,13 +540,13 @@ async function paintUsage() {
   if (!pill) return;
   try {
     const u = await kernel.vfs.usage(`/home/${kernel.state.ujiko}`);
-    const text = `器: ${u.files}札`;
+    const text = `\u5668: ${u.files}\u672d`;
     if (text === lastUsageText) return;
     lastUsageText = text;
     pill.textContent = text;
   } catch (err) {
     if (lastUsageText) return;
-    lastUsageText = "器: —";
+    lastUsageText = "\u5668: \u2014";
     pill.textContent = lastUsageText;
   }
 }
@@ -559,7 +559,7 @@ function paintNet() {
   const socks = kernel.state.sockets || [];
   let n = 0;
   for (const s of socks) if (s.state === "ESTAB") n += 1;
-  const text = `縁: ${n}`;
+  const text = `\u7e01: ${n}`;
   if (text === lastNetText) return;
   lastNetText = text;
   pill.textContent = text;
@@ -574,22 +574,22 @@ function clock() {
   const key = `${now.getFullYear()}.${now.getMonth()}.${now.getDate()}.${now.getHours()}.${now.getMinutes()}.${pref.season}`;
   if (key === lastClock) return;
   lastClock = key;
-  const w = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
-  el.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}(（${w}） ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}  ${pref.season}`;
+  const w = ["\u65e5", "\u6708", "\u706b", "\u6c34", "\u6728", "\u91d1", "\u571f"][now.getDay()];
+  el.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}\uff08${w}\uff09 ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}  ${pref.season}`;
 }
 
 function fillNorito() {
   const veil = document.getElementById("norito-veil");
   if (!veil) return;
   const lines = [
-    "高天原に神留り坐す",
-    "神祭い給え清めたまえ",
-    "この端末は器である",
-    "柏手は、認証である",
-    "神はマイクロサービスである",
-    "ログアウトは遷宮まで無効",
+    "\u9ad8\u5929\u539f\u306b\u795e\u7559\u308a\u5750\u3059",
+    "\u7953\u3044\u7d66\u3048\u6e05\u3081\u305f\u307e\u3048",
+    "\u3053\u306e\u7aef\u672b\u306f\u5668\u3067\u3042\u308b",
+    "\u67cf\u624b\u306f\u3001\u8a8d\u8a3c\u3067\u3042\u308b",
+    "\u795e\u306f\u30de\u30a4\u30af\u30ed\u30b5\u30fc\u30d3\u30b9\u3067\u3042\u308b",
+    "\u30ed\u30b0\u30a2\u30a6\u30c8\u306f\u9077\u5bae\u307e\u3067\u7121\u52b9",
   ];
-  veil.textContent = Array.from({ length: 20 }, (_, i) => lines[i % lines.length]).join("　");
+  veil.textContent = Array.from({ length: 20 }, (_, i) => lines[i % lines.length]).join("\u3000");
 }
 
 let started = false;
@@ -672,7 +672,7 @@ async function startDesktop() {
   const applyMa = (locked) => {
     desktop.classList.toggle("is-ma", locked);
     maLock.classList.toggle("open", locked);
-    document.getElementById("ma-pill").textContent = locked ? "status: 間 · 眠" : "status: 間";
+    document.getElementById("ma-pill").textContent = locked ? "status: \u9593 \u00b7 \u7720" : "status: \u9593";
   };
   applyMa(!!kernel.state.maLocked);
   kernel.addEventListener("ma", (ev) => applyMa(!!ev.detail));
@@ -701,7 +701,7 @@ async function startDesktop() {
   const paintUjiko = (reset = false) => {
     const lines = kernel.state.dmesg || [];
     if (reset || ujikoLen > lines.length) {
-      ujikoLog.textContent = lines.slice(-16).join("\n") || "(（氏子課は沈黙）";
+      ujikoLog.textContent = lines.slice(-16).join("\n") || "\uff08\u6c0f\u5b50\u8ab2\u306f\u6c88\u9ed9\uff09";
       ujikoLen = lines.length;
       ujikoLog.scrollTop = ujikoLog.scrollHeight;
       return;
@@ -709,7 +709,7 @@ async function startDesktop() {
     if (lines.length === ujikoLen) return;
     const add = lines.slice(ujikoLen);
     ujikoLen = lines.length;
-    if (!ujikoLog.textContent || ujikoLog.textContent === "(（氏子課は沈黙）") ujikoLog.textContent = add.join("\n");
+    if (!ujikoLog.textContent || ujikoLog.textContent === "\uff08\u6c0f\u5b50\u8ab2\u306f\u6c88\u9ed9\uff09") ujikoLog.textContent = add.join("\n");
     else ujikoLog.textContent += `\n${add.join("\n")}`;
     const shown = ujikoLog.textContent.split("\n");
     if (shown.length > 16) ujikoLog.textContent = shown.slice(-16).join("\n");
@@ -813,7 +813,7 @@ async function startDesktop() {
       const wm = getWm();
       if (wm) wm.cycle();
     }
-    if (e.key === ";" || e.key === "；") {
+    if (e.key === ";" || e.key === "\uff1b") {
       e.preventDefault();
       switchers.toggleWin();
     }
@@ -822,11 +822,11 @@ async function startDesktop() {
       e.preventDefault();
       kernel.maSleep();
     }
-    if (e.key === "'" || e.key === "’") {
+    if (e.key === "'" || e.key === "\u2019") {
       e.preventDefault();
       switchers.toggleSpaces();
     }
-    if (e.key === "?" || e.key === "？") {
+    if (e.key === "?" || e.key === "\uff1f") {
       e.preventDefault();
       const km = document.getElementById("keymap");
       if (km) km.hidden = !km.hidden;
@@ -840,19 +840,19 @@ async function startDesktop() {
       e.preventDefault();
       switchers.toggleRecent();
     }
-    if (e.key === "," || e.key === "、") {
+    if (e.key === "," || e.key === "\u3001") {
       e.preventDefault();
       const wm = getWm();
       if (wm) wm.hideAll();
     }
-    if (e.shiftKey && (e.key === "." || e.key === ">" || e.key === "。")) {
+    if (e.shiftKey && (e.key === "." || e.key === ">" || e.key === "\u3002")) {
       e.preventDefault();
       const w = focusedWin();
       const wm = getWm();
       if (w && wm && wm.center) wm.center(w.pid);
       return;
     }
-    if (e.key === "." || e.key === "。") {
+    if (e.key === "." || e.key === "\u3002") {
       e.preventDefault();
       const wm = getWm();
       if (wm) wm.tile();
@@ -933,7 +933,7 @@ async function startDesktop() {
         !e.ctrlKey &&
         !e.metaKey &&
         !e.altKey &&
-        !"/;'[]\\kmnr,.?、。’；。？".includes(e.key) &&
+        !"/;'[]\\kmnr,.?\u3001\u3002\u2019\uff1b\u3002\uff1f".includes(e.key) &&
         !e.isComposing
       ) {
         e.preventDefault();
@@ -988,20 +988,20 @@ async function startDesktop() {
   }
 
   document.querySelector(".hint").textContent =
-    "/ 鳥居 · ; 窓 · ' 空間 · r 最近 · ? 操作 · 空欄 " + String.fromCharCode(0x8997) + "く · 囲う · 落とす";
+    "/ \u9ce5\u5c45 \u00b7 ; \u7a93 \u00b7 ' \u7a7a\u9593 \u00b7 r \u6700\u8fd1 \u00b7 ? \u64cd\u4f5c \u00b7 \u7a7a\u6b04 " + String.fromCharCode(0x8997) + "\u304f \u00b7 \u56f2\u3046 \u00b7 \u843d\u3068\u3059";
 
   const oshiList = document.getElementById("oshi-list");
   const oshiLog = document.getElementById("oshi-log");
   const oshiPill = document.getElementById("oshi-pill");
   const paintOshiPill = () => {
     const n = kernel.state.oshiUnread || 0;
-    const text = n ? `告げ: ${n}` : "告げ";
+    const text = n ? `\u544a\u3052: ${n}` : "\u544a\u3052";
     if (oshiPill.textContent !== text) oshiPill.textContent = text;
     oshiPill.classList.toggle("has-note", n > 0);
   };
   const paintOshi = () => {
     const rows = kernel.state.oshi || [];
-    const text = rows.map((r) => `${r.tag}  ${r.t}`).join("\n") || "(（札は届いていない）";
+    const text = rows.map((r) => `${r.tag}  ${r.t}`).join("\n") || "\uff08\u672d\u306f\u5c4a\u3044\u3066\u3044\u306a\u3044\uff09";
     if (oshiLog.textContent === text) return;
     oshiLog.textContent = text;
   };
@@ -1148,7 +1148,7 @@ async function startDesktop() {
     }
     if (act === "rename") {
       const cur = kernel.vfs.nameOf(path);
-      const name = window.prompt("新しい名", cur);
+      const name = window.prompt("\u65b0\u3057\u3044\u540d", cur);
       if (!name || name === cur) return;
       const dest = kernel.vfs.normalize(`${kernel.vfs.parentOf(path)}/${name}`);
       try {
@@ -1260,9 +1260,9 @@ async function startDesktop() {
 function writeBoot() {
   const oracleLines = [
     "YAOYOROZU-OS BIOS 1.0",
-    "mounting 縁fs (IndexedDB) ............... ok",
+    "mounting \u7e01fs (IndexedDB) ............... ok",
     "linking 47 prefecture kernels .......... ok",
-    "starting 注連縄 firewall ............... deny-by-default",
+    "starting \u6ce8\u9023\u7e04 firewall ............... deny-by-default",
     "worker clock ........................... attached",
     "logout syscall ......................... EPERM",
   ];
