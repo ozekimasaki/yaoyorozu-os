@@ -112,7 +112,7 @@ class Kernel extends EventTarget {
     const seed = hash32(`${this.state.ujiko}:${day}`);
     const rng = mulberry32(seed);
     const kamiPool = this.state.processes.filter((p) => p.kind !== "app");
-    const kami = pick(rng, kamiPool) || { name: "竈神", id: "kamado", note: "火のある家は、まだ国家である。" };
+    const kami = pick(rng, kamiPool) || { name: "竃神", id: "kamado", note: "火のある家は、まだ国家である。" };
     const pref = pick(rng, this.state.prefs) || prefs()[0];
     const article = 1 + ((rng() * 20) | 0);
     return {
@@ -252,7 +252,7 @@ class Kernel extends EventTarget {
     if (!(await this.vfs.getFile(initNote))) {
       await this.vfs.write(
         initNote,
-        "この匭の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
+        "この匣の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
         "text/plain"
       );
     }
