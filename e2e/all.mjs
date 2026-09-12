@@ -264,6 +264,27 @@ try {
   note(oshiN >= 1, `\u6642\u5831\u304a\u544a\u3052 ${oshiN}`);
   await h.closeWin("term");
 
+  await h.openTorii("\u5949\u7d0d", "term");
+  await h.openTorii("\u5f53\u76f4", "oncall");
+  await page.evaluate(() => document.querySelector(".window[data-app=oncall] .win-min")?.click());
+  await sleep(200);
+  await h.term("assoc");
+  await h.term("cat /proc/apps");
+  const lifeOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+  note(/\.txt\s+editor|text\/plain\s+editor/.test(lifeOut), `assoc \u8868 ${lifeOut.slice(-80)}`);
+  note(/sleeping\s+oncall/.test(lifeOut), `\u7a93\u4f11\u6b62 ${lifeOut.slice(-120)}`);
+  await h.term("open /etc/assoc");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=editor]")), "assoc \u3067\u8a00\u970a");
+  await h.closeWin("editor");
+  await h.term("open -a fs /etc");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=fs]")), "open -a fs");
+  await h.closeWin("fs");
+  await h.closeWin("term");
+  await page.evaluate(() => document.querySelector(".window[data-app=oncall] .win-close")?.click());
+  await sleep(200);
+
   await h.openTorii("1000\u65e5", "sim");
   note(!!(await h.vis("sim")), "1000\u65e5");
   const day0 = await page.evaluate(() => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || "");
