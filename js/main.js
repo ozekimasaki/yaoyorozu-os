@@ -35,3 +35,11 @@ register(cal);
 register(clip);
 register(sys);
 register(muen);
+
+function landColor(cpu) {
+  if (cpu >= 85) return "#4f7d61";
+  if (cpu >= 70) return "#3d5c4a";
+  if (cpu >= 50) return "#8a7328";
+  if (cpu >= 35) return "#8a4a1c";
+  return "#7a241c";
+}
