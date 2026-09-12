@@ -67,9 +67,17 @@ export function startField(canvas, kernel) {
       ctx.fill();
     }
   }
+  function deskBusy() {
+    return document.getElementById("desktop")?.classList.contains("is-app");
+  }
+
+  function shouldRun() {
+    return !document.hidden && !kernel.state.maLocked && !deskBusy();
+  }
+
   function tick(ts) {
     raf = 0;
-    if (document.hidden || kernel.state.maLocked) return;
+    if (!shouldRun()) return;
     if (ts && ts - lastTs < 40) {
       raf = requestAnimationFrame(tick);
       return;
@@ -89,10 +97,14 @@ export function startField(canvas, kernel) {
     if (!reduced) raf = requestAnimationFrame(tick);
   }
   function resume() {
-    if (!document.hidden && !kernel.state.maLocked && !raf) raf = requestAnimationFrame(tick);
+    if (shouldRun() && !raf) raf = requestAnimationFrame(tick);
   }
   document.addEventListener("visibilitychange", resume);
   kernel.addEventListener("ma", resume);
+  const desk = document.getElementById("desktop");
+  if (desk && typeof MutationObserver !== "undefined") {
+    new MutationObserver(resume).observe(desk, { attributes: true, attributeFilter: ["class"] });
+  }
   tick();
 
   function burst(kind = "hitodama", n = 12) {
