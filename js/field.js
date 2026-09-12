@@ -75,8 +75,12 @@ export function startField(canvas, kernel) {
     return document.documentElement.dataset.keshiki === "1";
   }
 
+  function kagiOn() {
+    return document.documentElement.dataset.kagi === "1";
+  }
+
   function shouldRun() {
-    return !document.hidden && !kernel.state.maLocked && !deskBusy() && !keshikiOn();
+    return !document.hidden && !kernel.state.maLocked && !deskBusy() && !keshikiOn() && !kagiOn();
   }
 
   function tick(ts) {
@@ -106,6 +110,7 @@ export function startField(canvas, kernel) {
   document.addEventListener("visibilitychange", resume);
   kernel.addEventListener("ma", resume);
   kernel.addEventListener("keshiki", resume);
+  kernel.addEventListener("kagi", resume);
   const desk = document.getElementById("desktop");
   if (desk && typeof MutationObserver !== "undefined") {
     new MutationObserver(resume).observe(desk, { attributes: true, attributeFilter: ["class"] });
