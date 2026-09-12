@@ -123,6 +123,9 @@ try {
     await h.openTorii("\u7e01fs", "fs");
     note(!!(await h.vis("fs")), "fs");
     await h.shot("fs");
+    await page.evaluate(() => document.querySelector(".window[data-app=fs] [data-mark='/konoyo']")?.click());
+    await sleep(280);
+    await h.shot("fs-konoyo");
     await h.openTorii("\u5949\u7d0d", "term");
     await h.term("ls /etc");
     await h.term("whoami");
