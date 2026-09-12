@@ -537,4 +537,4 @@ async function showFileStat(path) {
       if (node.type === "dir") {
         try {
           const u = await kernel.vfs.usage(path);
-          lines.push(`量  
+          lines.push(`量 
