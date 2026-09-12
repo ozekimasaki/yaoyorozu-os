@@ -5,7 +5,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node e2e/all.mjs",
-    "test:e2e": "node e2e/all.mjs"
+    "test:e2e": "node e2e/all.mjs",
+    "test:shots": "node e2e/tour.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.131.0"
