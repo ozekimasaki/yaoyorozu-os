@@ -19,6 +19,32 @@ export default {
     let cwd = startPath || "/";
     let selected = "";
     let lastSig = "";
+    let hist = [cwd];
+    let histI = 0;
+    let usedCache = { sig: "", text: "" };
+
+    function pushCwd(p) {
+      if (p === hist[histI]) return;
+      hist = hist.slice(0, histI + 1);
+      hist.push(p);
+      histI = hist.length - 1;
+    }
+
+    function back() {
+      if (histI <= 0) return;
+      histI -= 1;
+      cwd = hist[histI];
+      selected = "";
+      render();
+    }
+
+    function forward() {
+      if (histI >= hist.length - 1) return;
+      histI += 1;
+      cwd = hist[histI];
+      selected = "";
+      render();
+    }
 
     async function virtualListing(path) {
       if (path === "/proc/kami") {
@@ -49,6 +75,7 @@ export default {
       if (type === "dir" || p.split("/").filter(Boolean).length < 2 || VIRTUAL.has(p) || p.endsWith("/shrines")) {
         cwd = p;
         selected = "";
+        pushCwd(p);
         render();
         return;
       }
@@ -78,16 +105,22 @@ export default {
       }
       const parent = kernel.vfs.parentOf(cwd);
       const locked = isVirtual(cwd);
-      let used = "";
-      try {
-        const u = await kernel.vfs.usage(cwd);
-        used = ` · ${u.files}札 ${u.bytes}B`;
-      } catch (e) {
-        used = "";
+      const listSig = `${cwd}\n${err}\n${locked}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
+      if (listSig === lastSig && el.querySelector(".fs-tree")) {
+        el.querySelectorAll("[data-path]").forEach((b) => b.classList.toggle("is-on", b.dataset.path === selected));
+        return;
       }
-      const sig = `${cwd}\n${selected}\n${err}\n${locked}\n${used}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
-      if (sig === lastSig && el.querySelector(".fs-tree")) return;
-      lastSig = sig;
+      lastSig = listSig;
+      let used = usedCache.text;
+      if (usedCache.sig !== listSig) {
+        try {
+          const u = await kernel.vfs.usage(cwd);
+          used = ` · ${u.files}札 ${u.bytes}B`;
+        } catch (e) {
+          used = "";
+        }
+        usedCache = { sig: listSig, text: used };
+      }
       el.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
         <div class="fs-tree">
@@ -100,8 +133,10 @@ export default {
             .join("")}
         </div>
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
-          <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
-          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
+          <button class="btn" type="button" id="fs-back" ${histI <= 0 ? "disabled" : ""}>戻る</button>
+          <button class="btn" type="button" id="fs-fwd" ${histI >= hist.length - 1 ? "disabled" : ""}>進む</button>
+          <input class="search" id="fs-name" placeholder="匭の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
+          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匭を作る</button>
           <button class="btn" type="button" id="fs-new" ${locked ? "disabled" : ""}>札を作る</button>
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
@@ -124,6 +159,8 @@ export default {
         };
         btn.ondblclick = () => openPath(btn.dataset.path, btn.dataset.type);
       });
+      el.querySelector("#fs-back").onclick = () => back();
+      el.querySelector("#fs-fwd").onclick = () => forward();
       const nameEl = el.querySelector("#fs-name");
       el.querySelector("#fs-new").onclick = async () => {
         const name = (nameEl.value || `${Date.now()}.ofuda`).trim();
@@ -214,6 +251,17 @@ export default {
       };
     }
 
+    el.tabIndex = -1;
+    el.addEventListener("keydown", (e) => {
+      if (!e.altKey) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        back();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        forward();
+      }
+    });
     render();
     const on = () => render();
     kernel.addEventListener("vfs", on);
