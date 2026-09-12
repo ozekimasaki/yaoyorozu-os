@@ -499,3 +499,198 @@ function fmtWhen(ts) {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+function kindLabel(node, path) {
+  if (!node) return "無い";
+  if (node.type === "dir") return "匣";
+  if (node.type === "link") return "結び";
+  if ((path && path.endsWith(".gate")) || node.mime === "gate/app") return "鳥居";
+  return "札";
+}
+
+async function showFileStat(path) {
+  const box = document.getElementById("file-stat");
+  if (!box) return;
+  if (!path) {
+    box.hidden = true;
+    return;
+  }
+  if (!box.hidden && box.dataset.path === path) {
+    box.hidden = true;
+    return;
+  }
+  closeDeskPeek();
+  const title = document.getElementById("file-stat-path");
+  const body = document.getElementById("file-stat-body");
+  title.textContent = path;
+  box.dataset.path = path;
+  try {
+    const node = path === "/" ? { type: "dir", mime: "inode/directory", updated: 0 } : await kernel.vfs.getFile(path);
+    if (!node) {
+      body.textContent = "ENOENT";
+    } else {
+      const lines = [`種  ${kindLabel(node, path)}`, `型  ${node.mime || "—"}`];
+      if (node.type === "link") lines.push(`先  ${node.target || node.body || "—"}`);
+      if (node.type === "file" || node.type === "link") {
+        lines.push(`量  ${(node.body || "").length}B`);
+        lines.push(`行  ${node.exec ? "くぐれる" : "読む"}`);
+      }
+      if (node.type === "dir") {
+        try {
+          const u = await kernel.vfs.usage(path);
+          lines.push(`量  匣${u.dirs} · 札${u.files} · ${u.bytes}B`);
+        } catch (err) {
+          lines.push("量  —");
+        }
+      }
+      if (node.origin) lines.push(`元  ${node.origin}`);
+      lines.push(`時  ${fmtWhen(node.updated)}`);
+      const text = lines.join("\n");
+      if (body.textContent !== text) body.textContent = text;
+    }
+  } catch (err) {
+    body.textContent = err.message;
+  }
+  box.hidden = false;
+}
+
+function closeFileStat() {
+  const box = document.getElementById("file-stat");
+  if (box) {
+    box.hidden = true;
+    box.dataset.path = "";
+  }
+}
+
+function closeRecent() {
+  const box = document.getElementById("recent-list");
+  if (box) box.hidden = true;
+}
+
+function copyPathNow(path) {
+  const p = path || lastDeskPick || selectedDeskPaths()[0];
+  if (!p) return;
+  kernel.clipPush(p);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(p).catch(() => {});
+  }
+  kernel.log(`道を写した ${p}`, "desk");
+}
+
+function openPickedBox() {
+  const path = lastDeskPick || selectedDeskPaths()[0];
+  const dest = path ? kernel.vfs.parentOf(path) : `/home/${kernel.state.ujiko}/desktop`;
+  launch("fs", { path: dest || "/" });
+}
+
+async function renamePicked() {
+  const path = lastDeskPick || selectedDeskPaths()[0];
+  if (!path) return;
+  const cur = kernel.vfs.nameOf(path);
+  const name = window.prompt("新しい名", cur);
+  if (!name || name === cur) return;
+  const dest = kernel.vfs.normalize(`${kernel.vfs.parentOf(path)}/${name}`);
+  try {
+    await kernel.vfs.rename(path, dest);
+    lastDeskPick = dest;
+    deskSelected = new Set([dest]);
+    kernel.noteRecent(dest);
+    kernel.emit("vfs");
+  } catch (err) {
+    kernel.log(`rename: ${err.message}`, "fs");
+  }
+}
+
+function focusedWin() {
+  const wm = getWm();
+  if (!wm) return null;
+  return (
+    wm.list().find((w) => w.el.classList.contains("focused") && !w.minimized && !w.el.classList.contains("is-away")) ||
+    null
+  );
+}
+
+async function maybeOpenInitGates() {
+  if (sessionStorage.getItem("y8-init-opened")) return;
+  const wm = getWm();
+  if (wm && wm.list().length) return;
+  let rows = [];
+  try {
+    rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/.init`);
+  } catch (err) {
+    return;
+  }
+  const gates = rows.filter((e) => (e.name || "").endsWith(".gate")).slice(0, 4);
+  if (!gates.length) return;
+  sessionStorage.setItem("y8-init-opened", "1");
+  for (const g of gates) await openPath(g.path);
+}
+
+let lastUsageText = "";
+let usageTimer = 0;
+
+function scheduleUsage() {
+  if (usageTimer) return;
+  usageTimer = setTimeout(() => {
+    usageTimer = 0;
+    paintUsage();
+  }, 280);
+}
+
+async function paintUsage() {
+  const pill = document.getElementById("disk-pill");
+  if (!pill) return;
+  try {
+    const u = await kernel.vfs.usage(`/home/${kernel.state.ujiko}`);
+    const text = `器: ${u.files}札`;
+    if (text === lastUsageText) return;
+    lastUsageText = text;
+    pill.textContent = text;
+  } catch (err) {
+    if (lastUsageText) return;
+    lastUsageText = "器: —";
+    pill.textContent = lastUsageText;
+  }
+}
+
+let lastNetText = "";
+
+function paintNet() {
+  const pill = document.getElementById("net-pill");
+  if (!pill) return;
+  const socks = kernel.state.sockets || [];
+  let n = 0;
+  for (const s of socks) if (s.state === "ESTAB") n += 1;
+  const text = `縁: ${n}`;
+  if (text === lastNetText) return;
+  lastNetText = text;
+  pill.textContent = text;
+}
+
+let lastClock = "";
+
+function clock() {
+  const el = document.getElementById("clock");
+  const now = new Date();
+  const pref = kernel.spacePref();
+  const key = `${now.getFullYear()}.${now.getMonth()}.${now.getDate()}.${now.getHours()}.${now.getMinutes()}.${pref.season}`;
+  if (key === lastClock) return;
+  lastClock = key;
+  const w = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
+  el.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}（${w}） ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}  ${pref.season}`;
+}
+
+function fillNorito() {
+  const veil = document.getElementById("norito-veil");
+  if (!veil) return;
+  const lines = [
+    "高天原に神留り坐す",
+    "祓い給え清めたまえ",
+    "この端末は器である",
+    "柏手は、認証である",
+    "神はマイクロサービスである",
+    "ログアウトは遷宮まで無効",
+  ];
+  veil.textContent = Array.from({ length: 20 }, (_, i) => lines[i % lines.length]).join("　");
+}
+
+let started = false;
