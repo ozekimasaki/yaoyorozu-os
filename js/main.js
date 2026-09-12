@@ -967,4 +967,66 @@ async function startDesktop() {
       const w = focusedWin();
       const wm = getWm();
       if (w && wm && wm.center) wm.center(w.pid);
-      ret
+      return;
+    }
+    if (e.key === "." || e.key === "。") {
+      e.preventDefault();
+      const wm = getWm();
+      if (wm) wm.tile();
+    }
+    if ((e.ctrlKey || e.metaKey) && !overlaysOpen()) {
+      const deskKeys = onDesktopKeys();
+      if ((e.key === "a" || e.key === "A") && deskKeys) {
+        e.preventDefault();
+        selectAllDesk();
+        return;
+      }
+      if ((e.key === "c" || e.key === "C") && (deskKeys || deskSelected.size || lastDeskPick)) {
+        e.preventDefault();
+        copyDesk(false);
+        return;
+      }
+      if ((e.key === "x" || e.key === "X") && (deskKeys || deskSelected.size || lastDeskPick)) {
+        e.preventDefault();
+        copyDesk(true);
+        return;
+      }
+      if ((e.key === "v" || e.key === "V") && (deskKeys || deskClipboard.paths.length)) {
+        e.preventDefault();
+        pasteDesk();
+        return;
+      }
+      if ((e.key === "d" || e.key === "D") && (deskKeys || deskSelected.size || lastDeskPick)) {
+        e.preventDefault();
+        duplicateDesk();
+        return;
+      }
+      if ((e.key === "i" || e.key === "I") && deskKeys) {
+        e.preventDefault();
+        showFileStat(lastDeskPick || selectedDeskPaths()[0]);
+        return;
+      }
+      if (e.shiftKey && (e.key === "c" || e.key === "C") && (deskKeys || lastDeskPick || deskSelected.size)) {
+        e.preventDefault();
+        copyPathNow();
+        return;
+      }
+    }
+    const deskIconOn = document.activeElement && document.activeElement.classList.contains("desk-icon");
+    if (
+      e.shiftKey &&
+      (e.key === "ArrowLeft" || e.key === "ArrowRight") &&
+      !overlaysOpen() &&
+      !deskIconOn
+    ) {
+      const w = focusedWin();
+      if (w) {
+        e.preventDefault();
+        getWm().snapEdge(w.pid, e.key === "ArrowLeft" ? "left" : "right");
+        return;
+      }
+    }
+    if (!overlaysOpen() && onDesktopKeys()) {
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        moveDeskPick(-1, e.shift
