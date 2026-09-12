@@ -13,24 +13,70 @@ export default {
   spawn({ kernel }) {
     const el = document.createElement("div");
     const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const first = new Date(y, m, 1);
-    const start = first.getDay();
-    const days = new Date(y, m + 1, 0).getDate();
-    const sekki = SEKKI[m * 2 + (now.getDate() > 15 ? 1 : 0)];
-    const cells = [];
-    for (let i = 0; i < start; i += 1) cells.push("<i></i>");
-    for (let d = 1; d <= days; d += 1) {
-      const on = d === now.getDate() ? " is-today" : "";
-      cells.push(`<b class="${on}">${d}</b>`);
+    let viewY = now.getFullYear();
+    let viewM = now.getMonth();
+    let lastSig = "";
+
+    function shift(delta) {
+      viewM += delta;
+      if (viewM < 0) {
+        viewM = 11;
+        viewY -= 1;
+      } else if (viewM > 11) {
+        viewM = 0;
+        viewY += 1;
+      }
+      render();
     }
-    el.innerHTML = `
-      <p class="lede">${y} / ${m + 1}</p>
-      <p class="muted">季節は法律に優先する。いまは ${kernel.spacePref().season} · ${sekki}。当直県 ${kernel.state.oncall.pref.name}。</p>
-      <div class="cal-grid">${["日", "月", "火", "水", "木", "金", "土"].map((w) => `<em>${w}</em>`).join("")}${cells.join("")}</div>
-      <p class="muted">祭日はカーネルの合意枠。緊急でない意思決定は、桜と雪のあいだ遅延してよい。</p>
-    `;
-    return { el, title: "matsuri.cal" };
+
+    function today() {
+      const t = new Date();
+      viewY = t.getFullYear();
+      viewM = t.getMonth();
+      render();
+    }
+
+    function render() {
+      const t = new Date();
+      const mark = viewY === t.getFullYear() && viewM === t.getMonth() ? t.getDate() : 0;
+      const season = kernel.spacePref().season;
+      const sig = `${viewY}|${viewM}|${mark}|${season}|${kernel.state.oncall.pref.name}`;
+      if (sig === lastSig && el.querySelector(".cal-grid")) return;
+      lastSig = sig;
+      const first = new Date(viewY, viewM, 1);
+      const start = first.getDay();
+      const days = new Date(viewY, viewM + 1, 0).getDate();
+      const sekki = SEKKI[viewM * 2 + ((mark || 1) > 15 ? 1 : 0)];
+      const cells = [];
+      for (let i = 0; i < start; i += 1) cells.push("<i></i>");
+      for (let d = 1; d <= days; d += 1) {
+        cells.push(`<b class="${d === mark ? " is-today" : ""}">${d}</b>`);
+      }
+      el.innerHTML = `
+        <p class="lede">${viewY} / ${viewM + 1}</p>
+        <p class="muted">季節は法律に優先する。いまは ${season} · ${sekki}。当直県 ${kernel.state.oncall.pref.name}。</p>
+        <div class="boot-actions" style="margin:8px 0;justify-content:flex-start">
+          <button class="btn" type="button" id="cal-prev">前の月</button>
+          <button class="btn" type="button" id="cal-today">今日</button>
+          <button class="btn" type="button" id="cal-next">次の月</button>
+        </div>
+        <div class="cal-grid">${["日", "月", "火", "水", "木", "金", "土"].map((w) => `<em>${w}</em>`).join("")}${cells.join("")}</div>
+        <p class="muted">祭日はカーネルの合意枠。緊急でない意思決定は、桜と雪のあいだ遅延してよい。</p>
+      `;
+      el.querySelector("#cal-prev").onclick = () => shift(-1);
+      el.querySelector("#cal-today").onclick = () => today();
+      el.querySelector("#cal-next").onclick = () => shift(1);
+    }
+
+    render();
+    const on = () => render();
+    kernel.addEventListener("space", on);
+    return {
+      el,
+      title: "matsuri.cal",
+      onClose() {
+        kernel.removeEventListener("space", on);
+      },
+    };
   },
 };

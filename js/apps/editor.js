@@ -75,9 +75,11 @@ export default {
         <textarea class="editor" spellcheck="false"></textarea>
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn primary" type="button" id="save">書く</button>
-          <button class="btn" type="button" id="ed-box">匣を開く</button>
+          <button class="btn" type="button" id="ed-box">匡を開く</button>
           <input class="search" id="ed-find" placeholder="札の中を探る" style="margin:0;max-width:200px" />
           <button class="btn" type="button" id="ed-find-go">探る</button>
+          <input class="search" id="ed-line" placeholder="行" inputmode="numeric" style="margin:0;max-width:72px" />
+          <button class="btn" type="button" id="ed-goto">行へ</button>
         </div>
       `;
       const ta = el.querySelector(".editor");
@@ -89,6 +91,20 @@ export default {
         clearTimeout(autosaveT);
         if (!readonly) autosaveT = setTimeout(() => persist(true).catch(() => {}), 1800);
       });
+      function gotoLine() {
+        const n = Number((el.querySelector("#ed-line").value || "").trim());
+        if (!n || n < 1) {
+          el.querySelector("#ed-line").focus();
+          return;
+        }
+        const lines = body.split("\n");
+        const idx = Math.min(n, lines.length) - 1;
+        let pos = 0;
+        for (let i = 0; i < idx; i += 1) pos += lines[i].length + 1;
+        const end = pos + (lines[idx] || "").length;
+        ta.focus();
+        ta.setSelectionRange(pos, end);
+      }
       function findNext() {
         const q = el.querySelector("#ed-find").value;
         if (!q) return;
@@ -111,8 +127,19 @@ export default {
           e.preventDefault();
           findNext();
         }
+        if ((e.ctrlKey || e.metaKey) && (e.key === "g" || e.key === "G")) {
+          e.preventDefault();
+          gotoLine();
+        }
       });
       el.querySelector("#ed-find-go").onclick = () => findNext();
+      el.querySelector("#ed-goto").onclick = () => gotoLine();
+      el.querySelector("#ed-line").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          gotoLine();
+        }
+      });
       el.querySelector("#ed-find").addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === "F3") {
           e.preventDefault();

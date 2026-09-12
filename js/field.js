@@ -57,10 +57,24 @@ export function startField(canvas, kernel) {
   }
 
   let raf = 0;
-  function tick() {
+  let lastTs = 0;
+  function draw(now) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      ctx.beginPath();
+      ctx.fillStyle = color(p);
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  function tick(ts) {
     raf = 0;
     if (document.hidden || kernel.state.maLocked) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (ts && ts - lastTs < 40) {
+      raf = requestAnimationFrame(tick);
+      return;
+    }
+    lastTs = ts || 0;
     const now = Date.now();
     for (const p of particles) {
       p.x += p.vx;
@@ -70,12 +84,9 @@ export function startField(canvas, kernel) {
       if (p.x > canvas.width) p.x = 0;
       if (p.y < 0) p.y = canvas.height;
       if (p.y > canvas.height) p.y = 0;
-      ctx.beginPath();
-      ctx.fillStyle = color(p);
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fill();
     }
-    raf = requestAnimationFrame(tick);
+    draw(now);
+    if (!reduced) raf = requestAnimationFrame(tick);
   }
   function resume() {
     if (!document.hidden && !kernel.state.maLocked && !raf) raf = requestAnimationFrame(tick);

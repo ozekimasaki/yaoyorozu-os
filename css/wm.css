@@ -28,6 +28,10 @@
   box-shadow: none;
 }
 
+.window.is-fore {
+  outline: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
+}
+
 .window.is-shade {
   min-height: 36px;
 }
