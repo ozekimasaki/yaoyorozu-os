@@ -620,6 +620,19 @@
   color: var(--washi);
 }
 
+.cal-grid b.is-on {
+  border-color: var(--gold);
+  color: var(--gold-2);
+}
+
+.cal-grid b.is-today.is-on {
+  color: var(--washi);
+}
+
+.cal-grid b.is-note {
+  box-shadow: inset 0 -2px 0 var(--gold);
+}
+
 .taskbar {
   justify-content: flex-start;
 }
