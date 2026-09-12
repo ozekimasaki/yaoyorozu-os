@@ -218,6 +218,13 @@
   font-size: 12px;
   line-height: 1.7;
   resize: vertical;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.editor.is-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .warn {
