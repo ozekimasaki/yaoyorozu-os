@@ -8,6 +8,7 @@ const HAND_LABEL = {
   cal: "\u796d\u66a6",
   muen: "\u7121\u7e01",
   oncall: "\u5f53\u76f4",
+  oto: "\u97f3\u970a",
 };
 
 export function isPhone() {
@@ -33,7 +34,10 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
   const shade = document.getElementById("phone-shade");
   const shadeOshi = document.getElementById("phone-shade-oshi");
   const shadeJournal = document.getElementById("phone-shade-journal");
+  const shadeOto = document.getElementById("phone-shade-oto");
+  const shadeOtoKick = document.getElementById("phone-shade-oto-kicker");
   const shadeHit = document.getElementById("phone-shade-hit");
+  const nowBar = document.getElementById("phone-now");
   let splitPick = 0;
   const actions = document.getElementById("phone-actions");
   const actionsTrack = document.getElementById("phone-actions-track");
@@ -66,6 +70,56 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
       btn.classList.toggle("is-on", front ? front.appId === id : id === "home");
     });
     document.getElementById("desktop")?.classList.toggle("is-app", !!front);
+    paintOto();
+  }
+
+  function otoNow() {
+    return (kernel.state && kernel.state.oto) || { title: "", state: "still", pid: 0 };
+  }
+
+  function paintOto() {
+    const now = otoNow();
+    const ringing = now.state === "live" || now.state === "ma";
+    const pill = document.getElementById("oto-pill");
+    if (pill) {
+      pill.hidden = !ringing;
+      pill.classList.toggle("is-live", now.state === "live");
+      pill.textContent = ringing ? `${now.state === "ma" ? "\u9593" : "\u9cf4\u308b"}  ${now.title}` : "\u97f3\u970a";
+    }
+    const front = frontApp();
+    const showBar = ringing && !(front && front.appId === "oto");
+    if (nowBar) {
+      nowBar.hidden = !showBar;
+      nowBar.dataset.state = now.state || "still";
+      const title = document.getElementById("phone-now-open");
+      if (title) title.textContent = now.title || "\u97f3\u970a";
+      const tog = document.getElementById("phone-now-toggle");
+      if (tog) tog.textContent = now.state === "live" ? "\u9593" : "\u62db\u304f";
+    }
+    if (shadeOtoKick) shadeOtoKick.hidden = !ringing;
+    if (shadeOto) {
+      shadeOto.hidden = !ringing;
+      const t = document.getElementById("phone-shade-oto-title");
+      if (t) t.textContent = ringing ? `${now.state === "ma" ? "\u9593" : "\u9cf4\u308b"}  ${now.title}` : "";
+      shadeOto.querySelectorAll("[data-oto=toggle]").forEach((b) => {
+        b.textContent = now.state === "live" ? "\u9593" : "\u62db\u304f";
+      });
+    }
+  }
+
+  function openNow() {
+    const now = otoNow();
+    closeSheets();
+    if (wm && now.pid) {
+      const w = wm.list().find((x) => x.pid === now.pid);
+      if (w) {
+        wm.restore(w.pid);
+        wm.focus(w.pid);
+        paintDock();
+        return w;
+      }
+    }
+    return resumeOrLaunch("oto");
   }
 
   function paintSpace() {
@@ -209,6 +263,7 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
     const silentBtn = shade.querySelector("[data-shade=silent]");
     if (silentBtn) silentBtn.classList.toggle("is-on", !!(kernel.state.settings && kernel.state.settings.silent));
     paintShadeJournal();
+    paintOto();
     shade.hidden = false;
     kernel.readOshi();
     paintShadeHit();
@@ -241,6 +296,7 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
     mk("\u7121\u7e01\u3078", { act: "muen", path });
     mk(`${HAND_LABEL.clip}\u3078\u6e21\u3059`, { share: "clip", path });
     mk(`${HAND_LABEL.term}\u3078\u6e21\u3059`, { share: "term", path });
+    mk(`${HAND_LABEL.oto}\u3078\u6e21\u3059`, { share: "oto", path });
     actions.hidden = false;
   }
 
@@ -377,6 +433,26 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
     });
   }
 
+  function bindOtoCmd(host) {
+    if (!host) return;
+    host.addEventListener("click", (e) => {
+      const open = e.target.closest("#phone-now-open, #oto-pill");
+      if (open) {
+        e.stopPropagation();
+        openNow();
+        return;
+      }
+      const btn = e.target.closest("[data-oto]");
+      if (!btn) return;
+      e.stopPropagation();
+      kernel.otoCmd(btn.dataset.oto);
+    });
+  }
+
+  bindOtoCmd(nowBar);
+  bindOtoCmd(shadeOto);
+  bindOtoCmd(document.getElementById("oto-pill"));
+
   if (shadeHit) {
     shadeHit.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -464,6 +540,7 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
 
   paintSpace();
   paintShadeHit();
+  paintOto();
   kernel.addEventListener("ps", paintDock);
   kernel.addEventListener("oshi", () => {
     paintShadeHit();
@@ -473,6 +550,7 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
   kernel.addEventListener("journal", () => {
     if (shade && !shade.hidden) paintShadeJournal();
   });
+  kernel.addEventListener("oto", paintOto);
   kernel.addEventListener("space", () => {
     paintDock();
     paintSpace();
