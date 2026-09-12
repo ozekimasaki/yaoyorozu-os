@@ -143,7 +143,7 @@ export function attachPage(page, { fails, note, shots } = {}) {
       await page.waitForSelector(`.window[data-app="${appId}"]`, { timeout: ms });
       return true;
     } catch (err) {
-      note(false, `\\u7a93 ${appId} \\u304c\\u958b\\u304b\\u306a\\u3044`);
+      note(false, `\u7a93 ${appId} \u304c\u958b\u304b\u306a\u3044`);
       return false;
     }
   }
@@ -171,7 +171,7 @@ export function attachPage(page, { fails, note, shots } = {}) {
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
       return true;
     }, cmd);
-    note(ok, `\\u5949\\u7d0d ${cmd}`);
+    note(ok, `\u5949\u7d0d ${cmd}`);
     await sleep(320);
   }
 
