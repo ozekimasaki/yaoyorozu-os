@@ -41,6 +41,30 @@
   display: none;
 }
 
+#window-layer.is-expose .window,
+#desktop.is-expose #window-layer .window {
+  min-width: 160px;
+  min-height: 110px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  outline: 1px solid color-mix(in srgb, var(--gold) 38%, transparent);
+  transition: left 0.16s ease, top 0.16s ease, width 0.16s ease, height 0.16s ease, outline-color 0.12s ease;
+}
+
+#window-layer.is-expose .win-btns,
+#desktop.is-expose #window-layer .win-btns {
+  pointer-events: none;
+}
+
+#window-layer.is-expose .window:hover,
+#desktop.is-expose #window-layer .window:hover {
+  outline-color: var(--gold);
+}
+
+#window-layer.is-expose .window .rz,
+#desktop.is-expose #window-layer .window .rz {
+  pointer-events: none;
+}
+
 .rz {
   position: absolute;
   z-index: 3;
