@@ -16,6 +16,7 @@ export default {
     let readonly = false;
     let bound = false;
     let wrap = false;
+    let wrapHeld = false;
 
     function leafName() {
       return current.split("/").pop() || "言霊";
@@ -165,6 +166,7 @@ export default {
         launch("fs", { path: kernel.vfs.parentOf(current) });
       };
       el.querySelector("#ed-wrap").onclick = () => {
+        wrapHeld = true;
         wrap = !wrap;
         kernel.vfs.metaSet("editorWrap", wrap);
         syncChrome();
@@ -250,6 +252,7 @@ export default {
     kernel.vfs
       .metaGet("editorWrap")
       .then((v) => {
+        if (wrapHeld) return;
         wrap = !!v;
         syncChrome();
       })
