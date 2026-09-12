@@ -81,6 +81,11 @@
   filter: drop-shadow(0 0 1.4px rgba(232, 213, 163, 0.85));
 }
 
+.japan-map .pref.is-view:not(.is-selected) {
+  stroke: var(--gold-2);
+  stroke-width: 1.4;
+}
+
 .map-legend {
   position: absolute;
   left: 12px;
