@@ -151,6 +151,10 @@
   font-weight: 500;
 }
 
+.os-table tr.is-on td {
+  background: color-mix(in srgb, var(--gold-2) 12%, transparent);
+}
+
 .row-actions {
   display: flex;
   gap: 6px;
