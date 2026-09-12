@@ -281,9 +281,44 @@ try {
   await sleep(400);
   note(!!(await page.$(".window[data-app=fs]")), "open -a fs");
   await h.closeWin("fs");
+  await h.term("journal");
+  await h.term("cat /proc/journal");
+  const journalOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+  note(/boot|exec/.test(journalOut), `\u65e5\u8a8c ${journalOut.slice(-80)}`);
+  await h.term("share -a clip /etc/assoc");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=clip]")), "share clip");
+  await h.closeWin("clip");
   await h.closeWin("term");
   await page.evaluate(() => document.querySelector(".window[data-app=oncall] .win-close")?.click());
   await sleep(200);
+
+  const menu = await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    const icon = document.querySelector(".desk-icon[data-path]");
+    if (!icon) return false;
+    const r = icon.getBoundingClientRect();
+    icon.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: r.left + 10,
+        clientY: r.top + 10,
+      })
+    );
+    return true;
+  });
+  note(menu, "\u5353\u30e1\u30cb\u30e5\u30fc");
+  await sleep(180);
+  note(await page.$eval("#desk-icon-menu", (el) => !el.hidden).catch(() => false), "\u672d\u30e1\u30cb\u30e5\u30fc");
+  await page.click("#desk-icon-menu [data-act=with]");
+  await sleep(220);
+  note(await page.$eval("#os-sheet", (el) => !el.hidden).catch(() => false), "\u958b\u304f\u30b7\u30fc\u30c8");
+  note(!!(await page.$("#os-sheet [data-with=editor]")), "\u30b7\u30fc\u30c8\u8a00\u970a");
+  await page.click("#os-sheet [data-with=editor]");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=editor]")), "\u30b7\u30fc\u30c8\u3067\u8a00\u970a");
+  await h.closeWin("editor");
 
   await h.openTorii("1000\u65e5", "sim");
   note(!!(await h.vis("sim")), "1000\u65e5");
