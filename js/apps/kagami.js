@@ -65,6 +65,7 @@ export default {
               <button class="btn" type="button" id="kagami-prev">\u524d</button>
               <button class="btn" type="button" id="kagami-next">\u6b21</button>
               <button class="btn" type="button" id="kagami-box">\u5323\u3078</button>
+              <button class="btn" type="button" id="kagami-desk">\u5353\u3078</button>
             </div>
             <div class="kagami-stage">
               <img id="kagami-img" alt="\u5199\u3057" hidden />
@@ -168,6 +169,10 @@ export default {
       el.querySelector("#kagami-box").onclick = () => {
         const dest = cur ? cur.replace(/\/[^/]+$/, "") || "/var/utsushi" : "/var/utsushi";
         if (launch) launch("fs", { path: dest });
+      };
+      el.querySelector("#kagami-desk").onclick = () => {
+        if (!cur || !kernel.keshiki || !kernel.keshiki.set) return;
+        kernel.keshiki.set(cur).catch((err) => kernel.log(`keshiki: ${err.message}`, "keshiki"));
       };
       el.querySelector("#kagami-list").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-path]");
