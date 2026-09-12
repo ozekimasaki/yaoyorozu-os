@@ -19,6 +19,7 @@ import { bindTorii } from "./apps/torii.js";
 import { bindKashiwa } from "./kashiwa.js";
 import { startField } from "./field.js";
 import { startIrq } from "./irq.js";
+import { peekPath as peekPathIo, showFileStat as showStatIo, copyPathNow as copyPathIo, closeEl } from "./desk-io.js";
 
 register(oncall);
 register(map);
@@ -321,7 +322,7 @@ async function pasteDesk() {
           await kernel.vfs.rename(src, dest);
         } catch (err) {
           if (err.message === "EXDEV" || err.message === "EISDIR") {
-            kernel.log("匠の切りは写して残す", "desk");
+            kernel.log("匭の切りは写して残す", "desk");
             await copyTree(src, dest);
           } else {
             await copyTree(src, dest);
@@ -419,7 +420,7 @@ async function newDeskOfuda() {
 }
 
 async function newDeskBox() {
-  const path = `/home/${kernel.state.ujiko}/desktop/匠-${Date.now()}`;
+  const path = `/home/${kernel.state.ujiko}/desktop/匭-${Date.now()}`;
   await kernel.vfs.mkdir(path);
   lastDeskPick = path;
   kernel.emit("vfs");
@@ -445,39 +446,8 @@ function typeDeskJump(ch) {
   hit.focus();
 }
 
-async function peekPath(path) {
-  const box = document.getElementById("desk-peek");
-  if (!box) return;
-  if (!path) {
-    box.hidden = true;
-    return;
-  }
-  if (!box.hidden && box.dataset.path === path) {
-    box.hidden = true;
-    return;
-  }
-  const title = document.getElementById("desk-peek-path");
-  const body = document.getElementById("desk-peek-body");
-  title.textContent = path;
-  box.dataset.path = path;
-  try {
-    const node = path === "/" ? { type: "dir" } : await kernel.vfs.getFile(path);
-    if (!node) {
-      body.textContent = "ENOENT";
-    } else if (node.type === "dir") {
-      const kids = await kernel.vfs.ls(path);
-      body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匠）";
-    } else if (node.type === "link") {
-      body.textContent = `↦ ${node.target || node.body || ""}`;
-    } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
-      body.textContent = `くぐると起動: ${String(node.body).trim()}`;
-    } else {
-      body.textContent = String(node.body || "").split("\n").slice(0, 24).join("\n") || "（空の札）";
-    }
-  } catch (err) {
-    body.textContent = err.message;
-  }
-  box.hidden = false;
+function peekPath(path) {
+  return peekPathIo(kernel, path);
 }
 
 async function peekDesk() {
@@ -485,80 +455,15 @@ async function peekDesk() {
 }
 
 function closeDeskPeek() {
-  const box = document.getElementById("desk-peek");
-  if (box) {
-    box.hidden = true;
-    box.dataset.path = "";
-  }
+  closeEl("desk-peek");
 }
 
-function fmtWhen(ts) {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-function kindLabel(node, path) {
-  if (!node) return "無い";
-  if (node.type === "dir") return "匠";
-  if (node.type === "link") return "結び";
-  if ((path && path.endsWith(".gate")) || node.mime === "gate/app") return "鳥居";
-  return "札";
-}
-
-async function showFileStat(path) {
-  const box = document.getElementById("file-stat");
-  if (!box) return;
-  if (!path) {
-    box.hidden = true;
-    return;
-  }
-  if (!box.hidden && box.dataset.path === path) {
-    box.hidden = true;
-    return;
-  }
-  closeDeskPeek();
-  const title = document.getElementById("file-stat-path");
-  const body = document.getElementById("file-stat-body");
-  title.textContent = path;
-  box.dataset.path = path;
-  try {
-    const node = path === "/" ? { type: "dir", mime: "inode/directory", updated: 0 } : await kernel.vfs.getFile(path);
-    if (!node) {
-      body.textContent = "ENOENT";
-    } else {
-      const lines = [`種  ${kindLabel(node, path)}`, `型  ${node.mime || "—"}`];
-      if (node.type === "link") lines.push(`先  ${node.target || node.body || "—"}`);
-      if (node.type === "file" || node.type === "link") {
-        lines.push(`量  ${(node.body || "").length}B`);
-        lines.push(`行  ${node.exec ? "くぐれる" : "読む"}`);
-      }
-      if (node.type === "dir") {
-        try {
-          const u = await kernel.vfs.usage(path);
-          lines.push(`量  匠${u.dirs} · 札${u.files} · ${u.bytes}B`);
-        } catch (err) {
-          lines.push("量  —");
-        }
-      }
-      if (node.origin) lines.push(`元  ${node.origin}`);
-      lines.push(`時  ${fmtWhen(node.updated)}`);
-      const text = lines.join("\n");
-      if (body.textContent !== text) body.textContent = text;
-    }
-  } catch (err) {
-    body.textContent = err.message;
-  }
-  box.hidden = false;
+function showFileStat(path) {
+  return showStatIo(kernel, path);
 }
 
 function closeFileStat() {
-  const box = document.getElementById("file-stat");
-  if (box) {
-    box.hidden = true;
-    box.dataset.path = "";
-  }
+  closeEl("file-stat");
 }
 
 function closeRecent() {
@@ -567,13 +472,7 @@ function closeRecent() {
 }
 
 function copyPathNow(path) {
-  const p = path || lastDeskPick || selectedDeskPaths()[0];
-  if (!p) return;
-  kernel.clipPush(p);
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(p).catch(() => {});
-  }
-  kernel.log(`道を写した ${p}`, "desk");
+  copyPathIo(kernel, path || lastDeskPick || selectedDeskPaths()[0]);
 }
 
 function openPickedBox() {
@@ -684,7 +583,7 @@ function fillNorito() {
   if (!veil) return;
   const lines = [
     "高天原に神留り坐す",
-    "神祿い給え清めたまえ",
+    "神標給え清めたまえ",
     "この端末は器である",
     "柏手は、認証である",
     "神はマイクロサービスである",
