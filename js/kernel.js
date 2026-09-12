@@ -2,6 +2,7 @@ import { bits16, hash32, hexFromHash, jstDateKey, mulberry32, pick } from "./rng
 import { createBus, tabId } from "./bus.js";
 import { createVfs } from "./vfs.js";
 import { attachCron } from "./cron.js";
+import { attachKonoyo } from "./konoyo.js";
 import { assocText, defaultAssoc, parseAssoc, resolveOpen } from "./intent.js";
 
 const KAMI_TEMPLATES = [
@@ -184,9 +185,12 @@ class Kernel extends EventTarget {
       "/var/dmesg",
       "/var/muen",
       "/mnt",
+      "/konoyo",
       home,
       `${home}/desktop`,
       `${home}/hounou`,
+      `${home}/oto`,
+      "/etc/oto",
     ];
     for (const d of dirs) await this.vfs.mkdir(d);
     for (const p of this.state.prefs) {
@@ -232,6 +236,32 @@ class Kernel extends EventTarget {
     if (!(await this.vfs.getFile("/etc/assoc"))) {
       await this.vfs.write("/etc/assoc", assocText(defaultAssoc()), "text/plain");
     }
+    const otoScores = [
+      [
+        "柏手.oto",
+        "# 音霊\ntitle 柏手\nbpm 88\nwave triangle\nroot 220\nsteps 0 0 7 0\ndecay 0.45\nnoise 0.12\nbell 0\ndrone 0\nclap 2\n",
+      ],
+      [
+        "間.oto",
+        "# 音霊\ntitle 間\nbpm 36\nwave sine\nroot 98\nsteps 0 7\ndecay 3.4\nnoise 0.01\nbell 1\ndrone 0.14\nclap 0\n",
+      ],
+      [
+        "雨宿り.oto",
+        "# 音霊\ntitle 雨宿り\nbpm 58\nwave sine\nroot 147\nsteps 0 2 3 7 3 2\ndecay 2.4\nnoise 0.16\nbell 0\ndrone 0.06\nclap 0\n",
+      ],
+      [
+        "深夜ラジオ.oto",
+        "# 音霊\ntitle 深夜ラジオ\nbpm 64\nwave triangle\nroot 174\nsteps 0 5 7 10 7 5 3 0\ndecay 1.8\nnoise 0.05\nbell 1\ndrone 0.18\nclap 0\n",
+      ],
+      [
+        "竈.oto",
+        "# 音霊\ntitle 竈\nbpm 48\nwave triangle\nroot 123\nsteps 0 3 5 7 5 3\ndecay 2.6\nnoise 0.02\nbell 1\ndrone 0.12\nclap 0\n",
+      ],
+    ];
+    for (const [name, body] of otoScores) {
+      const path = `/etc/oto/${name}`;
+      if (!(await this.vfs.getFile(path))) await this.vfs.write(path, body, "text/oto");
+    }
 
     const desk = `${home}/desktop`;
     const gates = [
@@ -243,6 +273,8 @@ class Kernel extends EventTarget {
       ["祭暦.gate", "cal"],
       ["機械.gate", "sys"],
       ["無縁.gate", "muen"],
+      ["音霊.gate", "oto"],
+      ["此岸.gate", "/konoyo"],
     ];
     for (const [name, app] of gates) {
       const path = `${desk}/${name}`;
@@ -258,6 +290,13 @@ class Kernel extends EventTarget {
       await this.vfs.write(
         initNote,
         "この匣の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
+        "text/plain"
+      );
+    }
+    if (!(await this.vfs.getFile("/konoyo/結び.txt"))) {
+      await this.vfs.write(
+        "/konoyo/結び.txt",
+        "此岸は、この機械の匣を縁fsへ結ぶ岸である。\n縁fs（彼岸）はブラウザの記憶。此岸は宜PCの匣。\n\n縁fsで「此岸を結ぶ」か、奉納で konoyo bind。\n許可が眠ったら「起こす」。解くと縁は切れる。\n受けるは現世の札を縁fsへ。出すは縁fsの札を現世へ。\n",
         "text/plain"
       );
     }
@@ -328,6 +367,9 @@ class Kernel extends EventTarget {
       maLocked: !!(saved && saved.maLocked),
       oshi: (saved && saved.oshi) || [],
       oshiUnread: (saved && saved.oshiUnread) || 0,
+      journal: [],
+      offer: null,
+      oto: { title: "", path: "", state: "still", pid: 0, kind: "" },
       termCwd: (saved && saved.termCwd) || `/home/${ujiko}`,
       appProcs: [],
     };
@@ -474,6 +516,81 @@ class Kernel extends EventTarget {
     this.commit(true);
   }
 
+  noteJournal(tag, text, extra = {}) {
+    if (!this.state) return null;
+    if (!this.state.journal) this.state.journal = [];
+    const rec = {
+      tag: String(tag || "kern"),
+      t: String(text || "").slice(0, 200),
+      at: Date.now(),
+      path: extra.path ? String(extra.path) : "",
+      pid: extra.pid || 0,
+    };
+    this.state.journal.unshift(rec);
+    if (this.state.journal.length > 80) this.state.journal.length = 80;
+    this.emit("journal", rec);
+    return rec;
+  }
+
+  journalText() {
+    const rows = this.state && this.state.journal ? this.state.journal : [];
+    if (!rows.length) return "empty";
+    return rows
+      .map((r) => {
+        const t = new Date(r.at).toISOString().slice(11, 19);
+        return `${t}\t${r.tag}\t${r.t}${r.path ? `\t${r.path}` : ""}`;
+      })
+      .join("\n");
+  }
+
+  otoText() {
+    const o = (this.state && this.state.oto) || {};
+    return `state=${o.state || "still"}\ntitle=${o.title || ""}\npath=${o.path || ""}\npid=${o.pid || 0}\nkind=${o.kind || ""}`;
+  }
+
+  noteOto(rec = {}) {
+    if (!this.state) return null;
+    const state = rec.state === "live" || rec.state === "ma" ? rec.state : "still";
+    const next = {
+      title: String(rec.title || ""),
+      path: String(rec.path || ""),
+      state,
+      pid: rec.pid || 0,
+      kind: String(rec.kind || ""),
+    };
+    this.state.oto = next;
+    try {
+      document.documentElement.dataset.oto = next.state;
+      if (next.title) document.documentElement.dataset.otoTitle = next.title;
+      else delete document.documentElement.dataset.otoTitle;
+    } catch (err) {
+      /* no dom */
+    }
+    this.emit("oto", next);
+    return next;
+  }
+
+  otoCmd(act) {
+    const rec = { act: String(act || "") };
+    this.emit("oto-cmd", rec);
+    return rec;
+  }
+
+  offerShare(payload = {}) {
+    const rec = {
+      path: String(payload.path || ""),
+      mime: String(payload.mime || ""),
+      text: String(payload.text || payload.path || "").slice(0, 400),
+      from: String(payload.from || "user"),
+      to: String(payload.to || ""),
+      at: Date.now(),
+    };
+    this.state.offer = rec;
+    this.noteJournal("offer", rec.path || rec.text, { path: rec.path });
+    this.emit("offer", rec);
+    return rec;
+  }
+
   noteRecent(path) {
     const p = String(path || "");
     if (!p || p === "/") return;
@@ -561,6 +678,14 @@ class Kernel extends EventTarget {
         (this.state.appProcs || [])
           .map((p) => `${p.pid}\t${p.status || "running"}\t${p.appId}\t${p.name}`)
           .join("\n") || "empty",
+      "/proc/journal": () => this.journalText(),
+      "/proc/offer": () => {
+        const o = this.state.offer;
+        if (!o) return "empty";
+        return `path=${o.path}\nmime=${o.mime}\nfrom=${o.from}\nto=${o.to}\nat=${o.at}\n${o.text}`;
+      },
+      "/proc/oto": () => this.otoText(),
+      "/proc/konoyo": () => (this.konoyo ? this.konoyo.procText() : "supported=0"),
     };
     if (!files[n]) return null;
     return { path: n, type: "file", body: files[n](), mime: "text/proc", updated: Date.now() };
@@ -576,7 +701,7 @@ class Kernel extends EventTarget {
     const n = this.vfs.normalize(path);
     if (n === "/proc") {
       const real = await this.vfs.ls("/proc");
-      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps"].map((name) => ({
+      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps", "journal", "offer", "oto", "konoyo"].map((name) => ({
         name,
         path: `/proc/${name}`,
         type: "file",
@@ -659,6 +784,8 @@ class Kernel extends EventTarget {
     this.state.oncall = this.computeOncall();
     await this.seedFs();
     await this.vfs.ensureIndex();
+    attachKonoyo(this);
+    await this.konoyo.restore();
     this.vfs.watch((path, op) => {
       if (path === "/etc/assoc") this._assoc = null;
       this.emit("vfs", { path, op });
@@ -675,6 +802,7 @@ class Kernel extends EventTarget {
     this.log(`oncall kami=${this.state.oncall.kami.name} kernel=${this.state.oncall.pref.name} article=${this.state.oncall.article}`);
     this.bootedAt = Date.now();
     this.ready = true;
+    this.noteJournal("boot", `ujiko=${this.state.ujiko} space=${this.state.currentSpace}`);
     this.emit("boot");
     this.emit("change");
     return this;
@@ -737,6 +865,7 @@ class Kernel extends EventTarget {
     const job = this.applySyscall(status, oncall);
     this.log(`kashiwa ${official ? "official" : "reauth"} ${status} next=${job.kind}`, "auth");
     this.noteOshi(`柏手 ${status}`, "auth");
+    this.noteJournal("auth", status);
     this.commit();
     this.emit("auth");
     this.emit("change");
@@ -778,6 +907,7 @@ class Kernel extends EventTarget {
     this.state.currentSpace = prefId;
     if (this.state.env) this.state.env.SPACE = prefId;
     if (!silent) this.log(`space ${p.name}`, "torii");
+    if (!silent) this.noteJournal("space", p.name);
     this.commit();
     this.emit("space", p);
     this.emit("change");
@@ -846,12 +976,14 @@ class Kernel extends EventTarget {
       space: this.state.currentSpace,
     };
     this.state.appProcs.push(proc);
+    this.noteJournal("exec", `${appId} pid=${proc.pid}`, { pid: proc.pid });
     this.emit("ps");
     return proc;
   }
 
   exitApp(pid) {
     this.state.appProcs = this.state.appProcs.filter((p) => p.pid !== pid);
+    this.noteJournal("exit", `pid=${pid}`, { pid });
     this.emit("ps");
   }
 
@@ -1016,6 +1148,10 @@ class Kernel extends EventTarget {
     try {
       const f = await this.vfs.read("/etc/assoc");
       const rows = parseAssoc(f.body);
+      const have = new Set(rows.map((r) => r.match));
+      for (const d of defaultAssoc()) {
+        if (!have.has(d.match)) rows.push(d);
+      }
       this._assoc = rows.length ? rows : defaultAssoc();
     } catch (err) {
       this._assoc = defaultAssoc();
@@ -1036,6 +1172,7 @@ class Kernel extends EventTarget {
     await this.vfs.write("/etc/assoc", assocText(table), "text/plain");
     this._assoc = table;
     this.log(`assoc ${key}=${id || "-"}`, "fs");
+    this.noteJournal("assoc", `${key}=${id || "-"}`, { path: "/etc/assoc" });
     this.emit("vfs", { path: "/etc/assoc", op: "put" });
     return table;
   }
@@ -1057,11 +1194,13 @@ class Kernel extends EventTarget {
       this.log(`SIGCONT ${proc.name} pid=${proc.pid}`, "proc");
     } else if (s === "TERM" || s === "KILL") {
       this.log(`SIGTERM ${proc.name} pid=${proc.pid}`, "proc");
+      this.noteJournal("sig", `TERM ${proc.name} pid=${proc.pid}`, { pid: proc.pid });
       this.emit("ps");
       return "term";
     } else {
       throw new Error("EINVAL");
     }
+    this.noteJournal("sig", `${s} ${proc.name} pid=${proc.pid}`, { pid: proc.pid });
     this.emit("ps");
     return proc.status;
   }
