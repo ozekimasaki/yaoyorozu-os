@@ -12,6 +12,38 @@ function heatKind(cpu) {
   return "mid";
 }
 
+function countLand(markup) {
+  return (markup.match(/<path\b[^>]*\sid="/gi) || []).length;
+}
+
+async function fillLand(markup) {
+  if (countLand(markup) >= 47 && /<\/svg>/i.test(markup)) return markup;
+  const chunks = [];
+  for (let i = 25; i <= 62; i += 1) {
+    const hrefs = [
+      new URL(`../../svg/_parts/${i}.txt`, import.meta.url).href,
+      new URL(`svg/_parts/${i}.txt`, document.baseURI).href,
+    ];
+    let piece = "";
+    for (const href of hrefs) {
+      try {
+        const res = await fetch(href);
+        if (res.ok) {
+          piece = await res.text();
+          break;
+        }
+      } catch (err) {
+        /* next */
+      }
+    }
+    if (piece) chunks.push(piece);
+  }
+  if (!chunks.length) return markup;
+  const rest = chunks.join("");
+  const joined = markup.endsWith("\n") || rest.startsWith("\n") ? markup + rest : `${markup}\n${rest}`;
+  return countLand(joined) >= 47 ? joined : markup;
+}
+
 export default {
   id: "map",
   title: "列島",
@@ -146,7 +178,9 @@ export default {
         try {
           const res = await fetch(href);
           if (!res.ok) continue;
-          host.innerHTML = await res.text();
+          const text = await fillLand(await res.text());
+          if (countLand(text) < 47 && href !== sources[sources.length - 1]) continue;
+          host.innerHTML = text;
           break;
         } catch (err) {
           /* next */
