@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "node e2e/all.mjs",
+    "test:e2e": "node e2e/all.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.131.0"
