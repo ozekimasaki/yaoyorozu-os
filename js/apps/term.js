@@ -8,7 +8,7 @@ const HELP = `八百万OS 奉納シェル
   ls [-l] [path]       縁fs
   cat <path>           読む
   write <path> <text>  書く
-  mkdir <path>         匣を作る
+  mkdir <path>         匡を作る
   mv <from> <to>       名を移す
   rm <path>            無縁へ送る
   restore <path> [to]  無縁から戻す
@@ -20,8 +20,8 @@ const HELP = `八百万OS 奉納シェル
   grep <pat> [path]    札の中
   stat <path>          属性
   df / du [path]       器の量
-  cd [path]            匣を移る
-  pwd                  今の匣
+  cd [path]            匡を移る
+  pwd                  今の匡
   history              奉納の履歴
   kashiwa              認証
   dmesg                核のログ
@@ -44,7 +44,7 @@ const HELP = `八百万OS 奉納シェル
   hold/wake/nice       神を休ませる（殺さない）
   which <名>           言霊の出所
   cat /proc/*          核の仮想札
-  tree [path]          匣の形
+  tree [path]          匡の形
   diff <a> <b>         札の差
   echo text >> path    追記
   purge                無縁を清める
@@ -125,7 +125,7 @@ export default {
   title: "奉納",
   width: "min(720px, 84vw)",
   height: "min(520px, 70vh)",
-  spawn({ kernel, launch }) {
+  spawn({ kernel, launch, pid, wm }) {
     const el = document.createElement("div");
     el.innerHTML = `
       <div class="term-out" id="term-out"></div>
@@ -143,6 +143,11 @@ export default {
     let searchI = -1;
 
     let sink = null;
+    function syncChrome() {
+      const leaf = cwd === "/" ? "/" : cwd.split("/").filter(Boolean).pop() || cwd;
+      ps.textContent = `${leaf} $`;
+      if (wm && pid) wm.setTitle(pid, `${leaf} · hounou.sh`);
+    }
     function out(text) {
       if (sink) {
         sink.push(String(text));
@@ -591,13 +596,14 @@ export default {
             kernel.logout();
             break;
           case "reboot":
-            out("式年遷宮を前倒ししています。人は残し、権威のホコリは捨てます。");
+            out("式年遷宮を前倒しています。人は残し、権威のホコリは捨てます。");
             setTimeout(() => window.location.reload(), 500);
             break;
           case "cd":
             cwd = resolve(rest[0] || `/home/${kernel.state.ujiko}`);
             kernel.state.termCwd = cwd;
             kernel.commit();
+            syncChrome();
             out(cwd);
             break;
           case "purge": {
@@ -772,13 +778,13 @@ export default {
           searchMode = false;
           searchQ = "";
           input.value = draft;
-          ps.textContent = "神官 $";
+          syncChrome();
           return;
         }
         if (e.key === "Enter") {
           searchMode = false;
           searchQ = "";
-          ps.textContent = "神官 $";
+          syncChrome();
           handle(input.value);
           input.value = "";
           return;
@@ -827,6 +833,7 @@ export default {
         }
       }
     });
+    syncChrome();
     return {
       el,
       title: "hounou.sh",
