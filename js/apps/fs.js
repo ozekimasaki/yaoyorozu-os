@@ -26,6 +26,8 @@ export default {
     let sortKey = "name";
     let nameFilter = "";
     let cwdTimer = 0;
+    let peekSig = "";
+    let peekTok = 0;
 
     function rememberCwd() {
       if (cwdTimer) clearTimeout(cwdTimer);
@@ -152,6 +154,74 @@ export default {
       }
       lastFsPick = path;
       paintSel();
+      paintPeek();
+    }
+
+    function ensurePeek() {
+      let host = el.querySelector(".fs-peek");
+      if (host) return host;
+      host = document.createElement("pre");
+      host.className = "fs-peek term-out";
+      host.hidden = true;
+      el.appendChild(host);
+      return host;
+    }
+
+    async function paintPeek() {
+      const host = ensurePeek();
+      const path = lastFsPick || selectedPaths()[0] || "";
+      if (!path) {
+        if (peekSig) {
+          peekSig = "";
+          host.hidden = true;
+          host.textContent = "";
+        }
+        return;
+      }
+      const tok = (peekTok += 1);
+      try {
+        let text = "";
+        let sig = path;
+        const virt = kernel.procRead(path);
+        if (virt) {
+          text = String(virt.body || "").split("\n").slice(0, 12).join("\n") || "（空）";
+          sig = `${path}|virt|${text.length}`;
+        } else {
+          const node = path === "/" ? { type: "dir", updated: 0 } : await kernel.vfs.getFile(path);
+          if (tok !== peekTok) return;
+          if (!node) {
+            text = "ENOENT";
+            sig = `${path}|enoent`;
+          } else if (node.type === "dir") {
+            const kids = await kernel.listPath(path);
+            if (tok !== peekTok) return;
+            text =
+              kids
+                .slice(0, 16)
+                .map((k) => `${k.type === "dir" ? "▸" : k.type === "link" ? "↦" : "·"} ${k.name}`)
+                .join("\n") || "（空の匡）";
+            sig = `${path}|dir|${kids.length}|${node.updated || 0}`;
+          } else if (node.type === "link") {
+            text = `↦ ${node.target || ""}`;
+            sig = `${path}|link|${node.target || ""}`;
+          } else {
+            text = String(node.body || "").split("\n").slice(0, 12).join("\n") || "（空の札）";
+            sig = `${path}|${node.updated || 0}|${(node.body || "").length}`;
+          }
+        }
+        if (tok !== peekTok) return;
+        if (sig === peekSig && !host.hidden) return;
+        peekSig = sig;
+        if (host.textContent !== text) host.textContent = text;
+        host.hidden = false;
+      } catch (err) {
+        if (tok !== peekTok) return;
+        const text = err.message || String(err);
+        if (peekSig === `${path}|err` && host.textContent === text) return;
+        peekSig = `${path}|err`;
+        if (host.textContent !== text) host.textContent = text;
+        host.hidden = false;
+      }
     }
 
     function back() {
@@ -183,7 +253,7 @@ export default {
 
     async function pasteHere() {
       if (isVirtual(cwd)) {
-        kernel.log("仮想匣には貼れない", "fs");
+        kernel.log("仮想匡には貼れない", "fs");
         return;
       }
       const clip = kernel.state.vfsClip;
@@ -236,7 +306,7 @@ export default {
 
     async function ingest(paths) {
       if (isVirtual(cwd)) {
-        kernel.log("仮想匣には落とせない", "fs");
+        kernel.log("仮想匡には落とせない", "fs");
         return;
       }
       let rows = [];
@@ -286,6 +356,7 @@ export default {
       if (!extend) selected = new Set(path ? [path] : []);
       else if (path) selected.add(path);
       paintSel();
+      paintPeek();
       btns[i].focus();
     }
 
@@ -401,7 +472,7 @@ export default {
       bodyEl.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
         <div class="fs-crumbs">${crumbs(cwd)}</div>
-        <input class="search" id="fs-go" value="${cwd}" aria-label="匣の道" style="margin:8px 0;max-width:100%" />
+        <input class="search" id="fs-go" value="${cwd}" aria-label="匡の道" style="margin:8px 0;max-width:100%" />
         <input class="search" id="fs-filter" placeholder="名で絞る" aria-label="名で絞る" style="margin:0 0 8px;max-width:100%" />
         <div class="fs-tree">
           ${cwd !== "/" ? `<button type="button" data-path="${parent}" data-type="dir" data-up="1">../</button>` : ""}
@@ -416,8 +487,8 @@ export default {
           <button class="btn" type="button" id="fs-back" ${histI <= 0 ? "disabled" : ""}>戻る</button>
           <button class="btn" type="button" id="fs-fwd" ${histI >= hist.length - 1 ? "disabled" : ""}>進む</button>
           <button class="btn" type="button" id="fs-sort">${sortKey === "updated" ? "時順" : "名順"}</button>
-          <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
-          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
+          <input class="search" id="fs-name" placeholder="匡の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
+          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匡を作る</button>
           <button class="btn" type="button" id="fs-new" ${locked ? "disabled" : ""}>札を作る</button>
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-cut" ${locked ? "disabled" : ""}>切る</button>
@@ -474,6 +545,7 @@ export default {
       }
       applyFilter();
       paintMarks();
+      paintPeek();
       el.querySelector("#fs-stat").onclick = () => {
         kernel.emit("stat", lastFsPick || selectedPaths()[0] || cwd);
       };
