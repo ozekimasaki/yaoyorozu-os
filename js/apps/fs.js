@@ -47,6 +47,21 @@ export default {
       return k.list().find((b) => path === b.path || path.startsWith(`${b.path}/`)) || null;
     }
 
+    function paintUtsuwaBar() {
+      const track = el.querySelector("#fs-utsuwa-track");
+      const bar = el.querySelector("#fs-utsuwa-bar");
+      if (!track || !bar) return;
+      const u = kernel.utsuwa && kernel.utsuwa.snapshot ? kernel.utsuwa.snapshot() : null;
+      if (!u || !u.quota) {
+        track.hidden = true;
+        return;
+      }
+      track.hidden = false;
+      const pct = Math.max(0, Math.min(100, Math.round((u.bytes / u.quota) * 100)));
+      bar.style.width = `${pct}%`;
+      track.classList.toggle("is-full", !!u.over);
+    }
+
     function marks() {
       const home = `/home/${kernel.state.ujiko}`;
       return [
@@ -58,6 +73,7 @@ export default {
         { path: "/var/muen", name: "無縁" },
         { path: "/konoyo", name: "\u6b64\u5cb8" },
         { path: "/var/watari", name: "\u6e21\u308a" },
+        { path: "/var/utsushi", name: "\u5199\u3057" },
         { path: "/proc/kami", name: "神" },
       ];
     }
@@ -476,6 +492,7 @@ export default {
         paintSel();
         applyFilter();
         paintMarks();
+        paintUtsuwaBar();
         return;
       }
       lastSig = listSig;
@@ -487,6 +504,11 @@ export default {
         try {
           const u = await kernel.vfs.usage(cwd);
           used = ` · ${u.files}札 ${u.bytes}B`;
+          if (cwd === "/" && kernel.utsuwa && kernel.utsuwa.snapshot) {
+            const w = kernel.utsuwa.snapshot();
+            const fmt = kernel.utsuwa.fmtBytes || ((n) => `${n}B`);
+            used += ` · 器 ${fmt(w.bytes)}/${fmt(w.quota)}`;
+          }
         } catch (e) {
           used = "";
         }
@@ -500,6 +522,7 @@ export default {
       }
       bodyEl.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
+        <div class="utsuwa-track" id="fs-utsuwa-track" hidden><span id="fs-utsuwa-bar"></span></div>
         <div class="fs-crumbs">${crumbs(cwd)}</div>
         <input class="search" id="fs-go" value="${cwd}" aria-label="\u5323の道" style="margin:8px 0;max-width:100%" />
         <input class="search" id="fs-filter" placeholder="名で絞る" aria-label="名で絞る" style="margin:0 0 8px;max-width:100%" />
@@ -532,6 +555,7 @@ export default {
           <button class="btn" type="button" id="fs-muen" ${locked ? "disabled" : ""}>無縁へ</button>
           <button class="btn" type="button" id="fs-restore" ${cwd === "/var/muen" ? "" : "disabled"}>席へ戻す</button>
           <button class="btn" type="button" id="muen-scan">無縁スキャン</button>
+          <button class="btn" type="button" id="fs-sweep">掃く</button>
           <button class="btn" type="button" id="fs-konoyo-bind">\u6b64\u5cb8\u3092\u7d50\u3076</button>
           <button class="btn" type="button" id="fs-konoyo-take">\u73fe\u4e16\u304b\u3089\u53d7\u3051\u308b</button>
           <button class="btn" type="button" id="fs-konoyo-send">\u73fe\u4e16\u3078\u51fa\u3059</button>
@@ -539,6 +563,7 @@ export default {
           <button class="btn" type="button" id="fs-konoyo-unbind" ${bindAt(cwd) ? "" : "disabled"}>\u89e3\u304f</button>
         </div>
       `;
+      paintUtsuwaBar();
       el.querySelectorAll(".fs-crumbs [data-go]").forEach((btn) => {
         btn.onclick = () => goPath(btn.dataset.go);
       });
@@ -705,6 +730,19 @@ export default {
       el.querySelector("#muen-scan").onclick = () => {
         kernel.spawnMuen("スキャンで見つかった点");
         kernel.log("無縁スキャン: 提案だけする。強制友情はしない", "muen");
+      };
+      el.querySelector("#fs-sweep").onclick = async () => {
+        if (!kernel.utsuwa || !kernel.utsuwa.sweep) return;
+        try {
+          const hit = await kernel.utsuwa.sweep({ hard: true });
+          fsErr = `sweep ${hit.dropped || 0}`;
+          lastSig = "";
+          render();
+        } catch (e) {
+          fsErr = e.message;
+          lastSig = "";
+          render();
+        }
       };
       const bindBtn = el.querySelector("#fs-konoyo-bind");
       if (bindBtn) {
@@ -906,7 +944,12 @@ export default {
     }
     boot();
     const on = () => render();
+    const onUtsuwa = () => {
+      lastSig = "";
+      render();
+    };
     kernel.addEventListener("vfs", on);
+    kernel.addEventListener("utsuwa", onUtsuwa);
     return {
       el,
       title: "en.fs",
@@ -924,6 +967,7 @@ export default {
       },
       onClose() {
         kernel.removeEventListener("vfs", on);
+        kernel.removeEventListener("utsuwa", onUtsuwa);
       },
     };
   },
