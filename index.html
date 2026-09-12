@@ -29,6 +29,9 @@
     <link rel="stylesheet" href="css/phone.css" />
     <link rel="stylesheet" href="css/oto.css" />
     <link rel="stylesheet" href="css/watari.css" />
+    <link rel="stylesheet" href="css/kagami.css" />
+    <link rel="stylesheet" href="css/keshiki.css" />
+    <link rel="stylesheet" href="css/kagi.css" />
   </head>
   <body>
     <div id="boot">
@@ -51,6 +54,7 @@
 
     <div id="desktop" tabindex="-1">
       <canvas id="kami-field"></canvas>
+      <div id="keshiki-veil" hidden></div>
       <div class="desktop-veil"></div>
       <div id="norito-veil" aria-hidden="true"></div>
       <div id="ofuda-stack" aria-live="polite"></div>
@@ -75,6 +79,9 @@
         <span class="pill" id="oshi-pill">&#x544a;&#x3052;</span>
         <span class="pill" id="oto-pill" hidden>&#x97f3;&#x970a;</span>
         <span class="pill" id="watari-pill" hidden>&#x6e21;&#x308a;</span>
+        <span class="pill" id="utsushi-pill" hidden>&#x5199;&#x3057;</span>
+        <span class="pill" id="keshiki-pill" hidden>&#x666f;&#x8272;</span>
+        <span class="pill" id="kagi-pill">&#x9375;: &#x958b;</span>
         <div class="task-apps"></div>
       </footer>
       <div id="phone-now" hidden>
@@ -101,6 +108,9 @@
           <button type="button" data-shade="spaces">&#x7a7a;&#x9593;</button>
           <button type="button" data-shade="kashiwa">&#x67cf;&#x624b;</button>
           <button type="button" data-shade="silent">&#x6c88;&#x9ed9;</button>
+          <button type="button" data-shade="utsushi">&#x6620;&#x3059;</button>
+          <button type="button" data-shade="keshiki">&#x666f;&#x8272;</button>
+          <button type="button" data-shade="kagi">&#x9375;</button>
         </div>
         <p class="muted">&#x304a;&#x544a;&#x3052;</p>
         <div id="phone-shade-oshi" class="term-out"></div>
@@ -131,7 +141,7 @@
 
     <div id="kashiwa-stage">
       <p class="torii-head">&#x67cf;&#x624b;</p>
-      <p class="muted">&#x5de6;&#x624b;&#x3068;&#x53f3;&#x624b;&#x3002;&#x4e8c;&#x8981;&#x7d20;&#x8a8d;&#x8a3c;&#x3002;&#x5f15;&#x304d;&#x3067;&#x306f;&#x306a;&#x3044;&#x3002;</p>
+      <p class="muted">&#x5de6;&#x624b;&#x3068;&#x53f3;&#x624b;&#x3002;&#x4e8c;&#x8981;&#x7d20;&#x8a8d;&#x8a3c;&#x3002;&#x5f15;&#x304d;&#x3067;&#x306f;&#x306a&#x3044;&#x3002;</p>
       <div class="kashiwa-hands">
         <button type="button" class="hand" data-hand="left">&#x5de6;&#x624b;</button>
         <button type="button" class="hand" data-hand="right">&#x53f3;&#x624b;</button>
@@ -171,6 +181,9 @@
       <button type="button" data-act="sys">&#x6a5f;&#x68b0;</button>
       <button type="button" data-act="muen">&#x7121;&#x7e01;</button>
       <button type="button" data-act="ma">&#x9593;</button>
+      <button type="button" data-act="utsushi">&#x5199;&#x3059;</button>
+      <button type="button" data-act="keshiki">&#x666f;&#x8272;</button>
+      <button type="button" data-act="kagi">&#x9375;</button>
     </div>
     <div id="oshi-list" hidden>
       <p class="muted">&#x304a;&#x544a;&#x3052;</p>
@@ -181,6 +194,16 @@
       <p class="muted">&#x6c0f;&#x5b50;&#x8ab2;</p>
       <div id="ujiko-log" class="term-out"></div>
       <button class="btn" type="button" id="ujiko-open-dmesg">dmesg &#x3092;&#x958b;&#x304f;</button>
+    </div>
+    <div id="kagi-veil">
+      <p class="torii-head">&#x9375;</p>
+      <p class="muted">&#x5353;&#x306f;&#x9589;&#x3058;&#x3066;&#x3044;&#x308b;&#x3002;&#x6c0f;&#x5b50;&#x306e;&#x540d;&#x304b;&#x3001;&#x67cf;&#x624b;&#x3067;&#x5916;&#x3059;&#x3002;&#x30ed;&#x30b0;&#x30a2;&#x30a6;&#x30c8;&#x3067;&#x306f;&#x306a;&#x3044;&#x3002;</p>
+      <input id="kagi-kotoba" type="text" autocomplete="off" aria-label="&#x6c0f;&#x5b50;&#x306e;&#x540d;" />
+      <div class="boot-actions">
+        <button class="btn primary" type="button" id="kagi-open">&#x5916;&#x3059;</button>
+        <button class="btn" type="button" id="kagi-kashiwa">&#x67cf;&#x624b;</button>
+      </div>
+      <p class="muted" id="kagi-err"></p>
     </div>
     <div id="ma-lock">
       <p class="torii-head">&#x9593;</p>
@@ -226,6 +249,8 @@
         <div><kbd>Ctrl+Z</kbd> &#x7121;&#x7e01;&#x3092;&#x623b;&#x3059;</div>
         <div><kbd>Ctrl+C/X/V</kbd> &#x5199;&#x3057;&#x5207;&#x308a;</div>
         <div><kbd>Ctrl+N</kbd> &#x65b0;&#x3057;&#x3044;&#x672d;</div>
+        <div><kbd>F8 / PrintScreen</kbd> &#x5199;&#x3059;</div>
+        <div><kbd>F9</kbd> &#x9375;</div>
         <div><kbd>F2</kbd> &#x6539;&#x540d;</div>
         <div><kbd>Delete</kbd> &#x7121;&#x7e01;&#x3078;</div>
         <div><kbd>Esc</kbd> &#x9589;&#x3058;&#x308b;</div>
