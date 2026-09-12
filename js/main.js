@@ -1152,4 +1152,172 @@ async function startDesktop() {
     const on = switcher.querySelector("button.is-on");
     if (on) on.focus();
   }
-  
+  function toggleSwitcher() {
+    if (switcher.classList.contains("open")) {
+      switcher.classList.remove("open");
+      return;
+    }
+    paintSwitcher(false);
+  }
+  function moveSwitcher(dir) {
+    switcherIndex += dir;
+    paintSwitcher(true);
+  }
+  function activateSwitcher() {
+    const btn = switcher.querySelector("button.is-on[data-pid]");
+    if (!btn) {
+      switcher.classList.remove("open");
+      return;
+    }
+    const wm = getWm();
+    const pid = Number(btn.dataset.pid);
+    if (wm) {
+      wm.restore(pid);
+      wm.focus(pid);
+    }
+    switcher.classList.remove("open");
+  }
+
+  const spaces = document.getElementById("space-switcher");
+  let lastSpaceSig = "";
+  function toggleSpaces() {
+    if (spaces.classList.contains("open")) {
+      spaces.classList.remove("open");
+      return;
+    }
+    const here = kernel.state.currentSpace;
+    const sig = kernel.state.prefs.map((p) => `${p.id}:${p.unusedCpu}:${p.season}`).join("|");
+    if (sig === lastSpaceSig && spaces.querySelector("[data-id]")) {
+      spaces.querySelectorAll("[data-id]").forEach((btn) => {
+        btn.classList.toggle("is-here", btn.dataset.id === here);
+      });
+      spaces.classList.add("open");
+      return;
+    }
+    lastSpaceSig = sig;
+    spaces.innerHTML = kernel.state.prefs
+      .map(
+        (p) =>
+          `<button type="button" class="${p.id === here ? "is-here" : ""}" data-id="${p.id}">${p.name}<small>未使用CPU ${p.unusedCpu}% · ${p.season}</small></button>`
+      )
+      .join("");
+    spaces.classList.add("open");
+    spaces.querySelectorAll("[data-id]").forEach((btn) => {
+      btn.onclick = () => {
+        kernel.setSpace(btn.dataset.id);
+        spaces.classList.remove("open");
+      };
+    });
+  }
+
+  const oshiList = document.getElementById("oshi-list");
+  const oshiLog = document.getElementById("oshi-log");
+  const oshiPill = document.getElementById("oshi-pill");
+  const paintOshiPill = () => {
+    const n = kernel.state.oshiUnread || 0;
+    const text = n ? `告げ: ${n}` : "告げ";
+    if (oshiPill.textContent !== text) oshiPill.textContent = text;
+    oshiPill.classList.toggle("has-note", n > 0);
+  };
+  const paintOshi = () => {
+    const rows = kernel.state.oshi || [];
+    const text = rows.map((r) => `${r.tag}  ${r.t}`).join("\n") || "（札は届いていない）";
+    if (oshiLog.textContent === text) return;
+    oshiLog.textContent = text;
+  };
+  function toggleOshi() {
+    const open = oshiList.hidden;
+    oshiList.hidden = !open;
+    if (open) {
+      paintOshi();
+      kernel.readOshi();
+      paintOshiPill();
+    }
+  }
+  paintOshiPill();
+  oshiPill.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleOshi();
+  });
+  oshiList.addEventListener("click", (e) => e.stopPropagation());
+  document.getElementById("oshi-clear").addEventListener("click", () => {
+    kernel.clearOshi();
+    paintOshi();
+    paintOshiPill();
+  });
+  kernel.addEventListener("oshi", () => {
+    paintOshiPill();
+    if (!oshiList.hidden) paintOshi();
+  });
+  kernel.addEventListener("oshi-read", paintOshiPill);
+
+  const recentList = document.getElementById("recent-list");
+  const recentLog = document.getElementById("recent-log");
+  let lastRecentSig = "";
+  function paintRecent() {
+    if (!recentLog) return;
+    const rows = kernel.state.recent || [];
+    const sig = rows.map((r) => r.path).join("\n");
+    if (sig === lastRecentSig && recentLog.childNodes.length) return;
+    lastRecentSig = sig;
+    recentLog.replaceChildren();
+    if (!rows.length) {
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = "（まだ札はない）";
+      recentLog.appendChild(p);
+      return;
+    }
+    for (const r of rows) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.path = r.path;
+      btn.textContent = r.path;
+      recentLog.appendChild(btn);
+    }
+  }
+  function toggleRecent() {
+    if (!recentList) return;
+    const open = recentList.hidden;
+    recentList.hidden = !open;
+    if (open) paintRecent();
+  }
+  if (recentList) {
+    recentList.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const btn = e.target.closest("[data-path]");
+      if (!btn) return;
+      recentList.hidden = true;
+      openPath(btn.dataset.path);
+    });
+  }
+  kernel.addEventListener("recent", () => {
+    if (recentList && !recentList.hidden) paintRecent();
+  });
+  const fileStatEl = document.getElementById("file-stat");
+  if (fileStatEl) fileStatEl.addEventListener("click", (e) => e.stopPropagation());
+
+  const eaves = document.getElementById("eaves-menu");
+  const iconMenu = document.getElementById("desk-icon-menu");
+  let iconMenuPath = "";
+  const band = document.getElementById("desk-marquee");
+
+  function rectsOverlap(a, b) {
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  }
+
+  function paintMarquee(x, y) {
+    if (!marquee || !band) return;
+    const x1 = Math.min(marquee.x0, x);
+    const y1 = Math.min(marquee.y0, y);
+    const w = Math.abs(x - marquee.x0);
+    const h = Math.abs(y - marquee.y0);
+    band.style.left = `${x1}px`;
+    band.style.top = `${y1}px`;
+    band.style.width = `${w}px`;
+    band.style.height = `${h}px`;
+    if (w < 4 && h < 4) return;
+    const box = { left: x1, top: y1, right: x1 + w, bottom: y1 + h };
+    const next = new Set(marquee.add ? marquee.start : []);
+    document.querySelectorAll(".desk-icon").forEach((el) => {
+      const r = 
