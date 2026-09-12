@@ -4,6 +4,10 @@ import { createVfs } from "./vfs.js";
 import { attachCron } from "./cron.js";
 import { attachKonoyo } from "./konoyo.js";
 import { attachWatari } from "./watari.js";
+import { attachUtsushi } from "./utsushi.js";
+import { attachKeshiki } from "./keshiki.js";
+import { attachUtsuwa } from "./utsuwa.js";
+import { attachOkoshi } from "./okoshi.js";
 import { assocText, defaultAssoc, parseAssoc, resolveOpen } from "./intent.js";
 
 const KAMI_TEMPLATES = [
@@ -186,6 +190,7 @@ class Kernel extends EventTarget {
       "/var/dmesg",
       "/var/muen",
       "/var/watari",
+      "/var/utsushi",
       "/mnt",
       "/konoyo",
       home,
@@ -342,6 +347,8 @@ class Kernel extends EventTarget {
         silent: true,
         irqMs: 16000,
         sound: false,
+        scale: 1,
+        quota: 6 * 1024 * 1024,
         ...(saved && saved.settings),
       },
       sim: saved && saved.sim ? saved.sim : { day: 0, running: false, logs: [] },
@@ -681,6 +688,10 @@ class Kernel extends EventTarget {
       "/proc/oto": () => this.otoText(),
       "/proc/konoyo": () => (this.konoyo ? this.konoyo.procText() : "supported=0"),
       "/proc/watari": () => (this.watari ? this.watari.procText() : "supported=0"),
+      "/proc/utsushi": () => (this.utsushi ? this.utsushi.procText() : "supported=0"),
+      "/proc/keshiki": () => (this.keshiki ? this.keshiki.procText() : "path=\nscale=1\nhas=0"),
+      "/proc/utsuwa": () => (this.utsuwa ? this.utsuwa.procText() : "bytes=0\nquota=0"),
+      "/proc/okoshi": () => (this.okoshi ? this.okoshi.procText() : "count=0"),
     };
     if (!files[n]) return null;
     return { path: n, type: "file", body: files[n](), mime: "text/proc", updated: Date.now() };
@@ -696,7 +707,7 @@ class Kernel extends EventTarget {
     const n = this.vfs.normalize(path);
     if (n === "/proc") {
       const real = await this.vfs.ls("/proc");
-      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps", "journal", "offer", "oto", "konoyo", "watari"].map((name) => ({
+      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps", "journal", "offer", "oto", "konoyo", "watari", "utsushi", "keshiki", "utsuwa", "okoshi"].map((name) => ({
         name,
         path: `/proc/${name}`,
         type: "file",
@@ -783,6 +794,14 @@ class Kernel extends EventTarget {
     await this.konoyo.restore();
     attachWatari(this);
     if (this.watari && this.watari.ready) await this.watari.ready;
+    attachUtsushi(this);
+    if (this.utsushi && this.utsushi.ready) await this.utsushi.ready;
+    attachKeshiki(this);
+    if (this.keshiki && this.keshiki.ready) await this.keshiki.ready;
+    attachUtsuwa(this);
+    if (this.utsuwa && this.utsuwa.ready) await this.utsuwa.ready;
+    attachOkoshi(this);
+    if (this.okoshi && this.okoshi.ready) await this.okoshi.ready;
     this.vfs.watch((path, op) => {
       if (path === "/etc/assoc") this._assoc = null;
       this.emit("vfs", { path, op });
@@ -1130,11 +1149,21 @@ class Kernel extends EventTarget {
   }
 
   sysctl(key, value) {
-    if (key === "ma.silent") this.state.settings.silent = value === "1" || value === true || value === "true";
-    else if (key === "irq.ms") this.state.settings.irqMs = Math.max(4000, Number(value) || 16000);
-    else if (key === "sound") this.state.settings.sound = value === "1" || value === true;
-    else throw new Error("EINVAL");
-    this.log(`sysctl ${key}=${value}`, "sys");
+    const k = String(key || "").trim();
+    if (!k) return this.state.settings;
+    if (k === "ma.silent") this.state.settings.silent = value === "1" || value === true || value === "true";
+    else if (k === "irq.ms") this.state.settings.irqMs = Math.max(4000, Number(value) || 16000);
+    else if (k === "sound") this.state.settings.sound = value === "1" || value === true;
+    else if (k === "ui.scale") {
+      const n = Number(value);
+      this.state.settings.scale = n === 0.9 || n === 1.15 ? n : 1;
+      if (this.keshiki && this.keshiki.setScale) this.keshiki.setScale(this.state.settings.scale);
+    } else if (k === "fs.quota") {
+      const n = Math.max(256 * 1024, Number(value) || 6 * 1024 * 1024);
+      this.state.settings.quota = n;
+      if (this.utsuwa && this.utsuwa.setQuota) this.utsuwa.setQuota(n);
+    } else throw new Error("EINVAL");
+    this.log(`sysctl ${k}=${value}`, "sys");
     this.commit();
     this.emit("settings");
     return this.state.settings;
