@@ -24,6 +24,7 @@ import { peekPath as peekPathIo, showFileStat as showStatIo, copyPathNow as copy
 import { bindSwitchers } from "./switchers.js";
 import { bindPhone, isPhone } from "./phone.js";
 import { bindSheet, openWithSheet, openShareSheet, closeSheet } from "./sheet.js";
+import { guessIcon, labelWithIcon } from "./icons.js";
 
 register(oncall);
 register(map);
@@ -121,7 +122,9 @@ async function paintDesktop() {
     btn.type = "button";
     btn.className = "desk-icon";
     btn.dataset.path = f.path;
-    btn.textContent = f.name.replace(".gate", "");
+    const iconId = guessIcon(f);
+    btn.dataset.icon = iconId;
+    labelWithIcon(btn, iconId, f.name.replace(".gate", ""));
     const saved = pos[f.path];
     const left = saved ? saved.x : 18;
     const top = saved ? saved.y : 58 + i * 52;
