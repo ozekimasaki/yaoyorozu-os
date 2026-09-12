@@ -421,6 +421,17 @@ class Kernel extends EventTarget {
     this.commit(true);
   }
 
+  clipDrop(i) {
+    const list = this.state.clipboard || [];
+    const n = Number(i);
+    if (!Number.isInteger(n) || n < 0 || n >= list.length) return null;
+    const [gone] = list.splice(n, 1);
+    this.state.clipboard = list;
+    this.emit("clip");
+    this.commit(true);
+    return gone;
+  }
+
   clipVfs(mode, paths) {
     this.state.vfsClip = { mode: mode === "cut" ? "cut" : "copy", paths: [...(paths || [])] };
     if (paths && paths.length) this.clipPush(paths.join("\n"));
