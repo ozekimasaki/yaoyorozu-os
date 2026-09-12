@@ -468,8 +468,6 @@ async function peekPath(path) {
       const kids = await kernel.vfs.ls(path);
       body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匣）";
     } else if (node.type === "link") {
-      body.textContent = `�k.name}`).join("\n") || "（空の匣）";
-    } else if (node.type === "link") {
       body.textContent = `↦ ${node.target || node.body || ""}`;
     } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
       body.textContent = `くぐると起動: ${String(node.body).trim()}`;
@@ -735,63 +733,4 @@ async function startDesktop() {
   fillNorito();
   clock();
   setInterval(clock, 1000);
-  await paintDesktop();
-  scheduleUsage();
-  paintNet();
-  kernel.addEventListener("net", paintNet);
-
-  const meta = document.getElementById("menubar-meta");
-  const paintMeta = () => {
-    const line = kernel.menubarLine();
-    if (meta.textContent !== line) meta.textContent = line;
-    const spaceText = `kernel: ${kernel.spacePref().name}`;
-    const spaceEl = document.getElementById("space-pill");
-    if (spaceEl.textContent !== spaceText) spaceEl.textContent = spaceText;
-  };
-  paintMeta();
-  kernel.addEventListener("auth", paintMeta);
-  kernel.addEventListener("boot", paintMeta);
-  kernel.addEventListener("vfs", () => {
-    paintDesktop();
-    scheduleUsage();
-  });
-  kernel.addEventListener("peek", (ev) => {
-    peekPath(ev.detail);
-  });
-  kernel.addEventListener("stat", (ev) => {
-    showFileStat(ev.detail);
-  });
-  kernel.addEventListener("space", () => {
-    paintDesktop();
-    clock();
-    paintMeta();
-  });
-
-  const maLock = document.getElementById("ma-lock");
-  const applyMa = (locked) => {
-    desktop.classList.toggle("is-ma", locked);
-    maLock.classList.toggle("open", locked);
-    document.getElementById("ma-pill").textContent = locked ? "status: 間 · 眠" : "status: 間";
-  };
-  applyMa(!!kernel.state.maLocked);
-  kernel.addEventListener("ma", (ev) => applyMa(!!ev.detail));
-  const syncClock = () => kernel.pauseClock(document.hidden || !!kernel.state.maLocked);
-  syncClock();
-  kernel.addEventListener("ma", syncClock);
-  let hiddenSince = 0;
-  document.addEventListener("visibilitychange", () => {
-    syncClock();
-    hiddenSince = document.hidden ? Date.now() : 0;
-  });
-  setInterval(() => {
-    if (document.hidden && hiddenSince && Date.now() - hiddenSince > 45000 && !kernel.state.maLocked) {
-      kernel.maSleep();
-    }
-  }, 4000);
-  document.getElementById("ma-wake").addEventListener("click", () => kernel.maWake());
-  kernel.addEventListener("auth", () => {
-    if (kernel.state.maLocked) kernel.maWake();
-    paintMeta();
-  });
-
-  const drawer = document.
+  awa
