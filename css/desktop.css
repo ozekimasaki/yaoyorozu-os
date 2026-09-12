@@ -9,6 +9,10 @@
   appearance: none;
   position: absolute;
   width: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   background: rgba(22, 20, 15, 0.55);
   border: 1px solid var(--line);
   color: var(--washi);
@@ -18,6 +22,12 @@
   letter-spacing: 0.08em;
   text-align: left;
   pointer-events: auto;
+}
+
+.desk-icon .fuda-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
 }
 
 .desk-icon:hover,
@@ -203,12 +213,24 @@
 
 .torii-item {
   appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   text-align: left;
   background: rgba(22, 20, 15, 0.9);
   border: 1px solid var(--line);
   color: var(--washi);
   padding: 12px;
   cursor: pointer;
+}
+
+.torii-item .fuda-mark {
+  width: 28px;
+  height: 28px;
+}
+
+.torii-copy {
+  min-width: 0;
 }
 
 .torii-item:hover,
