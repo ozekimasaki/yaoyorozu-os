@@ -260,8 +260,71 @@
   box-shadow: var(--shadow);
 }
 
-#desk-peek[hidden] {
+#desk-peek[hidden],
+#file-stat[hidden],
+#recent-list[hidden] {
   display: none;
+}
+
+#file-stat {
+  position: fixed;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  z-index: 67;
+  width: min(480px, 90vw);
+  max-height: 56vh;
+  overflow: auto;
+  background: #16140f;
+  border: 1px solid var(--gold);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+
+#file-stat .term-out {
+  min-height: 64px;
+  max-height: 38vh;
+  overflow: auto;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+#recent-list {
+  position: fixed;
+  top: 42px;
+  left: 12px;
+  z-index: 45;
+  width: min(420px, 92vw);
+  max-height: 70vh;
+  overflow: auto;
+  background: #16140f;
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+
+#recent-log {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+#recent-log button {
+  appearance: none;
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--washi);
+  padding: 7px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+#recent-log button:hover {
+  border-color: var(--gold);
+  color: var(--gold-2);
 }
 
 #desk-peek .term-out {

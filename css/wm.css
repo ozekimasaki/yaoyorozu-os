@@ -28,6 +28,15 @@
   box-shadow: none;
 }
 
+.window.is-shade {
+  min-height: 36px;
+}
+
+.window.is-shade .win-body,
+.window.is-shade .rz {
+  display: none;
+}
+
 .rz {
   position: absolute;
   z-index: 3;
