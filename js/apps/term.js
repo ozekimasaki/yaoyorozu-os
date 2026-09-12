@@ -33,7 +33,7 @@ const HELP = `八百万OS 奉納シェル
   migrate 東京         過密の再配置
   spawn <名> <役割>    神を立てる
   hounou <text>        奉納
-  sysctl key=val       ma.silent / irq.ms / sound / ui.scale / fs.quota
+  sysctl key=val       ma.silent / irq.ms / sound / ui.scale / fs.quota / kagi.idle
   uname                機械
   date                 祭暦の今日
   top                  CPU上位
@@ -73,6 +73,8 @@ const HELP = `八百万OS 奉納シェル
   cat /proc/utsuwa     \u5668\u306e\u7e01
   okoshi [add|rm]      \u8d77\u3053\u3057
   cat /proc/okoshi     \u8d77\u3053\u3057\u306e\u7e01
+  kagi [lock|unlock]   \u9375
+  cat /proc/kagi       \u9375\u306e\u7e01
   kill [-STOP|-CONT]   \u7a93\u3092\u4f11\u307e\u305b\u308b
   cat /proc/apps       \u7a93\u306e\u4f11\u6b62
   logout               EPERM
@@ -161,6 +163,7 @@ const COMMANDS = [
   "keshiki",
   "sweep",
   "okoshi",
+  "kagi",
 ];
 
 export default {
@@ -917,6 +920,32 @@ export default {
               break;
             }
             out("okoshi [add|rm|list]");
+            break;
+          }
+          case "kagi": {
+            const g = kernel.kagi;
+            if (!g) throw new Error("ENOSYS");
+            const sub = rest[0] || "";
+            if (!sub || sub === "stat") {
+              out(g.procText());
+              break;
+            }
+            if (sub === "lock" || sub === "\u304b\u3051\u308b") {
+              g.lock();
+              out(g.procText());
+              break;
+            }
+            if (sub === "unlock" || sub === "\u5916\u3059") {
+              g.unlock(rest.slice(1).join(" ") || kernel.state.ujiko);
+              out(g.procText());
+              break;
+            }
+            if (sub === "idle") {
+              await g.setIdle(rest[1]);
+              out(g.procText());
+              break;
+            }
+            out("kagi [lock|unlock|idle]");
             break;
           }
           case "share": {
