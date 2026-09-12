@@ -1,3 +1,5 @@
+import { labelWithIcon } from "./icons.js";
+
 const INSET = { left: 12, top: 48, right: 12, bottom: 44 };
 
 function geomOf(w) {
@@ -23,6 +25,7 @@ export function createWm(root, taskbar, kernel) {
   let persistT = 0;
   let exposeSaved = null;
   let phoneMode = false;
+  let splitPair = null;
 
   function captureDesk(w) {
     if (phoneMode || !w) return;
@@ -51,7 +54,7 @@ export function createWm(root, taskbar, kernel) {
 
   function applyDeskScene(w) {
     if (!w) return;
-    w.el.classList.remove("is-phone-scene", "is-phone-back");
+    w.el.classList.remove("is-phone-scene", "is-phone-back", "is-phone-split-a", "is-phone-split-b");
     const g = w.deskGeom;
     if (!g) return;
     w.maximized = !!g.maximized;
@@ -76,6 +79,7 @@ export function createWm(root, taskbar, kernel) {
     if (phoneMode) {
       for (const w of windows.values()) applyPhoneScene(w);
     } else {
+      splitPair = null;
       for (const w of windows.values()) applyDeskScene(w);
       document.getElementById("desktop")?.classList.remove("is-app");
     }
@@ -164,7 +168,7 @@ export function createWm(root, taskbar, kernel) {
         host.appendChild(btn);
       }
       if (btn.className !== cls) btn.className = cls;
-      if (btn.textContent !== label) btn.textContent = label;
+      labelWithIcon(btn, w.appId, label);
     }
     host.querySelectorAll("[data-pid]").forEach((el) => {
       if (!seen.has(el.dataset.pid)) el.remove();
@@ -495,20 +499,7 @@ export function createWm(root, taskbar, kernel) {
   function focus(pid) {
     const w = windows.get(pid);
     if (!w || w.el.classList.contains("is-away")) return;
-    if (phoneMode) {
-      for (const other of windows.values()) {
-        if (other.pid === pid) {
-          other.minimized = false;
-          other.el.classList.remove("is-min", "is-phone-back");
-        } else {
-          other.minimized = true;
-          other.el.classList.add("is-min", "is-phone-back");
-          other.el.classList.remove("focused");
-          setPaused(other, true);
-        }
-      }
-      document.getElementById("desktop")?.classList.add("is-app");
-    }
+    if (phoneMode) applyPhoneFocus(pid);
     if (w.minimized) return;
     for (const other of windows.values()) other.el.classList.remove("focused");
     if (w.fore) {
@@ -550,15 +541,67 @@ export function createWm(root, taskbar, kernel) {
 
   let deskHidden = null;
 
+  function clearSplitMarks() {
+    for (const w of windows.values()) {
+      w.el.classList.remove("is-phone-split-a", "is-phone-split-b");
+    }
+  }
+
+  function applyPhoneFocus(pid) {
+    const pair = splitPair && splitPair.includes(pid) ? splitPair : null;
+    if (!pair) {
+      splitPair = null;
+      clearSplitMarks();
+    }
+    for (const other of windows.values()) {
+      const keep = other.pid === pid || (pair && pair.includes(other.pid));
+      if (keep) {
+        other.minimized = false;
+        other.el.classList.remove("is-min", "is-phone-back");
+        if (pair) {
+          other.el.classList.toggle("is-phone-split-a", other.pid === pair[0]);
+          other.el.classList.toggle("is-phone-split-b", other.pid === pair[1]);
+        }
+        setPaused(other, false);
+      } else {
+        other.minimized = true;
+        other.el.classList.add("is-min", "is-phone-back");
+        other.el.classList.remove("focused", "is-phone-split-a", "is-phone-split-b");
+        setPaused(other, true);
+      }
+    }
+    document.getElementById("desktop")?.classList.add("is-app");
+  }
+
+  function split(a, b) {
+    if (!phoneMode) return false;
+    const wa = windows.get(Number(a));
+    const wb = windows.get(Number(b));
+    if (!wa || !wb || wa.pid === wb.pid) return false;
+    splitPair = [wa.pid, wb.pid];
+    focus(wa.pid);
+    return true;
+  }
+
+  function endSplit() {
+    if (!splitPair) return false;
+    const keep = splitPair.find((id) => windows.has(id));
+    splitPair = null;
+    clearSplitMarks();
+    if (keep != null) focus(keep);
+    return true;
+  }
+
   function hideAll() {
     if (exposeSaved) endExpose();
     if (phoneMode) {
+      splitPair = null;
       let had = false;
       for (const w of windows.values()) {
         if (!w.minimized || !w.el.classList.contains("is-phone-back")) had = true;
         w.minimized = true;
         w.el.classList.add("is-min", "is-phone-back");
-        w.el.classList.remove("focused");
+        w.el.classList.remove("focused", "is-phone-split-a", "is-phone-split-b");
         setPaused(w, true);
       }
       document.getElementById("desktop")?.classList.remove("is-app");
@@ -707,6 +750,12 @@ export function createWm(root, taskbar, kernel) {
     kernel.exitApp(w.pid);
     w.el.remove();
     windows.delete(pid);
+    if (splitPair && splitPair.includes(pid)) {
+      const other = splitPair.find((id) => id !== pid);
+      splitPair = null;
+      clearSplitMarks();
+      if (other && windows.has(other)) focus(other);
+    }
     taskButtons();
     schedulePersist();
     return true;
@@ -826,7 +875,7 @@ export function createWm(root, taskbar, kernel) {
     });
   }
 
-  function create({ appId, title, pid, space, width, height, geom, mount, onClose, onFocus, onPause, onResume, onDrop }) {
+  function create({ appId, title, pid, space, width, height, geom, mount, onClose, onFocus, onPause, onResume, onDrop, onOffer }) {
     if (exposeSaved) endExpose();
     const el = document.createElement("section");
     el.className = "window focused";
@@ -863,7 +912,7 @@ export function createWm(root, taskbar, kernel) {
       <div class="rz se" data-rz="se"></div>
       <div class="rz sw" data-rz="sw"></div>
     `;
-    el.querySelector(".titlebar span").textContent = title;
+    labelWithIcon(el.querySelector(".titlebar span"), appId, title);
     const body = el.querySelector(".win-body");
     if (mount) body.appendChild(mount);
     if (appId === "map") body.classList.add("map-body");
@@ -895,6 +944,7 @@ export function createWm(root, taskbar, kernel) {
       onPause,
       onResume,
       onDrop,
+      onOffer,
     };
     windows.set(pid, w);
     bindDrag(w);
@@ -976,7 +1026,7 @@ export function createWm(root, taskbar, kernel) {
     if (!w || w.title === title) return;
     w.title = title;
     const span = w.el.querySelector(".titlebar span");
-    if (span && span.textContent !== title) span.textContent = title;
+    if (span) labelWithIcon(span, w.appId, title);
     taskButtons();
   }
 
@@ -1027,5 +1077,7 @@ export function createWm(root, taskbar, kernel) {
     isExpose,
     setPhone,
     isPhone: () => phoneMode,
+    split,
+    endSplit,
   };
 }
