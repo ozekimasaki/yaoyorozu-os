@@ -25,12 +25,71 @@ export default {
     let usedCache = { sig: "", text: "" };
     let sortKey = "name";
     let nameFilter = "";
+    let cwdTimer = 0;
+
+    function rememberCwd() {
+      if (cwdTimer) clearTimeout(cwdTimer);
+      cwdTimer = setTimeout(() => {
+        cwdTimer = 0;
+        kernel.vfs.metaSet("fsCwd", cwd);
+      }, 240);
+    }
+
+    function marks() {
+      const home = `/home/${kernel.state.ujiko}`;
+      return [
+        { path: "/", name: "根" },
+        { path: home, name: "氏子" },
+        { path: `${home}/desktop`, name: "卓" },
+        { path: "/etc", name: "式" },
+        { path: "/var/muen", name: "無縁" },
+        { path: "/proc/kami", name: "神" },
+      ];
+    }
+
+    function paintMarks() {
+      let host = el.querySelector(".fs-marks");
+      if (!host) {
+        host = document.createElement("div");
+        host.className = "fs-marks";
+        const body = el.querySelector(".fs-body");
+        if (body) el.insertBefore(host, body);
+        else el.appendChild(host);
+        for (const m of marks()) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.dataset.mark = m.path;
+          b.textContent = m.name;
+          b.addEventListener("click", () => goPath(m.path));
+          host.appendChild(b);
+        }
+      }
+      let best = "";
+      for (const m of marks()) {
+        const hit = m.path === "/" ? cwd === "/" : cwd === m.path || cwd.startsWith(`${m.path}/`);
+        if (hit && m.path.length >= best.length) best = m.path;
+      }
+      host.querySelectorAll("[data-mark]").forEach((b) => {
+        b.classList.toggle("is-on", b.dataset.mark === best);
+      });
+    }
+
+    function copyPathNow() {
+      const p = lastFsPick || selectedPaths()[0] || cwd;
+      if (!p) return;
+      kernel.clipPush(p);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(p).catch(() => {});
+      }
+      kernel.log(`道を写した ${p}`, "fs");
+    }
 
     function pushCwd(p) {
       if (p === hist[histI]) return;
       hist = hist.slice(0, histI + 1);
       hist.push(p);
       histI = hist.length - 1;
+      rememberCwd();
     }
 
     function selectedPaths() {
@@ -101,6 +160,7 @@ export default {
       cwd = hist[histI];
       selected = new Set();
       lastFsPick = "";
+      rememberCwd();
       render();
     }
 
@@ -110,6 +170,7 @@ export default {
       cwd = hist[histI];
       selected = new Set();
       lastFsPick = "";
+      rememberCwd();
       render();
     }
 
@@ -314,6 +375,7 @@ export default {
       if (listSig === lastSig && el.querySelector(".fs-tree")) {
         paintSel();
         applyFilter();
+        paintMarks();
         return;
       }
       lastSig = listSig;
@@ -330,7 +392,13 @@ export default {
         }
         usedCache = { sig: usageSig, text: used };
       }
-      el.innerHTML = `
+      let bodyEl = el.querySelector(".fs-body");
+      if (!bodyEl) {
+        bodyEl = document.createElement("div");
+        bodyEl.className = "fs-body";
+        el.appendChild(bodyEl);
+      }
+      bodyEl.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
         <div class="fs-crumbs">${crumbs(cwd)}</div>
         <input class="search" id="fs-go" value="${cwd}" aria-label="匣の道" style="margin:8px 0;max-width:100%" />
@@ -355,6 +423,7 @@ export default {
           <button class="btn" type="button" id="fs-cut" ${locked ? "disabled" : ""}>切る</button>
           <button class="btn" type="button" id="fs-paste" ${locked ? "disabled" : ""}>貼る</button>
           <button class="btn" type="button" id="fs-stat">属性</button>
+          <button class="btn" type="button" id="fs-path">道を写す</button>
           <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
           <button class="btn" type="button" id="fs-rename" ${locked ? "disabled" : ""}>改名</button>
           <button class="btn" type="button" id="fs-muen" ${locked ? "disabled" : ""}>無縁へ</button>
@@ -404,9 +473,11 @@ export default {
         });
       }
       applyFilter();
+      paintMarks();
       el.querySelector("#fs-stat").onclick = () => {
         kernel.emit("stat", lastFsPick || selectedPaths()[0] || cwd);
       };
+      el.querySelector("#fs-path").onclick = () => copyPathNow();
       const nameEl = el.querySelector("#fs-name");
       el.querySelector("#fs-new").onclick = async () => {
         const name = (nameEl.value || `${Date.now()}.ofuda`).trim();
@@ -530,6 +601,20 @@ export default {
         kernel.emit("stat", lastFsPick || selectedPaths()[0] || cwd);
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        const filter = el.querySelector("#fs-filter");
+        if (filter) {
+          filter.focus();
+          filter.select();
+        }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        copyPathNow();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && (e.key === "l" || e.key === "L")) {
         e.preventDefault();
         const go = el.querySelector("#fs-go");
@@ -591,7 +676,22 @@ export default {
         kernel.emit("peek", lastFsPick || selectedPaths()[0] || cwd);
       }
     });
-    render();
+    async function boot() {
+      if (!startPath) {
+        try {
+          const saved = await kernel.vfs.metaGet("fsCwd");
+          if (typeof saved === "string" && saved) {
+            cwd = saved;
+            hist = [cwd];
+            histI = 0;
+          }
+        } catch (err) {
+          /* 初回 */
+        }
+      }
+      render();
+    }
+    boot();
     const on = () => render();
     kernel.addEventListener("vfs", on);
     return {
