@@ -17,15 +17,19 @@ export default {
     let bound = false;
     let wrap = false;
     let wrapHeld = false;
+    let chromeSig = "";
 
     function leafName() {
       return current.split("/").pop() || "言霊";
     }
 
     function syncChrome() {
+      const lines = body ? body.split("\n").length : 1;
+      const sig = `${current}|${readonly ? 1 : 0}|${dirty ? 1 : 0}|${lines}|${wrap ? 1 : 0}`;
+      if (sig === chromeSig) return;
+      chromeSig = sig;
       const pathEl = el.querySelector(".ed-path");
       if (pathEl) {
-        const lines = body ? body.split("\n").length : 1;
         const line = `${current}${readonly ? " · 読むだけ" : ""}${dirty ? " · 未書" : ""} · ${lines}行`;
         if (pathEl.textContent !== line) pathEl.textContent = line;
       }
@@ -84,8 +88,11 @@ export default {
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn primary" type="button" id="save">書く</button>
           <button class="btn" type="button" id="ed-box">匣を開く</button>
-          <input class="search" id="ed-find" placeholder="札の中を探る" style="margin:0;max-width:200px" />
+          <input class="search" id="ed-find" placeholder="札の中を探る" style="margin:0;max-width:160px" />
           <button class="btn" type="button" id="ed-find-go">探る</button>
+          <input class="search" id="ed-repl" placeholder="換える文" style="margin:0;max-width:160px" />
+          <button class="btn" type="button" id="ed-repl-go">換える</button>
+          <button class="btn" type="button" id="ed-repl-all">すべて</button>
           <input class="search" id="ed-line" placeholder="行" inputmode="numeric" style="margin:0;max-width:72px" />
           <button class="btn" type="button" id="ed-goto">行へ</button>
           <button class="btn" type="button" id="ed-wrap">折り返す</button>
@@ -116,21 +123,80 @@ export default {
       }
       function findNext() {
         const q = el.querySelector("#ed-find").value;
-        if (!q) return;
+        if (!q) {
+          el.querySelector("#ed-find").focus();
+          return false;
+        }
         const from = ta.selectionEnd || 0;
         let i = body.indexOf(q, from);
         if (i < 0 || i === ta.selectionStart) i = body.indexOf(q, 0);
         if (i < 0) {
           kernel.log("探る: 見つからない", "kotodama");
-          return;
+          return false;
         }
         ta.focus();
         ta.setSelectionRange(i, i + q.length);
+        return true;
+      }
+      function takeBody() {
+        body = ta.value;
+        markDirty();
+        syncChrome();
+        syncWarn();
+      }
+      function replaceOne() {
+        if (readonly) return;
+        const q = el.querySelector("#ed-find").value;
+        const r = el.querySelector("#ed-repl").value;
+        if (!q) {
+          el.querySelector("#ed-find").focus();
+          return;
+        }
+        const start = ta.selectionStart || 0;
+        const end = ta.selectionEnd || 0;
+        if (start !== end && body.slice(start, end) === q) {
+          ta.setRangeText(r, start, end, "end");
+          takeBody();
+          return;
+        }
+        if (!findNext()) return;
+        ta.setRangeText(r, ta.selectionStart, ta.selectionEnd, "end");
+        takeBody();
+      }
+      function replaceAll() {
+        if (readonly) return;
+        const q = el.querySelector("#ed-find").value;
+        const r = el.querySelector("#ed-repl").value;
+        if (!q) {
+          el.querySelector("#ed-find").focus();
+          return;
+        }
+        if (!body.includes(q)) {
+          kernel.log("換える: 見つからない", "kotodama");
+          return;
+        }
+        const n = body.split(q).length - 1;
+        body = body.split(q).join(r);
+        ta.value = body;
+        takeBody();
+        kernel.log(`言霊を換えた ×${n}`, "kotodama");
       }
       ta.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
           e.preventDefault();
           persist(false).catch((err) => kernel.log(`write: ${err.message}`, "fs"));
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+          e.preventDefault();
+          const find = el.querySelector("#ed-find");
+          find.focus();
+          find.select();
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+          e.preventDefault();
+          const repl = el.querySelector("#ed-repl");
+          repl.focus();
+          repl.select();
         }
         if (e.key === "F3") {
           e.preventDefault();
@@ -142,6 +208,15 @@ export default {
         }
       });
       el.querySelector("#ed-find-go").onclick = () => findNext();
+      el.querySelector("#ed-repl-go").onclick = () => replaceOne();
+      el.querySelector("#ed-repl-all").onclick = () => replaceAll();
+      el.querySelector("#ed-repl").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (e.shiftKey) replaceAll();
+          else replaceOne();
+        }
+      });
       el.querySelector("#ed-goto").onclick = () => gotoLine();
       el.querySelector("#ed-line").addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -150,6 +225,13 @@ export default {
         }
       });
       el.querySelector("#ed-find").addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+          e.preventDefault();
+          const repl = el.querySelector("#ed-repl");
+          repl.focus();
+          repl.select();
+          return;
+        }
         if (e.key === "Enter" || e.key === "F3") {
           e.preventDefault();
           findNext();
