@@ -1,5 +1,6 @@
 import { kernel } from "./kernel.js";
 import { createWm } from "./wm.js";
+import { handlersFor, resolveOpen } from "./intent.js";
 
 const registry = new Map();
 let wm = null;
@@ -50,36 +51,40 @@ export function launch(appId, opts = {}) {
     mount: view.el,
     onClose: view.onClose,
     onFocus: view.onFocus,
+    onPause: view.onPause,
+    onResume: view.onResume,
     onDrop: view.onDrop,
   });
   kernel.log(`exec ${app.id} pid=${proc.pid}`, "runtime");
   return win;
 }
 
-export async function openPath(path) {
+export async function listHandlers(path) {
+  let file = { path, type: "file" };
+  try {
+    file = await kernel.readPath(path);
+  } catch (err) {
+    file = { path, type: "file" };
+  }
+  const ids = new Set(apps().map((a) => a.id));
+  return handlersFor(file.path || path, file, await kernel.assocTable(), ids);
+}
+
+export async function openPath(path, opts = {}) {
+  const withId = opts.with;
   try {
     const f = await kernel.readPath(path);
-    kernel.noteRecent(f.path || path);
-    if (f.mime === "gate/app" || (f.path || path).endsWith(".gate")) {
-      return launch(String(f.body || "").trim());
-    }
-    if (f.mime === "text/proc" || (f.path || path).startsWith("/proc/")) {
-      return launch("editor", { path: f.path || path });
-    }
-    if ((f.path || path).startsWith("/mnt/") && (f.path || path).includes("/shrines/")) {
-      return launch("editor", { path: f.path || path });
-    }
-    if (
-      (f.path || path).startsWith("/etc") ||
-      (f.path || path).endsWith(".txt") ||
-      (f.path || path).endsWith(".yaoyorozu") ||
-      (f.path || path).endsWith(".ofuda")
-    ) {
-      return launch("editor", { path: f.path || path });
-    }
-    return launch("fs", { path: f.path || path });
+    const dest = f.path || path;
+    kernel.noteRecent(dest);
+    if (withId && withId !== "gate") return launch(withId, { path: dest });
+    const table = await kernel.assocTable();
+    const hit = withId === "gate" ? { app: "gate" } : resolveOpen(dest, f, table);
+    if (hit.app === "gate") return launch(String(f.body || "").trim());
+    if (hit.app === "fs") return launch("fs", { path: dest });
+    return launch(hit.app, { path: dest });
   } catch (err) {
     kernel.log(`open ${path}: ${err.message}`, "fs");
+    if (withId && withId !== "gate") return launch(withId, { path });
     return launch("fs", { path });
   }
 }
