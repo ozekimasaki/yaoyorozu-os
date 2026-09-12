@@ -109,6 +109,15 @@
   color: var(--gold-2);
 }
 
+.fs-peek {
+  max-height: 132px;
+  margin: 8px 0 0;
+  padding: 8px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .fs-crumbs {
   display: flex;
   flex-wrap: wrap;
