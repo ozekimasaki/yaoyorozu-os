@@ -1,5 +1,5 @@
 import { kernel } from "./kernel.js";
-import { register, bindWm, launch, openPath, getWm } from "./runtime.js";
+import { register, bindWm, launch, openPath, getWm, listHandlers } from "./runtime.js";
 import oncall from "./apps/oncall.js";
 import map from "./apps/map.js";
 import proc from "./apps/proc.js";
@@ -606,17 +606,16 @@ async function startDesktop() {
   bindWm(document.getElementById("window-layer"), document.getElementById("taskbar"));
   const switchers = bindSwitchers({ kernel, getWm, openPath });
   const torii = bindTorii(document.getElementById("torii-gate"), kernel);
+  const kashiwa = bindKashiwa(document.getElementById("kashiwa-stage"), kernel, applyJob);
   bindPhone({
     kernel,
     wm: getWm(),
     launch,
     openPath,
     openTorii: () => torii.open(),
-    openOshi: () => document.getElementById("oshi-pill")?.click(),
-    openRecents: () => switchers.toggleWin(),
+    openKashiwa: () => kashiwa.open(),
     openSpaces: () => switchers.toggleSpaces(),
   });
-  const kashiwa = bindKashiwa(document.getElementById("kashiwa-stage"), kernel, applyJob);
   const field = startField(document.getElementById("kami-field"), kernel);
   startIrq(document.getElementById("irq-layer"), kernel, field, launch);
 
@@ -1136,6 +1135,12 @@ async function startDesktop() {
     if (!path || !act) return;
     if (act === "open") {
       openPath(path);
+      return;
+    }
+    if (act === "with") {
+      const rows = await listHandlers(path);
+      const pick = window.prompt(rows.map((r) => r.id).join(" "), rows[0]?.id || "editor");
+      if (pick) openPath(path, { with: pick });
       return;
     }
     if (act === "copy") {
