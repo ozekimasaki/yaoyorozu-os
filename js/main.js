@@ -1,2 +1,23 @@
 import { kernel } from "./kernel.js";
 import { register, bindWm, launch, openPath, getWm } from "./runtime.js";
+import oncall from "./apps/oncall.js";
+import map from "./apps/map.js";
+import proc from "./apps/proc.js";
+import fs from "./apps/fs.js";
+import editor from "./apps/editor.js";
+import fw from "./apps/fw.js";
+import net from "./apps/net.js";
+import dmesg from "./apps/dmesg.js";
+import term from "./apps/term.js";
+import sim from "./apps/sim.js";
+import ma from "./apps/ma.js";
+import cal from "./apps/cal.js";
+import clip from "./apps/clip.js";
+import sys from "./apps/sys.js";
+import muen from "./apps/muen.js";
+import { bindTorii } from "./apps/torii.js";
+import { bindKashiwa } from "./kashiwa.js";
+import { startField } from "./field.js";
+import { startIrq } from "./irq.js";
+
+registe
