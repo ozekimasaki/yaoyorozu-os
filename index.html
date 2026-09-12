@@ -2,7 +2,17 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <script>
+      (function () {
+        var w = innerWidth;
+        var h = innerHeight;
+        if (w <= 720 || (h <= 480 && w <= 980)) document.documentElement.classList.add("is-phone");
+      })();
+    </script>
     <title>&#x516b;&#x767e;&#x4e07;OS &#x2014; &#x672a;&#x958b;&#x5c01;&#x306e;&#x65e5;&#x672c;&#x3092;&#x3001;&#x8d77;&#x52d5;&#x3059;&#x308b;</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 24'%3E%3Crect x='2' y='4' width='28' height='3' fill='%23c23a2b'/%3E%3Crect x='6' y='7' width='3' height='14' fill='%23c23a2b'/%3E%3Crect x='23' y='7' width='3' height='14' fill='%23c23a2b'/%3E%3C/svg%3E" />
     <link rel="manifest" href="manifest.webmanifest" />
@@ -16,6 +26,7 @@
     <link rel="stylesheet" href="css/wm.css" />
     <link rel="stylesheet" href="css/desktop.css" />
     <link rel="stylesheet" href="css/irq.css" />
+    <link rel="stylesheet" href="css/phone.css" />
   </head>
   <body>
     <div id="boot">
@@ -44,6 +55,7 @@
       <header class="menubar">
         <div class="brand" title="&#x9ce5;&#x5c45;&#x3092;&#x958b;&#x304f;">&#x516b;&#x767e;&#x4e07;OS</div>
         <div class="menubar-meta" id="menubar-meta" title="&#x6c0f;&#x5b50;&#x8ab2;">oncall=&#x2026; &#xb7; kernel=&#x2026;</div>
+        <div class="clock" id="phone-space"></div>
         <div class="clock" id="clock" title="&#x796d;&#x66a6;"></div>
       </header>
       <div id="desktop-icons"></div>
@@ -60,6 +72,14 @@
         <span class="pill" id="oshi-pill">&#x544a;&#x3052;</span>
         <div class="task-apps"></div>
       </footer>
+      <nav id="phone-dock" aria-label="dock">
+        <button type="button" data-phone="oncall">&#x5f53;&#x76f4;</button>
+        <button type="button" data-phone="torii">&#x9ce5;&#x5c45;</button>
+        <button type="button" data-phone="home" id="phone-home">&#x30db;&#x30fc;&#x30e0;</button>
+        <button type="button" data-phone="fs">&#x7e01;fs</button>
+        <button type="button" data-phone="term">&#x5949;&#x7d0d;</button>
+      </nav>
+      <div id="phone-homebar" aria-hidden="true"></div>
     </div>
 
     <div id="torii-gate">
@@ -71,7 +91,7 @@
 
     <div id="kashiwa-stage">
       <p class="torii-head">&#x67cf;&#x624b;</p>
-      <p class="muted">&#x5de6;&#x624b;&#x3068;&#x53f3;&#x624b;&#x3002;&#x4e8c;&#x8981;&#x7d20;&#x8a8d;&#x8a3c;&#x3002;&#x5f15;&#x304d;&#x3067;&#x306f;&#x306a;&#x3044;&#x3002;</p>
+      <p class="muted">&#x5de6;&#x624b;&#x3068;&#x53f3;&#x624b;&#x3002;&#x4e8c;&#x8981;&#x7d20;&#x8a8d;&#x8a3c;&#x3002;&#x5f15;&#x304d;&#x3067&#x306f;&#x306a;&#x3044;&#x3002;</p>
       <div class="kashiwa-hands">
         <button type="button" class="hand" data-hand="left">&#x5de6;&#x624b;</button>
         <button type="button" class="hand" data-hand="right">&#x53f3;&#x624b;</button>
@@ -96,7 +116,7 @@
     </div>
     <div id="eaves-menu" hidden>
       <button type="button" data-act="torii">&#x9ce5;&#x5c45;</button>
-      <button type="button" data-act="tile">&#x7a93;&#x3092;&#x4e26;&#x3079;&#x308b;</button>
+      <button type="button" data-act="tile">&#x7a93;&#x3092;&#x4e26;&#u3079;&#x308b;</button>
       <button type="button" data-act="expose">&#x4fef;&#x77b0;</button>
       <button type="button" data-act="center">&#x7a93;&#x3092;&#x4e2d;&#x592e;&#x3078;</button>
       <button type="button" data-act="tidy">&#x672d;&#x3092;&#x63c3;&#x3048;&#x308b;</button>
