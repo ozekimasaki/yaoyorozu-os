@@ -245,7 +245,7 @@ async function pasteDesk() {
           await kernel.vfs.rename(src, dest);
         } catch (err) {
           if (err.message === "EXDEV" || err.message === "EISDIR") {
-            kernel.log("匭の切りは写して残す", "desk");
+            kernel.log("匣の切りは写して残す", "desk");
             await copyTree(src, dest);
           } else {
             await copyTree(src, dest);
@@ -340,7 +340,7 @@ async function newDeskOfuda() {
 }
 
 async function newDeskBox() {
-  const path = `/home/${kernel.state.ujiko}/desktop/匭-${Date.now()}`;
+  const path = `/home/${kernel.state.ujiko}/desktop/匣-${Date.now()}`;
   await kernel.vfs.mkdir(path);
   lastDeskPick = path;
   kernel.emit("vfs");
@@ -388,7 +388,7 @@ async function peekDesk() {
       body.textContent = "ENOENT";
     } else if (node.type === "dir") {
       const kids = await kernel.vfs.ls(path);
-      body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匭）";
+      body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匣）";
     } else if (node.type === "link") {
       body.textContent = `↦ ${node.target || node.body || ""}`;
     } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
@@ -562,7 +562,7 @@ async function startDesktop() {
   const paintUjiko = (reset = false) => {
     const lines = kernel.state.dmesg || [];
     if (reset || ujikoLen > lines.length) {
-      ujikoLog.textContent = lines.slice(-16).join("\n") || "（氏子課は沈默）";
+      ujikoLog.textContent = lines.slice(-16).join("\n") || "（氏子課は沈黙）";
       ujikoLen = lines.length;
       ujikoLog.scrollTop = ujikoLog.scrollHeight;
       return;
@@ -570,7 +570,7 @@ async function startDesktop() {
     if (lines.length === ujikoLen) return;
     const add = lines.slice(ujikoLen);
     ujikoLen = lines.length;
-    if (!ujikoLog.textContent || ujikoLog.textContent === "（氏子課は沈默）") ujikoLog.textContent = add.join("\n");
+    if (!ujikoLog.textContent || ujikoLog.textContent === "（氏子課は沈黙）") ujikoLog.textContent = add.join("\n");
     else ujikoLog.textContent += `\n${add.join("\n")}`;
     const shown = ujikoLog.textContent.split("\n");
     if (shown.length > 16) ujikoLog.textContent = shown.slice(-16).join("\n");
