@@ -61,6 +61,23 @@ try {
   note(await page.evaluate(() =>
     [...document.querySelectorAll(".desk-icon")].some((b) => (b.textContent || "").includes("\u97f3\u970a"))
   ), "\u30db\u30fc\u30e0\u306b\u97f3\u970a");
+  const marks = await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon .fuda-mark")].map((el) => el.dataset.icon || el.querySelector("img")?.src || "")
+  );
+  note(marks.length >= 8, `\u672d\u30de\u30fc\u30af ${marks.length}`);
+  note(new Set(marks).size === marks.length, `\u672d\u30de\u30fc\u30af\u56fa\u6709 ${marks.join(",")}`);
+  const dockMarks = await page.evaluate(() =>
+    [...document.querySelectorAll("#phone-dock .fuda-mark")].map((el) => el.dataset.icon || "")
+  );
+  note(dockMarks.length === 5 && new Set(dockMarks).size === 5, `\u30c9\u30c3\u30af\u56fa\u6709 ${dockMarks.join(",")}`);
+  note(await page.evaluate(() => {
+    const home = document.querySelector("#phone-dock [data-phone=home] .fuda-name");
+    const raw = document.querySelector("#phone-dock [data-phone=home]")?.textContent || "";
+    return home && home.textContent === "\u30db\u30fc\u30e0" && raw === "\u30db\u30fc\u30e0";
+  }), "\u30c9\u30c3\u30af\u672d\u540d\u306f\u4e00\u5ea6");
+  note(await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon img")].every((img) => img.complete && img.naturalWidth > 0)
+  ), "\u672dSVG\u304c\u8aad\u3081\u308b");
   await h.shot("home");
 
   await page.evaluate(() => {
