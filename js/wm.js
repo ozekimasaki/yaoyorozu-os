@@ -153,10 +153,19 @@ export function createWm(root, taskbar, kernel) {
     taskMenu.hidden = true;
   });
   document.addEventListener("keydown", (e) => {
-    if (!e.shiftKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    const sameApp =
+      (e.shiftKey && (e.code === "Backslash" || e.key === "\\" || e.key === "|")) ||
+      ((e.ctrlKey || e.metaKey) && (e.code === "Backquote" || e.key === "`"));
+    if (sameApp) {
+      e.preventDefault();
+      e.stopPropagation();
+      cycleApp();
+      return;
+    }
     const tag = (e.target && e.target.tagName) || "";
     if (tag === "INPUT" || tag === "TEXTAREA") return;
     if (document.activeElement && document.activeElement.classList.contains("desk-icon")) return;
+    if (!e.shiftKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
     const w = [...windows.values()].find(
       (x) => x.el.classList.contains("focused") && !x.minimized && !x.el.classList.contains("is-away")
     );
@@ -611,6 +620,28 @@ export function createWm(root, taskbar, kernel) {
     focus(next.pid);
   }
 
+  function cycleApp() {
+    const focused = [...windows.values()].find(
+      (w) => w.el.classList.contains("focused") && !w.minimized && !w.el.classList.contains("is-away")
+    );
+    if (!focused) {
+      cycle();
+      return;
+    }
+    const same = [...windows.values()].filter(
+      (w) => w.appId === focused.appId && !w.el.classList.contains("is-away")
+    );
+    if (same.length < 2) {
+      cycle();
+      return;
+    }
+    const i = same.findIndex((w) => w.pid === focused.pid);
+    const next = same[(i + 1) % same.length];
+    restore(next.pid);
+    focus(next.pid);
+    kernel.log(`同じアプリの窓 ${next.pid}`, "wm");
+  }
+
   function list() {
     return [...windows.values()];
   }
@@ -634,6 +665,7 @@ export function createWm(root, taskbar, kernel) {
     restore,
     focus,
     cycle,
+    cycleApp,
     applySpace,
     list,
     setTitle,
