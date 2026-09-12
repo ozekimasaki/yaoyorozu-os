@@ -60,6 +60,10 @@ export function createVfs() {
   const grepMemo = new Map();
   const watchers = new Set();
   const MEMO_CAP = 24;
+  const rootUsage = { bytes: 0, files: 0, dirs: 0, dirty: true };
+  let quotaBytes = 0;
+  let quotaSweep = null;
+  let quotaBusy = false;
 
   function watch(fn) {
     if (typeof fn !== "function") return () => {};
@@ -174,7 +178,39 @@ export function createVfs() {
     return path === root || path.startsWith(`${root}/`);
   }
 
+  function applyUsage(rec, sign) {
+    if (!rec || rec.path === "/") return;
+    if (rec.type === "dir") rootUsage.dirs += sign;
+    else {
+      rootUsage.files += sign;
+      rootUsage.bytes += sign * String(rec.body || "").length;
+    }
+  }
+
+  function recountRoot() {
+    let bytes = 0;
+    let files = 0;
+    let dirs = 0;
+    for (const [p, f] of cache) {
+      if (p === "/") continue;
+      if (f.type === "dir") dirs += 1;
+      else {
+        files += 1;
+        bytes += String(f.body || "").length;
+      }
+    }
+    rootUsage.bytes = bytes;
+    rootUsage.files = files;
+    rootUsage.dirs = dirs;
+    rootUsage.dirty = false;
+  }
+
   function remember(record) {
+    const old = cache.get(record.path);
+    if (indexReady && !rootUsage.dirty) {
+      if (old) applyUsage(old, -1);
+      applyUsage(record, 1);
+    }
     cache.set(record.path, record);
     if (indexReady) {
       bustSearch();
@@ -188,6 +224,8 @@ export function createVfs() {
 
   function forget(path) {
     const n = normalize(path);
+    const old = cache.get(n);
+    if (indexReady && !rootUsage.dirty && old) applyUsage(old, -1);
     cache.delete(n);
     const p = parentOf(n);
     const set = children.get(p);
@@ -263,6 +301,32 @@ export function createVfs() {
     const files = await allFiles();
     for (const f of files) remember(f);
     indexReady = true;
+    recountRoot();
+  }
+
+  function setQuota(bytes, sweep) {
+    quotaBytes = Math.max(0, Number(bytes) || 0);
+    quotaSweep = typeof sweep === "function" ? sweep : null;
+  }
+
+  function quotaOf() {
+    return quotaBytes;
+  }
+
+  async function checkQuota(delta) {
+    if (!quotaBytes || !indexReady || delta <= 0 || quotaBusy) return;
+    const used = rootUsage.dirty ? (await usage("/")).bytes : rootUsage.bytes;
+    if (used + delta <= quotaBytes) return;
+    if (quotaSweep) {
+      quotaBusy = true;
+      try {
+        await quotaSweep({ need: used + delta - quotaBytes });
+      } finally {
+        quotaBusy = false;
+      }
+    }
+    const used2 = rootUsage.dirty ? (await usage("/")).bytes : rootUsage.bytes;
+    if (used2 + delta > quotaBytes) throw new Error("ENOSPC");
   }
 
   async function mkdir(path) {
@@ -340,11 +404,14 @@ export function createVfs() {
       notify(dest, "put");
       return rec;
     }
+    const nextBody = String(body ?? "");
+    const prevLen = prev && prev.type !== "dir" ? String(prev.body || "").length : 0;
+    await checkQuota(nextBody.length - prevLen);
     await mkdir(parentOf(dest));
     return putFile({
       path: dest,
       type: "file",
-      body: String(body ?? ""),
+      body: nextBody,
       mime,
       origin: prev && prev.origin,
       exec: !!(prev && prev.exec),
@@ -489,6 +556,9 @@ export function createVfs() {
     const mounted = mountOf(n);
     if (mounted && mounted.ops.usage) return mounted.ops.usage(relOf(n, mounted.root), n);
     await ensureIndex();
+    if (n === "/" && !rootUsage.dirty) {
+      return { bytes: rootUsage.bytes, files: rootUsage.files, dirs: rootUsage.dirs };
+    }
     const root = cache.get(n);
     if (root && root.type === "file") {
       return { bytes: (root.body || "").length, files: 1, dirs: 0 };
@@ -687,6 +757,8 @@ export function createVfs() {
     find,
     grep,
     usage,
+    setQuota,
+    quotaOf,
     follow,
     link,
     touch,
