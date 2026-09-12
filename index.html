@@ -48,7 +48,7 @@
       </header>
       <div id="desktop-icons"></div>
       <div id="window-layer"></div>
-      <div class="hint">/ 鳥居 · ; 窓 · ' 空間 · ? 操作 · 空欄 覗く · 囲う · 落とす</div>
+      <div class="hint">/ 鳥居 · ; 窓 · ' 空間 · r 最近 · ? 操作 · 空欄 覗く · 囲う · 落とす</div>
       <div id="desk-marquee" hidden></div>
       <footer class="taskbar" id="taskbar">
         <span class="pill" id="space-pill">kernel: 47</span>
@@ -56,6 +56,7 @@
         <span class="pill" id="logout-pill">logout: 遷宮まで無効</span>
         <span class="pill" id="ma-pill">status: 間</span>
         <span class="pill" id="disk-pill" title="氏子の器">器: …</span>
+        <span class="pill" id="net-pill" title="縁">縁: …</span>
         <span class="pill" id="oshi-pill">告げ</span>
         <div class="task-apps"></div>
       </footer>
@@ -84,6 +85,7 @@
     <div id="desk-icon-menu" hidden>
       <button type="button" data-act="open">くぐる</button>
       <button type="button" data-act="peek">覗く</button>
+      <button type="button" data-act="stat">属性</button>
       <button type="button" data-act="rename">改名</button>
       <button type="button" data-act="copy">写す</button>
       <button type="button" data-act="cut">切る</button>
@@ -95,8 +97,9 @@
       <button type="button" data-act="tile">窓を並べる</button>
       <button type="button" data-act="tidy">札を揃える</button>
       <button type="button" data-act="paste">貼る</button>
+      <button type="button" data-act="recent">最近の札</button>
       <button type="button" data-act="ofuda">新しい札</button>
-      <button type="button" data-act="box">新しい匣</button>
+      <button type="button" data-act="box">新しい匡</button>
       <button type="button" data-act="cal">祭暦</button>
       <button type="button" data-act="clip">控え</button>
       <button type="button" data-act="sys">機械</button>
@@ -130,6 +133,8 @@
         <div><kbd>,</kbd> 席を空ける</div>
         <div><kbd>.</kbd> 窓を並べる</div>
         <div><kbd>n</kbd> お告げ</div>
+        <div><kbd>r</kbd> 最近の札</div>
+        <div><kbd>Ctrl+I</kbd> 属性</div>
         <div><kbd>k</kbd> 柏手</div>
         <div><kbd>m</kbd> 間</div>
         <div><kbd>空欄</kbd> 覗く</div>
@@ -140,6 +145,14 @@
         <div><kbd>Delete</kbd> 無縁へ</div>
         <div><kbd>Esc</kbd> 閉じる</div>
       </div>
+    </div>
+    <div id="recent-list" hidden>
+      <p class="muted">最近の札</p>
+      <div id="recent-log"></div>
+    </div>
+    <div id="file-stat" hidden>
+      <p class="muted" id="file-stat-path"></p>
+      <pre class="term-out" id="file-stat-body"></pre>
     </div>
     <div id="desk-peek" hidden>
       <p class="muted" id="desk-peek-path"></p>
