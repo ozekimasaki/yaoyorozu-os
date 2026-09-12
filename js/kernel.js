@@ -2,6 +2,7 @@ import { bits16, hash32, hexFromHash, jstDateKey, mulberry32, pick } from "./rng
 import { createBus, tabId } from "./bus.js";
 import { createVfs } from "./vfs.js";
 import { attachCron } from "./cron.js";
+import { assocText, defaultAssoc, parseAssoc, resolveOpen } from "./intent.js";
 
 const KAMI_TEMPLATES = [
   { role: "路地", note: "狭い道ほど、縁は濃い。" },
@@ -227,6 +228,9 @@ class Kernel extends EventTarget {
         century.map((c) => `${c.y} ${c.title}\n${c.body}`).join("\n\n"),
         "text/yaoyorozu"
       );
+    }
+    if (!(await this.vfs.getFile("/etc/assoc"))) {
+      await this.vfs.write("/etc/assoc", assocText(defaultAssoc()), "text/plain");
     }
 
     const desk = `${home}/desktop`;
@@ -553,6 +557,10 @@ class Kernel extends EventTarget {
         Object.entries(this.state.env || {})
           .map(([k, v]) => `${k}=${v}`)
           .join("\n"),
+      "/proc/apps": () =>
+        (this.state.appProcs || [])
+          .map((p) => `${p.pid}\t${p.status || "running"}\t${p.appId}\t${p.name}`)
+          .join("\n") || "empty",
     };
     if (!files[n]) return null;
     return { path: n, type: "file", body: files[n](), mime: "text/proc", updated: Date.now() };
@@ -568,7 +576,7 @@ class Kernel extends EventTarget {
     const n = this.vfs.normalize(path);
     if (n === "/proc") {
       const real = await this.vfs.ls("/proc");
-      const virt = ["version", "uptime", "self", "oncall", "spaces", "env"].map((name) => ({
+      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps"].map((name) => ({
         name,
         path: `/proc/${name}`,
         type: "file",
@@ -651,7 +659,10 @@ class Kernel extends EventTarget {
     this.state.oncall = this.computeOncall();
     await this.seedFs();
     await this.vfs.ensureIndex();
-    this.vfs.watch((path, op) => this.emit("vfs", { path, op }));
+    this.vfs.watch((path, op) => {
+      if (path === "/etc/assoc") this._assoc = null;
+      this.emit("vfs", { path, op });
+    });
     await attachCron(this);
     this.bus = createBus((msg) => this.applyRemote(msg));
     try {
@@ -998,6 +1009,61 @@ class Kernel extends EventTarget {
     this.commit();
     this.emit("settings");
     return this.state.settings;
+  }
+
+  async assocTable() {
+    if (this._assoc) return this._assoc;
+    try {
+      const f = await this.vfs.read("/etc/assoc");
+      const rows = parseAssoc(f.body);
+      this._assoc = rows.length ? rows : defaultAssoc();
+    } catch (err) {
+      this._assoc = defaultAssoc();
+    }
+    return this._assoc;
+  }
+
+  async assocFor(path, file) {
+    return resolveOpen(path, file, await this.assocTable());
+  }
+
+  async assocSet(match, app) {
+    const key = String(match || "").trim();
+    const id = String(app || "").trim();
+    if (!key) throw new Error("EINVAL");
+    const table = (await this.assocTable()).filter((r) => r.match !== key);
+    if (id) table.unshift({ match: key, app: id });
+    await this.vfs.write("/etc/assoc", assocText(table), "text/plain");
+    this._assoc = table;
+    this.log(`assoc ${key}=${id || "-"}`, "fs");
+    this.emit("vfs", { path: "/etc/assoc", op: "put" });
+    return table;
+  }
+
+  findApp(q) {
+    const s = String(q || "");
+    return (this.state.appProcs || []).find((p) => String(p.pid) === s || p.appId === s || p.name === s) || null;
+  }
+
+  signalApp(pid, sig) {
+    const proc = this.findApp(pid);
+    if (!proc) throw new Error("ESRCH");
+    const s = String(sig || "TERM").replace(/^-/, "").toUpperCase();
+    if (s === "STOP") {
+      proc.status = "sleeping";
+      this.log(`SIGSTOP ${proc.name} pid=${proc.pid}`, "proc");
+    } else if (s === "CONT") {
+      proc.status = "running";
+      this.log(`SIGCONT ${proc.name} pid=${proc.pid}`, "proc");
+    } else if (s === "TERM" || s === "KILL") {
+      this.log(`SIGTERM ${proc.name} pid=${proc.pid}`, "proc");
+      this.emit("ps");
+      return "term";
+    } else {
+      throw new Error("EINVAL");
+    }
+    this.emit("ps");
+    return proc.status;
   }
 
   logout() {
