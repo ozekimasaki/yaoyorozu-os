@@ -25,6 +25,21 @@ export function defaultAssoc() {
     { match: ".sched", app: "cal" },
     { match: ".name", app: "muen" },
     { match: ".proc", app: "editor" },
+    { match: ".oto", app: "oto" },
+    { match: ".kagura", app: "oto" },
+    { match: "text/oto", app: "oto" },
+    { match: "audio/mpeg", app: "oto" },
+    { match: "audio/ogg", app: "oto" },
+    { match: "audio/wav", app: "oto" },
+    { match: "audio/mp4", app: "oto" },
+    { match: "video/webm", app: "oto" },
+    { match: "video/mp4", app: "oto" },
+    { match: ".mp3", app: "oto" },
+    { match: ".ogg", app: "oto" },
+    { match: ".wav", app: "oto" },
+    { match: ".m4a", app: "oto" },
+    { match: ".webm", app: "oto" },
+    { match: ".mp4", app: "oto" },
   ];
 }
 
@@ -62,7 +77,7 @@ export function resolveOpen(path, file, table) {
 
 export function handlersFor(path, file, table, appIds) {
   const primary = resolveOpen(path, file, table);
-  const extra = ["editor", "fs", "term", "clip"];
+  const extra = ["editor", "fs", "term", "clip", "oto"];
   const seen = new Set();
   const out = [];
   for (const id of [primary.app, ...extra]) {
