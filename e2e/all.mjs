@@ -320,6 +320,44 @@ try {
   note(!!(await page.$(".window[data-app=editor]")), "\u30b7\u30fc\u30c8\u3067\u8a00\u970a");
   await h.closeWin("editor");
 
+  await h.openTorii("\u97f3\u970a", "oto");
+  note(!!(await h.vis("oto")), "\u97f3\u970a");
+  note(!!(await page.$(".window[data-app=oto] #oto-invite")), "\u62db\u304f");
+  note(!!(await page.$(".window[data-app=oto] [data-seat]")), "\u5ea7");
+  await page.evaluate(() => document.querySelector(".window[data-app=oto] #oto-invite")?.click());
+  await sleep(360);
+  note(await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "live").catch(() => false), "\u62db\u3044\u3066\u9cf4\u308b");
+  note(await page.evaluate(() => document.documentElement.dataset.oto === "live"), "\u6838\u306b\u9cf4\u308b");
+  note(await page.evaluate(() => {
+    const pill = document.getElementById("oto-pill");
+    return !!(pill && !pill.hidden);
+  }), "\u5353\u306b\u97f3\u970a");
+  await page.evaluate(() => document.querySelector(".window[data-app=oto] .win-min")?.click());
+  await sleep(220);
+  note(await page.evaluate(() => {
+    const app = document.querySelector(".window[data-app=oto] .oto-app");
+    return !!(app && app.dataset.state === "live" && document.documentElement.dataset.oto === "live");
+  }), "\u3057\u307e\u3063\u3066\u3082\u9cf4\u308b");
+  await page.evaluate(() => document.getElementById("oto-pill")?.click());
+  await sleep(280);
+  note(!!(await h.vis("oto")), "\u672d\u3067\u8d77\u3053\u3059");
+  await page.evaluate(() => document.querySelector(".window[data-app=oto] #oto-ma")?.click());
+  await sleep(200);
+  note(await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "ma").catch(() => false), "\u97f3\u3092\u9593\u3078");
+  await h.closeWin("oto");
+  await sleep(160);
+  note(await page.evaluate(() => document.documentElement.dataset.oto !== "live"), "\u9001\u3063\u3066\u9759");
+  await h.openTorii("\u5949\u7d0d", "term");
+  await h.term("open /etc/oto/\u67cf\u624b.oto");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=oto]")), "assoc .oto");
+  await h.term("oto");
+  await h.term("cat /proc/oto");
+  const otoOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+  note(/state=/.test(otoOut), `proc oto ${otoOut.slice(-70)}`);
+  await h.closeWin("oto");
+  await h.closeWin("term");
+
   await h.openTorii("1000\u65e5", "sim");
   note(!!(await h.vis("sim")), "1000\u65e5");
   const day0 = await page.evaluate(() => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || "");
