@@ -1,4 +1,5 @@
-import { openPath as osOpen, listHandlers } from "../runtime.js";
+import { openPath as osOpen } from "../runtime.js";
+import { openWithSheet, openShareSheet } from "../sheet.js";
 
 const VIRTUAL = new Set(["/proc/kami", "/proc/pref", "/var/dmesg"]);
 
@@ -495,7 +496,7 @@ export default {
           ${entries
             .map(
               (f) =>
-                `<button type="button" class="${selected.has(f.path) ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
+                `<button type="button" class="${selected.has(f.path) ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "�-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
             )
             .join("")}
         </div>
@@ -511,6 +512,7 @@ export default {
           <button class="btn" type="button" id="fs-paste" ${locked ? "disabled" : ""}>貼る</button>
           <button class="btn" type="button" id="fs-open">くぐる</button>
           <button class="btn" type="button" id="fs-with">これで開く</button>
+          <button class="btn" type="button" id="fs-share">渡す</button>
           <button class="btn" type="button" id="fs-stat">属性</button>
           <button class="btn" type="button" id="fs-path">道を写す</button>
           <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
@@ -568,13 +570,17 @@ export default {
         const p = lastFsPick || selectedPaths()[0];
         if (p) osOpen(p);
       };
-      el.querySelector("#fs-with").onclick = async () => {
+      el.querySelector("#fs-with").onclick = () => {
         const p = lastFsPick || selectedPaths()[0];
-        if (!p) return;
-        const rows = await listHandlers(p);
-        const pick = window.prompt(rows.map((r) => r.id).join(" "), rows[0]?.id || "editor");
-        if (pick) osOpen(p, { with: pick });
+        if (p) openWithSheet(p);
       };
+      const shareBtn = el.querySelector("#fs-share");
+      if (shareBtn) {
+        shareBtn.onclick = () => {
+          const p = lastFsPick || selectedPaths()[0];
+          if (p) openShareSheet(p);
+        };
+      }
       el.querySelector("#fs-stat").onclick = () => {
         kernel.emit("stat", lastFsPick || selectedPaths()[0] || cwd);
       };
@@ -819,6 +825,9 @@ export default {
       },
       onDrop(paths) {
         ingest(paths);
+      },
+      onOffer(offer) {
+        if (offer && offer.path) goPath(offer.path);
       },
       onClose() {
         kernel.removeEventListener("vfs", on);
