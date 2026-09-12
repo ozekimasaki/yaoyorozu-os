@@ -79,6 +79,50 @@ html.is-phone #phone-shade-hit {
   cursor: pointer;
 }
 
+html.is-phone #phone-shade-hit.has-note {
+  color: var(--gold-2);
+}
+
+html.is-phone .phone-card.is-pick {
+  border-color: var(--gold);
+}
+
+html.is-phone #phone-shade-journal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 22vh;
+  overflow: auto;
+}
+
+html.is-phone #phone-shade-journal button {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(244, 234, 216, 0.06);
+  color: var(--washi);
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+html.is-phone #os-sheet:not([hidden]) {
+  top: auto;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  left: 10px;
+  right: 10px;
+  width: auto;
+  transform: none;
+  border-radius: 22px;
+}
+
+html.is-phone #os-sheet-track button {
+  min-height: 48px;
+  font-size: 15px;
+}
+
 html.is-phone #torii-search {
   background: rgba(22, 20, 15, 0.92);
   border: 1px solid var(--gold);
@@ -190,6 +234,16 @@ html.is-phone .phone-card-chrome button {
   color: var(--washi);
   font-size: 20px;
   cursor: pointer;
+}
+
+html.is-phone .phone-card-chrome button[data-split] {
+  width: auto;
+  min-width: 48px;
+  padding: 0 10px;
+  background: rgba(244, 234, 216, 0.08);
+  color: var(--gold-2);
+  font-size: 12px;
+  letter-spacing: 0.08em;
 }
 
 html.is-phone .phone-card-body {
@@ -376,6 +430,48 @@ html.is-phone .window.is-max {
 
 html.is-phone .window.is-phone-back {
   display: none !important;
+}
+
+html.is-phone .window.is-phone-split-a {
+  inset: 0 0 50% 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 50% !important;
+  border-radius: 14px 14px 0 0;
+  border-width: 1px;
+}
+
+html.is-phone .window.is-phone-split-b {
+  inset: 50% 0 0 0 !important;
+  top: 50% !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 50% !important;
+  border-radius: 0 0 0 0;
+  border-width: 1px 0 0;
+}
+
+@media (orientation: landscape) {
+  html.is-phone .window.is-phone-split-a {
+    inset: 0 50% 0 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 50% !important;
+    height: 100% !important;
+    border-radius: 14px 0 0 0;
+    border-width: 1px 0 0 0;
+  }
+
+  html.is-phone .window.is-phone-split-b {
+    inset: 0 0 0 50% !important;
+    top: 0 !important;
+    left: 50% !important;
+    width: 50% !important;
+    height: 100% !important;
+    border-radius: 0 14px 0 0;
+    border-width: 1px 0 0 1px;
+  }
 }
 
 html.is-phone .window .rz,
