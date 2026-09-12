@@ -546,6 +546,24 @@ export function attachKonoyo(kernel) {
 
   async function ensureRoot() {
     await vfs.mkdir(ROOT);
+    const note = `${ROOT}/\u7d50\u3073.txt`;
+    if (!(await vfs.getFile(note))) {
+      await vfs.write(
+        note,
+        [
+          "\u6b64\u5cb8\u306f\u3001\u3053\u306e\u6a5f\u68b0\u306e\u5323\u3092\u7e01fs\u3078\u7d50\u3076\u5cb8\u3067\u3042\u308b\u3002",
+          "\u7e01fs\uff08\u5f7c\u5cb8\uff09\u306f\u30d6\u30e9\u30a6\u30b6\u306e\u8a18\u61b6\u3002\u6b64\u5cb8\u306f\u3053\u306e\u6a5f\u68b0\u306e\u5323\u3002",
+          "",
+          "\u7e01fs\u3067\u300c\u6b64\u5cb8\u3092\u7d50\u3076\u300d\u304b\u3001\u5949\u7d0d\u3067 konoyo bind\u3002",
+          "\u8a31\u53ef\u304c\u7720\u3063\u305f\u3089\u300c\u8d77\u3053\u3059\u300d\u3002\u89e3\u304f\u3068\u7e01\u306f\u5207\u308c\u308b\u3002",
+          "\u53d7\u3051\u308b\u306f\u73fe\u4e16\u306e\u672d\u3092\u7e01fs\u3078\u3002\u51fa\u3059\u306f\u7e01fs\u306e\u672d\u3092\u73fe\u4e16\u3078\u3002",
+          "",
+        ].join("\n"),
+        "text/plain"
+      );
+    }
+    const gate = `/home/${kernel.state.ujiko}/desktop/\u6b64\u5cb8.gate`;
+    if (!(await vfs.getFile(gate))) await vfs.write(gate, ROOT, "gate/app");
   }
 
   async function placeHolder(id) {
