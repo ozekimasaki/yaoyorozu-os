@@ -7,6 +7,7 @@ export function bindTorii(gate, kernel) {
   let cursor = 0;
   let lastSig = "";
   let findCache = { q: "", rows: [] };
+  let grepCache = { q: "", rows: [] };
   let drawGen = 0;
 
   function catalog(q) {
@@ -15,14 +16,14 @@ export function bindTorii(gate, kernel) {
     const wm = getWm();
     if (wm) {
       for (const w of wm.list().filter((x) => !x.el.classList.contains("is-away"))) {
-        rows.push({ kind: "win", id: String(w.pid), title: w.title, hint: `窓 ${w.appId}` });
+        rows.push({ kind: "win", id: String(w.pid), title: w.title, hint: `\u7a93 ${w.appId}` });
       }
     }
     for (const app of apps()) {
-      rows.push({ kind: "app", id: app.id, title: app.title, hint: "くぐる" });
+      rows.push({ kind: "app", id: app.id, title: app.title, hint: "\u304f\u3050\u308b" });
     }
     for (const p of kernel.state.prefs) {
-      rows.push({ kind: "space", id: p.id, title: p.name, hint: "空間" });
+      rows.push({ kind: "space", id: p.id, title: p.name, hint: "\u7a7a\u9593" });
     }
     for (const k of kernel.state.processes.filter((p) => p.kind === "authored").slice(0, 20)) {
       rows.push({ kind: "kami", id: k.id, title: k.name, hint: k.role });
@@ -31,11 +32,11 @@ export function bindTorii(gate, kernel) {
       rows.push({ kind: "recent", id: r.path, title: r.path.split("/").pop() || r.path, hint: r.path });
     }
     rows.push(
-      { kind: "file", id: "/etc/宣言.yaoyorozu", title: "宣言", hint: "/etc" },
-      { kind: "file", id: "/etc/ofuda/constitution.20", title: "憲法", hint: "/etc/ofuda" },
-      { kind: "file", id: "/etc/ofuda/protocols.stack", title: "プロトコル", hint: "/etc/ofuda" },
-      { kind: "file", id: "/etc/三相電源.txt", title: "三相電源", hint: "/etc" },
-      { kind: "file", id: "/etc/century.2100", title: "百年", hint: "/etc" }
+      { kind: "file", id: "/etc/\u5ba3\u8a00.yaoyorozu", title: "\u5ba3\u8a00", hint: "/etc" },
+      { kind: "file", id: "/etc/ofuda/constitution.20", title: "\u61b2\u6cd5", hint: "/etc/ofuda" },
+      { kind: "file", id: "/etc/ofuda/protocols.stack", title: "\u30d7\u30ed\u30c8\u30b3\u30eb", hint: "/etc/ofuda" },
+      { kind: "file", id: "/etc/\u4e09\u76f8\u96fb\u6e90.txt", title: "\u4e09\u76f8\u96fb\u6e90", hint: "/etc" },
+      { kind: "file", id: "/etc/century.2100", title: "\u767e\u5e74", hint: "/etc" }
     );
     if (!query) return rows;
     return rows.filter((r) => `${r.title}${r.hint}${r.id}`.includes(query));
@@ -68,9 +69,41 @@ export function bindTorii(gate, kernel) {
           findCache = { q, rows: [] };
         }
       }
+      if (grepCache.q !== q) {
+        try {
+          const greps = await kernel.vfs.grep("/", q);
+          if (gen !== drawGen) return;
+          grepCache = {
+            q,
+            rows: greps.slice(0, 16).map((line) => {
+              const i = line.indexOf(": ");
+              const path = i >= 0 ? line.slice(0, i) : line;
+              const hint = i >= 0 ? line.slice(i + 2) : "";
+              return {
+                kind: "grep",
+                id: path,
+                title: path.split("/").pop() || path,
+                hint: hint || path,
+              };
+            }),
+          };
+        } catch (err) {
+          if (gen !== drawGen) return;
+          grepCache = { q, rows: [] };
+        }
+      }
       const seen = new Set(rows.map((r) => r.id));
       for (const r of findCache.rows) {
-        if (!seen.has(r.id)) rows.push(r);
+        if (!seen.has(r.id)) {
+          rows.push(r);
+          seen.add(r.id);
+        }
+      }
+      for (const r of grepCache.rows) {
+        if (!seen.has(r.id)) {
+          rows.push(r);
+          seen.add(r.id);
+        }
       }
     }
     if (gen !== drawGen) return;
@@ -94,7 +127,7 @@ export function bindTorii(gate, kernel) {
     list.innerHTML = items
       .map(
         (r, i) =>
-          `<button type="button" class="torii-item${i === cursor ? " is-on" : ""}" data-i="${i}"><strong>${r.title}</strong><small>${r.hint} · ${r.kind}</small></button>`
+          `<button type="button" class="torii-item${i === cursor ? " is-on" : ""}" data-i="${i}"><strong>${r.title}</strong><small>${r.hint} \u00b7 ${r.kind}</small></button>`
       )
       .join("");
   }
@@ -116,7 +149,7 @@ export function bindTorii(gate, kernel) {
       kernel.setSpace(item.id);
       launch("map");
     } else if (item.kind === "kami") launch("proc");
-    else if (item.kind === "file" || item.kind === "recent") openPath(item.id);
+    else if (item.kind === "file" || item.kind === "recent" || item.kind === "grep") openPath(item.id);
   }
 
   function open() {
@@ -125,7 +158,7 @@ export function bindTorii(gate, kernel) {
     cursor = 0;
     draw();
     search.focus();
-    kernel.log("torii open — 戻る権利あり", "torii");
+    kernel.log("torii open \u2014 \u623b\u308b\u6a29\u5229\u3042\u308a", "torii");
   }
 
   function close() {
