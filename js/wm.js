@@ -76,11 +76,36 @@ export function createWm(root, taskbar, kernel) {
   taskMenu.innerHTML =
     `<button type="button" data-act="min">しまう</button>` +
     `<button type="button" data-act="pin">全県に結ぶ</button>` +
+    `<button type="button" data-act="prev">左の県へ</button>` +
+    `<button type="button" data-act="next">右の県へ</button>` +
     `<button type="button" data-act="close">閉じる</button>`;
   document.body.appendChild(taskMenu);
   let taskMenuPid = 0;
+  function neighborSpace(dir) {
+    const prefs = kernel.state.prefs || [];
+    if (!prefs.length) return null;
+    const i = prefs.findIndex((p) => p.id === kernel.state.currentSpace);
+    const idx = i < 0 ? 0 : i;
+    return prefs[(idx + dir + prefs.length) % prefs.length];
+  }
+
+  function sendSpace(pid, prefId) {
+    const w = windows.get(pid);
+    if (!w || !prefId) return;
+    w.space = prefId;
+    const btn = w.el.querySelector(".win-pin");
+    if (btn) btn.classList.remove("is-on");
+    applySpace(kernel.state.currentSpace);
+    schedulePersist();
+    const pref = kernel.state.prefs.find((p) => p.id === prefId);
+    kernel.log(`窓 ${pid} を${pref ? pref.name : prefId}へ送った`, "wm");
+  }
+
   function showTaskMenu(x, y, pid) {
     taskMenuPid = pid;
+    const w = windows.get(pid);
+    const pinBtn = taskMenu.querySelector("[data-act=pin]");
+    if (pinBtn) pinBtn.textContent = w && !w.space ? "この県へ戻す" : "全県に結ぶ";
     taskMenu.style.left = `${x}px`;
     taskMenu.style.top = `${y}px`;
     taskMenu.hidden = false;
@@ -93,6 +118,13 @@ export function createWm(root, taskbar, kernel) {
     if (!act || !pid) return;
     if (act === "min") minimize(pid);
     else if (act === "pin") pin(pid);
+    else if (act === "prev") {
+      const p = neighborSpace(-1);
+      if (p) sendSpace(pid, p.id);
+    } else if (act === "next") {
+      const p = neighborSpace(1);
+      if (p) sendSpace(pid, p.id);
+    }
     else if (act === "close") close(pid);
   });
   document.addEventListener("click", () => {
@@ -364,7 +396,7 @@ export function createWm(root, taskbar, kernel) {
     });
   }
 
-  function create({ appId, title, pid, space, width, height, geom, mount, onClose, onFocus }) {
+  function create({ appId, title, pid, space, width, height, geom, mount, onClose, onFocus, onDrop }) {
     const el = document.createElement("section");
     el.className = "window focused";
     el.dataset.app = appId;
@@ -416,6 +448,7 @@ export function createWm(root, taskbar, kernel) {
       zashikiOnce: false,
       onClose,
       onFocus,
+      onDrop,
     };
     windows.set(pid, w);
     bindDrag(w);
@@ -450,10 +483,10 @@ export function createWm(root, taskbar, kernel) {
 
   function setTitle(pid, title) {
     const w = windows.get(pid);
-    if (!w) return;
+    if (!w || w.title === title) return;
     w.title = title;
     const span = w.el.querySelector(".titlebar span");
-    if (span) span.textContent = title;
+    if (span && span.textContent !== title) span.textContent = title;
     taskButtons();
   }
 
@@ -477,5 +510,7 @@ export function createWm(root, taskbar, kernel) {
     pin,
     tile,
     snapEdge,
+    sendSpace,
+    neighborSpace,
   };
 }
