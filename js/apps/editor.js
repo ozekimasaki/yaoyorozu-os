@@ -75,7 +75,7 @@ export default {
         <textarea class="editor" spellcheck="false"></textarea>
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn primary" type="button" id="save">書く</button>
-          <button class="btn" type="button" id="ed-box">匣を開く</button>
+          <button class="btn" type="button" id="ed-box">匡を開く</button>
           <input class="search" id="ed-find" placeholder="札の中を探る" style="margin:0;max-width:200px" />
           <button class="btn" type="button" id="ed-find-go">探る</button>
           <input class="search" id="ed-line" placeholder="行" inputmode="numeric" style="margin:0;max-width:72px" />
