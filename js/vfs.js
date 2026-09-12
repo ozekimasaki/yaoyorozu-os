@@ -82,6 +82,79 @@ export function createVfs() {
     grepMemo.clear();
   }
 
+  const mounts = new Map();
+
+  function addMount(root, ops) {
+    const r = normalize(root);
+    if (r === "/" || !ops) throw new Error("EPERM");
+    mounts.set(r, { root: r, ops });
+    bustSearch();
+    notify(r, "mount");
+  }
+
+  function dropMount(root) {
+    const r = normalize(root);
+    mounts.delete(r);
+    bustSearch();
+    notify(r, "unmount");
+  }
+
+  function mountOf(path) {
+    const p = normalize(path);
+    let best = "";
+    let hit = null;
+    for (const [root, m] of mounts) {
+      if (p === root || p.startsWith(`${root}/`)) {
+        if (root.length > best.length) {
+          best = root;
+          hit = m;
+        }
+      }
+    }
+    return hit;
+  }
+
+  function relOf(path, root) {
+    const p = normalize(path);
+    const r = normalize(root);
+    if (p === r) return "";
+    return p.slice(r.length + 1);
+  }
+
+  function listMounts() {
+    return [...mounts.keys()];
+  }
+
+  function mergeMountKids(dir, rows) {
+    const n = normalize(dir);
+    const have = new Set(rows.map((r) => r.path));
+    for (const [root] of mounts) {
+      if (parentOf(root) !== n || have.has(root)) continue;
+      rows.push({
+        path: root,
+        name: nameOf(root),
+        type: "dir",
+        mime: "inode/directory",
+        body: "",
+        updated: Date.now(),
+        mount: true,
+      });
+      have.add(root);
+    }
+    return rows;
+  }
+
+  async function gatherMountSearch(n, fn) {
+    if (n === "/") return [];
+    const extra = [];
+    for (const [root, m] of mounts) {
+      if (root !== n && !root.startsWith(`${n}/`)) continue;
+      const part = await fn(m, root);
+      if (part && part.length) extra.push(...part);
+    }
+    return extra;
+  }
+
   function memoGet(map, key) {
     const hit = map.get(key);
     if (!hit) return null;
@@ -130,6 +203,15 @@ export function createVfs() {
 
   async function getFile(path) {
     const n = normalize(path);
+    const mounted = mountOf(n);
+    if (mounted) {
+      try {
+        return await mounted.ops.getFile(relOf(n, mounted.root), n);
+      } catch (err) {
+        if (err && err.message === "ENOENT") return null;
+        throw err;
+      }
+    }
     if (indexReady && cache.has(n)) return cache.get(n);
     const store = (await ready()).transaction("files", "readonly").objectStore("files");
     return new Promise((resolve, reject) => {
@@ -149,9 +231,18 @@ export function createVfs() {
   }
 
   async function remove(path) {
+    const n = normalize(path);
+    const mounted = mountOf(n);
+    if (mounted) {
+      if (n === mounted.root) throw new Error("EBUSY");
+      await mounted.ops.remove(relOf(n, mounted.root), n);
+      bustSearch();
+      notify(n, "rm");
+      return;
+    }
     const database = await ready();
     const tx = database.transaction("files", "readwrite");
-    tx.objectStore("files").delete(normalize(path));
+    tx.objectStore("files").delete(n);
     await txDone(tx);
     if (indexReady) forget(path);
   }
@@ -176,6 +267,13 @@ export function createVfs() {
 
   async function mkdir(path) {
     const n = normalize(path);
+    const mounted = mountOf(n);
+    if (mounted) {
+      const rec = await mounted.ops.mkdir(relOf(n, mounted.root), n);
+      bustSearch();
+      notify(n, "put");
+      return rec;
+    }
     if (n === "/") {
       return { path: "/", type: "dir", body: "", mime: "inode/directory", updated: 0 };
     }
@@ -212,6 +310,14 @@ export function createVfs() {
   async function write(path, body, mime = "text/plain") {
     const n = normalize(path);
     if (n === "/") throw new Error("EPERM");
+    const early = mountOf(n);
+    if (early) {
+      if (n === early.root) throw new Error("EISDIR");
+      const rec = await early.ops.write(relOf(n, early.root), body, mime, n);
+      bustSearch();
+      notify(n, "put");
+      return rec;
+    }
     let dest = n;
     let prev = await getFile(n);
     if (prev && prev.type === "link") {
@@ -226,6 +332,14 @@ export function createVfs() {
       prev = cur;
     }
     if (prev && prev.type === "dir") throw new Error("EISDIR");
+    const destMount = mountOf(dest);
+    if (destMount) {
+      if (dest === destMount.root) throw new Error("EISDIR");
+      const rec = await destMount.ops.write(relOf(dest, destMount.root), body, mime, dest);
+      bustSearch();
+      notify(dest, "put");
+      return rec;
+    }
     await mkdir(parentOf(dest));
     return putFile({
       path: dest,
@@ -248,6 +362,7 @@ export function createVfs() {
     const to = normalize(dest);
     if (to === "/") throw new Error("EPERM");
     const src = normalize(target);
+    if (mountOf(to) || mountOf(src)) throw new Error("EPERM");
     if (await getFile(to)) throw new Error("EEXIST");
     await mkdir(parentOf(to));
     return putFile({
@@ -274,6 +389,14 @@ export function createVfs() {
 
   async function touch(path) {
     const n = normalize(path);
+    const mounted = mountOf(n);
+    if (mounted) {
+      const prev = await getFile(n);
+      if (prev && prev.type === "dir") return prev;
+      if (!prev) return write(n, "");
+      if (mounted.ops.touch) return mounted.ops.touch(relOf(n, mounted.root), n);
+      return prev;
+    }
     const prev = await getFile(n);
     if (prev && prev.type === "link") return touch(prev.target);
     if (prev) {
@@ -284,24 +407,29 @@ export function createVfs() {
   }
 
   async function ls(path) {
-    await ensureIndex();
     const n = normalize(path);
+    const mounted = mountOf(n);
+    if (mounted) return mounted.ops.ls(relOf(n, mounted.root), n);
+    await ensureIndex();
     if (n !== "/") {
       const dir = cache.get(n) || (await getFile(n));
       if (!dir) throw new Error("ENOENT");
       if (dir.type !== "dir") throw new Error("ENOTDIR");
     }
     const kids = children.get(n) || new Set();
-    return [...kids].map((p) => {
+    const rows = [...kids].map((p) => {
       const f = cache.get(p) || { path: p, type: "dir" };
       return { ...f, name: nameOf(p) };
     });
+    return mergeMountKids(n, rows);
   }
 
   async function find(root, needle) {
-    await ensureIndex();
     const n = normalize(root || "/");
     const q = String(needle || "").toLowerCase();
+    const mounted = mountOf(n);
+    if (mounted && mounted.ops.find) return mounted.ops.find(relOf(n, mounted.root), needle, n);
+    await ensureIndex();
     const key = `${n}\0${q}`;
     const cached = memoGet(findMemo, key);
     if (cached) return cached.slice();
@@ -314,14 +442,24 @@ export function createVfs() {
       }
       if (out.length >= 200) break;
     }
+    const extra = await gatherMountSearch(n, (m, root) =>
+      m.ops.find ? m.ops.find("", needle, root) : []
+    );
+    const have = new Set(out.map((f) => f.path));
+    for (const f of extra) {
+      if (!have.has(f.path)) out.push(f);
+      if (out.length >= 200) break;
+    }
     memoSet(findMemo, key, out);
     return out.slice();
   }
 
   async function grep(root, pat) {
     if (!pat) throw new Error("EINVAL");
-    await ensureIndex();
     const n = normalize(root || "/");
+    const mounted = mountOf(n);
+    if (mounted && mounted.ops.grep) return mounted.ops.grep(relOf(n, mounted.root), pat, n);
+    await ensureIndex();
     const key = `${n}\0${pat}`;
     const cached = memoGet(grepMemo, key);
     if (cached) return cached.slice();
@@ -333,13 +471,24 @@ export function createVfs() {
       hits.push(`${p}: ${line.slice(0, 140)}`);
       if (hits.length >= 80) break;
     }
+    if (hits.length < 80) {
+      const extra = await gatherMountSearch(n, (m, root) =>
+        m.ops.grep ? m.ops.grep("", pat, root) : []
+      );
+      for (const line of extra) {
+        hits.push(line);
+        if (hits.length >= 80) break;
+      }
+    }
     memoSet(grepMemo, key, hits);
     return hits.slice();
   }
 
   async function usage(path) {
-    await ensureIndex();
     const n = normalize(path || "/");
+    const mounted = mountOf(n);
+    if (mounted && mounted.ops.usage) return mounted.ops.usage(relOf(n, mounted.root), n);
+    await ensureIndex();
     const root = cache.get(n);
     if (root && root.type === "file") {
       return { bytes: (root.body || "").length, files: 1, dirs: 0 };
@@ -364,10 +513,21 @@ export function createVfs() {
       }
     };
     walk(n);
+    if (n !== "/") {
+      const extra = await gatherMountSearch(n, (m, mountRoot) =>
+        m.ops.usage ? m.ops.usage("", mountRoot).then((u) => [u]) : []
+      );
+      for (const u of extra) {
+        bytes += u.bytes || 0;
+        files += u.files || 0;
+        dirs += u.dirs || 0;
+      }
+    }
     return { bytes, files, dirs };
   }
 
   async function chmod(path, exec) {
+    if (mountOf(path)) throw new Error("EPERM");
     const f = await follow(path);
     if (f.type === "dir") throw new Error("EISDIR");
     f.exec = !!exec;
@@ -401,10 +561,26 @@ export function createVfs() {
   }
 
   async function rename(from, to) {
+    const srcPath = normalize(from);
+    const dest = normalize(to);
+    const fromM = mountOf(srcPath);
+    const toM = mountOf(dest);
+    if (fromM || toM) {
+      if (await getFile(dest)) throw new Error("EEXIST");
+      if (fromM && toM && fromM.root === toM.root && fromM.ops.rename) {
+        await fromM.ops.rename(relOf(srcPath, fromM.root), relOf(dest, toM.root), srcPath, dest);
+        bustSearch();
+        notify(dest, "put");
+        notify(srcPath, "rm");
+        return;
+      }
+      await copyTree(srcPath, dest);
+      await remove(srcPath);
+      return;
+    }
     const src = await getFile(from);
     if (!src) throw new Error("ENOENT");
     if (src.type === "dir") throw new Error("EXDEV");
-    const dest = normalize(to);
     if (await getFile(dest)) throw new Error("EEXIST");
     await mkdir(parentOf(dest));
     await putFile({ ...src, path: dest, updated: Date.now() });
@@ -412,8 +588,30 @@ export function createVfs() {
   }
 
   async function moveToMuen(path) {
-    const src = await getFile(path);
+    const n = normalize(path);
+    const mounted = mountOf(n);
+    const src = await getFile(n);
     if (!src) throw new Error("ENOENT");
+    if (mounted) {
+      if (n === mounted.root) throw new Error("EBUSY");
+      const dest = `/var/muen/${Date.now()}-${nameOf(n)}`;
+      await mkdir("/var/muen");
+      if (src.type === "dir") await copyTree(n, dest);
+      else {
+        await putFile({
+          path: dest,
+          type: src.type,
+          body: src.body || "",
+          mime: src.mime || "text/plain",
+          origin: n,
+          target: src.target,
+          exec: !!src.exec,
+          updated: Date.now(),
+        });
+      }
+      await remove(n);
+      return dest;
+    }
     const dest = `/var/muen/${Date.now()}-${nameOf(path)}`;
     await mkdir("/var/muen");
     await putFile({
@@ -505,6 +703,10 @@ export function createVfs() {
     metaGet,
     metaSet,
     watch,
+    addMount,
+    dropMount,
+    mountOf,
+    listMounts,
   };
 }
 
