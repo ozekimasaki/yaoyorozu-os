@@ -55,6 +55,10 @@ const HELP = `八百万OS 奉納シェル
   sync                 縁fsを確定する
   cmd | grep|sort|tee  管で繋ぐ
   cron / at / atq / atrm  \u6642\u5831
+  assoc [match app]    \u672d\u306e\u95a2\u9023\u4ed8\u3051
+  open -a <app> <path> \u3053\u308c\u3067\u958b\u304f
+  kill [-STOP|-CONT]   \u7a93\u3092\u4f11\u307e\u305b\u308b
+  cat /proc/apps       \u7a93\u306e\u4f11\u6b62
   logout               EPERM
   reboot               遷宮
   ↑↓ 履歴  Ctrl+R 探る  Ctrl+L 清める  Tab 補完
@@ -131,6 +135,7 @@ const COMMANDS = [
   "at",
   "atq",
   "atrm",
+  "assoc",
 ];
 
 export default {
@@ -312,15 +317,17 @@ export default {
             out(`entropy=${o.entropy}\nkami=${o.kami.name}\nkernel=${o.pref.name}\narticle=${o.article}\nstatus=${kernel.state.officialStatus || "AUTH required"}`);
             break;
           }
-          case "ps":
-            out(
-              kernel.state.processes
-                .filter((p) => p.kind !== "app")
-                .slice(0, 40)
-                .map((p) => `${String(p.pid).padStart(4)} ${p.status.padEnd(10)} ${p.name}`)
-                .join("\n")
+          case "ps": {
+            const kami = kernel.state.processes
+              .filter((p) => p.kind !== "app")
+              .slice(0, 40)
+              .map((p) => `${String(p.pid).padStart(4)} ${(p.status || "").padEnd(10)} ${p.name}`);
+            const apps = (kernel.state.appProcs || []).map(
+              (p) => `${String(p.pid).padStart(4)} ${(p.status || "running").padEnd(10)} ${p.appId}`
             );
+            out([...kami, ...(apps.length ? ["-- apps --", ...apps] : [])].join("\n"));
             break;
+          }
           case "ls": {
             const long = rest[0] === "-l";
             const path = resolve(long ? rest[1] : rest[0]);
@@ -689,11 +696,29 @@ export default {
             break;
           }
           case "open": {
-            const id = rest[0];
+            let withId = "";
+            const args = rest.slice();
+            if (args[0] === "-a" || args[0] === "--with") {
+              withId = args[1] || "";
+              args.splice(0, 2);
+            }
+            const id = args[0];
             if (!id) throw new Error("EINVAL");
-            if (id.startsWith("/") || id.startsWith("./") || id.includes(".")) openPath(resolve(id));
-            else launch(id);
-            out(`open ${id}`);
+            if (id.startsWith("/") || id.startsWith("./") || id.includes(".")) {
+              openPath(resolve(id), withId ? { with: withId } : {});
+            } else launch(withId || id);
+            out(withId ? `open -a ${withId} ${id}` : `open ${id}`);
+            break;
+          }
+          case "assoc": {
+            if (!rest[0]) {
+              const rows = await kernel.assocTable();
+              out(rows.map((r) => `${r.match}  ${r.app}`).join("\n"));
+              break;
+            }
+            if (!rest[1]) throw new Error("EINVAL");
+            await kernel.assocSet(rest[0], rest[1]);
+            out(`assoc ${rest[0]} ${rest[1]}`);
             break;
           }
           case "env":
@@ -745,9 +770,30 @@ export default {
             out(`cpu=${kami.cpu} ${kami.name}`);
             break;
           }
-          case "kill":
-            out("EPERM 神は殺せない。hold で季節に送れ。");
+          case "kill": {
+            let sig = "TERM";
+            let q = rest[0];
+            if (q && q.startsWith("-")) {
+              sig = q.slice(1).toUpperCase();
+              q = rest[1];
+            }
+            const app = kernel.findApp(q);
+            if (app && wm) {
+              if (sig === "STOP") {
+                wm.pause(app.pid);
+                out(`STOP ${app.pid} ${app.appId}`);
+              } else if (sig === "CONT") {
+                wm.restore(app.pid);
+                out(`CONT ${app.pid} ${app.appId}`);
+              } else if (sig === "TERM" || sig === "KILL") {
+                wm.close(app.pid);
+                out(`TERM ${app.pid} ${app.appId}`);
+              } else throw new Error("EINVAL");
+              break;
+            }
+            out("EPERM \u795e\u306f\u6bba\u305b\u306a\u3044\u3002hold \u3067\u5b63\u7bc0\u306b\u9001\u308c\u3002");
             break;
+          }
           case "which": {
             const name = rest[0] || "";
             const aliases = kernel.state.aliases || {};
