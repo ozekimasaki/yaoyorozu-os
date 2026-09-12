@@ -44,6 +44,7 @@ export default {
     const selectEl = el.querySelector("#map-select");
     const kicker = el.querySelector(".map-kicker");
     let svg = null;
+    let lastPaint = "";
 
     kernel.state.prefs.forEach((p) => {
       const opt = document.createElement("option");
@@ -68,6 +69,9 @@ export default {
 
     function paint() {
       if (!svg) return;
+      const sig = `${kernel.state.currentSpace}|${kernel.state.prefs.map((p) => `${p.id}:${p.unusedCpu | 0}`).join(",")}`;
+      if (sig === lastPaint && svg.querySelector(".is-selected")) return;
+      lastPaint = sig;
       svg.querySelectorAll(".pref").forEach((node) => {
         const p = kernel.state.prefs.find((x) => x.id === node.dataset.pref);
         if (!p) return;

@@ -45,6 +45,7 @@ export default {
                   <td>${(k.en || 0).toLocaleString("ja-JP")}</td>
                   <td class="row-actions">
                     <button class="btn" data-act="attach">アタッチ</button>
+                    <button class="btn" data-act="hold">${k.status === "seasonal" ? "起こす" : "休ませる"}</button>
                     <button class="btn" data-act="harai">祓い</button>
                   </td>
                 </tr>`;
@@ -88,6 +89,15 @@ export default {
           } catch (err) {
             kernel.log(`attach: ${err.message}`, "proc");
             if (err.message === "EPERM") kernel.emit("need-auth");
+          }
+        };
+        tr.querySelector("[data-act=hold]").onclick = () => {
+          try {
+            const k = kernel.state.processes.find((p) => p.id === tr.dataset.id);
+            if (k && k.status === "seasonal") kernel.wakeKami(tr.dataset.id);
+            else kernel.holdKami(tr.dataset.id);
+          } catch (err) {
+            kernel.log(`hold: ${err.message}`, "proc");
           }
         };
         tr.querySelector("[data-act=harai]").onclick = () => {
