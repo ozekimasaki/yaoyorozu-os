@@ -12,7 +12,9 @@ export default {
     const on = (ev) => {
       const line = ev.detail;
       if (!line) return;
-      if (out.textContent === "（まだ鐘は鳴っていない）") out.textContent = line;
+      const cur = out.textContent;
+      if (cur === line || cur.endsWith(`\n${line}`)) return;
+      if (cur === "（まだ鐘は鳴っていない）") out.textContent = line;
       else out.textContent += `\n${line}`;
       if (out.textContent.length > 12000) out.textContent = out.textContent.slice(-10000);
       out.scrollTop = out.scrollHeight;
