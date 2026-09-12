@@ -1,5 +1,6 @@
 #phone-dock,
-#phone-homebar {
+#phone-homebar,
+#phone-now {
   display: none;
 }
 
@@ -356,6 +357,56 @@ html.is-phone .desk-icon::before {
 html.is-phone #desktop.is-app #desktop-icons {
   visibility: hidden;
   pointer-events: none;
+}
+
+html.is-phone #phone-now:not([hidden]) {
+  display: flex;
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  z-index: 47;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(12, 11, 9, 0.86);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+}
+
+html.is-phone #phone-now button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--washi);
+  min-height: 44px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+html.is-phone #phone-now-open {
+  flex: 1;
+  text-align: left;
+  color: var(--gold-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html.is-phone #phone-now[data-state="ma"] #phone-now-open {
+  color: var(--washi-dim);
+}
+
+html.is-phone #phone-shade-oto:not([hidden]) {
+  display: block;
+  margin: 0 0 12px;
+}
+
+html.is-phone #phone-shade-oto-title {
+  margin: 0 0 8px;
+  color: var(--gold-2);
+  letter-spacing: 0.08em;
 }
 
 html.is-phone #phone-dock {
