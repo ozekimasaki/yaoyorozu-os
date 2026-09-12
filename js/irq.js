@@ -5,19 +5,22 @@ const KINDS = [
   { kind: "sengu", w: 8 },
 ];
 
-function pickKind() {
-  const total = KINDS.reduce((a, k) => a + k.w, 0);
+function pickKind(avoid) {
+  const pool = avoid ? KINDS.filter((k) => k.kind !== avoid) : KINDS;
+  const use = pool.length ? pool : KINDS;
+  const total = use.reduce((a, k) => a + k.w, 0);
   let r = Math.random() * total;
-  for (const k of KINDS) {
+  for (const k of use) {
     r -= k.w;
     if (r <= 0) return k.kind;
   }
-  return "muen";
+  return use[0].kind;
 }
 
 export function startIrq(layer, kernel, field, launch) {
   let busy = false;
   let timer = null;
+  let lastKind = "";
 
   function copy(kind) {
     return (window.YAOYOROZU_IRQ && window.YAOYOROZU_IRQ[kind]) || { title: kind, body: "" };
@@ -29,8 +32,9 @@ export function startIrq(layer, kernel, field, launch) {
   }
 
   function card(kind) {
-    if (busy) return;
+    if (busy || document.hidden || kernel.state.maLocked) return;
     busy = true;
+    lastKind = kind;
     const c = copy(kind);
     const box = document.createElement("aside");
     box.className = "irq-card";
@@ -93,13 +97,13 @@ export function startIrq(layer, kernel, field, launch) {
 
   function loop() {
     const ms = kernel.state.settings.irqMs || 16000;
-    const wait = ms + Math.random() * 8000;
+    const wait = busy ? ms : ms + Math.random() * 8000;
     timer = setTimeout(() => {
-      if (document.hidden || kernel.state.maLocked) {
+      if (document.hidden || kernel.state.maLocked || busy) {
         loop();
         return;
       }
-      if (!kernel.state.settings.silent || Math.random() < 0.35) card(pickKind());
+      if (!kernel.state.settings.silent || Math.random() < 0.35) card(pickKind(lastKind));
       loop();
     }, wait);
   }
