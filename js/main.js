@@ -377,7 +377,7 @@ async function sendToMuen(paths) {
   for (const p of paths) {
     try {
       const dest = await kernel.vfs.moveToMuen(p);
-      muenUndo.push({ dest, origin: p });
+    muenUndo.push({ dest, origin: p });
     } catch (err) {
       kernel.log(`muen: ${err.message}`, "fs");
     }
@@ -580,7 +580,7 @@ function fillNorito() {
   if (!veil) return;
   const lines = [
     "高天原に神留り坐す",
-    "神気はマイクロサービスである",
+    "祓い給え清めたまえ",
     "この端末は器である",
     "柏手は、認証である",
     "神はマイクロサービスである",
@@ -685,7 +685,7 @@ async function startDesktop() {
   const paintUjiko = (reset = false) => {
     const lines = kernel.state.dmesg || [];
     if (reset || ujikoLen > lines.length) {
-      ujikoLog.textContent = lines.slice(-16).join("\n") || "（氏子課は沈黙）";
+      ujikoLog.textContent = lines.slice(-16).join("\n") || "（氏子課は沈默）";
       ujikoLen = lines.length;
       ujikoLog.scrollTop = ujikoLog.scrollHeight;
       return;
@@ -693,7 +693,7 @@ async function startDesktop() {
     if (lines.length === ujikoLen) return;
     const add = lines.slice(ujikoLen);
     ujikoLen = lines.length;
-    if (!ujikoLog.textContent || ujikoLog.textContent === "（氏子課は沈黙）") ujikoLog.textContent = add.join("\n");
+    if (!ujikoLog.textContent || ujikoLog.textContent === "（氏子課は沈默）") ujikoLog.textContent = add.join("\n");
     else ujikoLog.textContent += `\n${add.join("\n")}`;
     const shown = ujikoLog.textContent.split("\n");
     if (shown.length > 16) ujikoLog.textContent = shown.slice(-16).join("\n");
