@@ -431,7 +431,8 @@
   color: var(--gold-2);
 }
 
-#oto-pill {
+#oto-pill,
+#watari-pill {
   cursor: pointer;
 }
 
