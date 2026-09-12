@@ -112,7 +112,7 @@ class Kernel extends EventTarget {
     const seed = hash32(`${this.state.ujiko}:${day}`);
     const rng = mulberry32(seed);
     const kamiPool = this.state.processes.filter((p) => p.kind !== "app");
-    const kami = pick(rng, kamiPool) || { name: "竃神", id: "kamado", note: "火のある家は、まだ国家である。" };
+    const kami = pick(rng, kamiPool) || { name: "竈神", id: "kamado", note: "火のある家は、まだ国家である。" };
     const pref = pick(rng, this.state.prefs) || prefs()[0];
     const article = 1 + ((rng() * 20) | 0);
     return {
