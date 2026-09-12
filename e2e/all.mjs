@@ -52,6 +52,10 @@ try {
   await h.boot();
   note(!!(await page.$("#desktop.on")), "\u8d77\u52d5\u3057\u3066\u5353\u304c\u70b9\u304f");
   note(!!(await page.$("#desktop-icons .desk-icon")), "\u5353\u306b\u672d\u304c\u3042\u308b");
+  const deskMarks = await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon .fuda-mark")].map((el) => el.dataset.icon || "")
+  );
+  note(deskMarks.length >= 8 && new Set(deskMarks).size === deskMarks.length, `\u672d\u30a2\u30a4\u30b3\u30f3\u56fa\u6709 ${deskMarks.join(",")}`);
   const hint = await page.$eval(".hint", (el) => el.textContent || "");
   note(hint.includes("/") && hint.includes(";"), `\u30d2\u30f3\u30c8 ${hint.slice(0, 40)}`);
   const pills = await page.evaluate(() => ({
