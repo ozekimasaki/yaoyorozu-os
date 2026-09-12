@@ -17,6 +17,7 @@ import sys from "./apps/sys.js";
 import muen from "./apps/muen.js";
 import oto from "./apps/oto.js";
 import watari from "./apps/watari.js";
+import kagami from "./apps/kagami.js";
 import { bindTorii } from "./apps/torii.js";
 import { bindKashiwa } from "./kashiwa.js";
 import { startField } from "./field.js";
@@ -44,6 +45,7 @@ register(sys);
 register(muen);
 register(oto);
 register(watari);
+register(kagami);
 
 function landColor(cpu) {
   if (cpu >= 85) return "#4f7d61";
@@ -128,10 +130,12 @@ async function paintDesktop() {
     btn.dataset.icon = iconId;
     labelWithIcon(btn, iconId, f.name.replace(".gate", ""));
     const saved = pos[f.path];
-    const left = saved ? saved.x : 18;
-    const top = saved ? saved.y : 58 + i * 52;
+    const slot = deskCell(i);
+    const left = saved ? saved.x : slot.x;
+    const top = saved ? saved.y : slot.y;
     btn.style.left = `${left}px`;
     btn.style.top = `${top}px`;
+    btn.tabIndex = 0;
     let dragging = false;
     let moved = false;
     let ox = 0;
@@ -210,15 +214,23 @@ async function paintDesktop() {
         if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
           if (deskSelected.has(f.path)) deskSelected.delete(f.path);
           else deskSelected.add(f.path);
+          lastDeskPick = f.path;
           paintDeskMarks();
-          return;
         }
-        deskSelected = new Set([f.path]);
-        paintDeskMarks();
-        openPath(f.path);
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
+    });
+    btn.addEventListener("click", (e) => {
+      if (moved) {
+        e.preventDefault();
+        return;
+      }
+      if (e.shiftKey || e.ctrlKey || e.metaKey) return;
+      deskSelected = new Set([f.path]);
+      lastDeskPick = f.path;
+      paintDeskMarks();
+      openPath(f.path);
     });
     icons.appendChild(btn);
   });
@@ -240,9 +252,20 @@ function selectedDeskPaths() {
   return [];
 }
 
-function snapDesk(x, y) {
+function deskGrid() {
   const gx = 120;
   const gy = 64;
+  const cols = Math.max(1, Math.floor((Math.max(320, window.innerWidth) - 36) / gx));
+  return { gx, gy, cols };
+}
+
+function deskCell(i) {
+  const { gx, gy, cols } = deskGrid();
+  return { x: 18 + (i % cols) * gx, y: 58 + ((i / cols) | 0) * gy };
+}
+
+function snapDesk(x, y) {
+  const { gx, gy } = deskGrid();
   const col = Math.max(0, Math.round((x - 18) / gx));
   const row = Math.max(0, Math.round((y - 58) / gy));
   return { x: 18 + col * gx, y: 58 + row * gy };
@@ -370,13 +393,10 @@ function tidyDesk() {
   });
   const pos = deskPos || {};
   icons.forEach((el, i) => {
-    const col = i % 8;
-    const row = (i / 8) | 0;
-    const x = 18 + col * 120;
-    const y = 58 + row * 64;
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-    pos[el.dataset.path] = { x, y };
+    const cell = deskCell(i);
+    el.style.left = `${cell.x}px`;
+    el.style.top = `${cell.y}px`;
+    pos[el.dataset.path] = { x: cell.x, y: cell.y };
   });
   deskPos = pos;
   saveDeskPos();
@@ -521,15 +541,20 @@ async function maybeOpenInitGates() {
   if (sessionStorage.getItem("y8-init-opened")) return;
   const wm = getWm();
   if (wm && wm.list().length) return;
-  let rows = [];
+  const ids = kernel.okoshi && kernel.okoshi.list ? kernel.okoshi.list() : [];
+  let gates = [];
   try {
-    rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/.init`);
+    const rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/.init`);
+    gates = rows.filter((e) => (e.name || "").endsWith(".gate")).slice(0, 4);
   } catch (err) {
-    return;
+    gates = [];
   }
-  const gates = rows.filter((e) => (e.name || "").endsWith(".gate")).slice(0, 4);
-  if (!gates.length) return;
+  if (!ids.length && !gates.length) return;
   sessionStorage.setItem("y8-init-opened", "1");
+  for (const id of ids.slice(0, 4)) {
+    if (String(id).startsWith("/")) await openPath(id);
+    else launch(id);
+  }
   for (const g of gates) await openPath(g.path);
 }
 
@@ -548,7 +573,16 @@ async function paintUsage() {
   const pill = document.getElementById("disk-pill");
   if (!pill) return;
   try {
-    const u = await kernel.vfs.usage(`/home/${kernel.state.ujiko}`);
+    if (kernel.utsuwa && kernel.utsuwa.refresh) {
+      const snap = await kernel.utsuwa.refresh();
+      const fmt = kernel.utsuwa.fmtBytes;
+      const text = `\u5668: ${snap.files}\u672d ${fmt(snap.bytes)}/${fmt(snap.quota)}`;
+      if (text === lastUsageText) return;
+      lastUsageText = text;
+      pill.textContent = text;
+      return;
+    }
+    const u = await kernel.vfs.usage("/");
     const text = `\u5668: ${u.files}\u672d`;
     if (text === lastUsageText) return;
     lastUsageText = text;
@@ -655,6 +689,14 @@ async function startDesktop() {
   if (watariPill) {
     watariPill.addEventListener("click", () => launch("watari"));
   }
+  const utsushiPill = document.getElementById("utsushi-pill");
+  if (utsushiPill) {
+    utsushiPill.addEventListener("click", () => launch("kagami"));
+  }
+  const keshikiPill = document.getElementById("keshiki-pill");
+  if (keshikiPill) {
+    keshikiPill.addEventListener("click", () => launch("sys"));
+  }
 
   fillNorito();
   clock();
@@ -679,6 +721,7 @@ async function startDesktop() {
     paintDesktop();
     scheduleUsage();
   });
+  kernel.addEventListener("utsuwa", scheduleUsage);
   kernel.addEventListener("peek", (ev) => {
     peekPath(ev.detail);
   });
@@ -780,6 +823,15 @@ async function startDesktop() {
       endMarquee();
       const km = document.getElementById("keymap");
       if (km) km.hidden = true;
+    }
+    if (e.key === "F8" || e.key === "PrintScreen") {
+      e.preventDefault();
+      if (kernel.utsushi && kernel.utsushi.snap) {
+        kernel.utsushi.snap({ reason: e.key === "F8" ? "f8" : "print" }).catch((err) => {
+          kernel.log(`utsushi: ${err.message}`, "utsushi");
+        });
+      }
+      return;
     }
     if (kernel.state.maLocked) {
       if (e.key === "k") kashiwa.open();
@@ -1245,6 +1297,14 @@ async function startDesktop() {
     if (act === "paste") pasteDesk();
     if (act === "recent") switchers.toggleRecent();
     if (act === "ofuda") newDeskOfuda();
+    if (act === "utsushi") {
+      if (kernel.utsushi && kernel.utsushi.snap) {
+        kernel.utsushi.snap({ reason: "eaves" }).catch((err) => {
+          kernel.log(`utsushi: ${err.message}`, "utsushi");
+        });
+      }
+    }
+    if (act === "keshiki") launch("sys");
   });
   document.addEventListener("click", (e) => {
     if (
