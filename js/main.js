@@ -252,7 +252,7 @@ async function pasteDesk() {
           await kernel.vfs.rename(src, dest);
         } catch (err) {
           if (err.message === "EXDEV" || err.message === "EISDIR") {
-            kernel.log("匭の切りは写して残す", "desk");
+            kernel.log("匣の切りは写して残す", "desk");
             await copyTree(src, dest);
           } else {
             await copyTree(src, dest);
@@ -347,7 +347,7 @@ async function newDeskOfuda() {
 }
 
 async function newDeskBox() {
-  const path = `/home/${kernel.state.ujiko}/desktop/匭-${Date.now()}`;
+  const path = `/home/${kernel.state.ujiko}/desktop/匣-${Date.now()}`;
   await kernel.vfs.mkdir(path);
   lastDeskPick = path;
   kernel.emit("vfs");
@@ -395,7 +395,9 @@ async function peekDesk() {
       body.textContent = "ENOENT";
     } else if (node.type === "dir") {
       const kids = await kernel.vfs.ls(path);
-      body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匭）";
+      body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匣）";
+    } else if (node.type === "link") {
+      body.textContent = `�("\n") || "（空の匣）";
     } else if (node.type === "link") {
       body.textContent = `↦ ${node.target || node.body || ""}`;
     } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
@@ -478,7 +480,7 @@ function fillNorito() {
   if (!veil) return;
   const lines = [
     "高天原に神留り坐す",
-    "神気給え清めたまえ",
+    "祓い給え清めたまえ",
     "この端末は器である",
     "柏手は、認証である",
     "神はマイクロサービスである",
