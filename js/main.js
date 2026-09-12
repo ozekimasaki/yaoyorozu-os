@@ -322,7 +322,7 @@ async function pasteDesk() {
           await kernel.vfs.rename(src, dest);
         } catch (err) {
           if (err.message === "EXDEV" || err.message === "EISDIR") {
-            kernel.log("匭の切りは写して残す", "desk");
+            kernel.log("匣の切りは写して残す", "desk");
             await copyTree(src, dest);
           } else {
             await copyTree(src, dest);
@@ -420,7 +420,7 @@ async function newDeskOfuda() {
 }
 
 async function newDeskBox() {
-  const path = `/home/${kernel.state.ujiko}/desktop/匭-${Date.now()}`;
+  const path = `/home/${kernel.state.ujiko}/desktop/匣-${Date.now()}`;
   await kernel.vfs.mkdir(path);
   lastDeskPick = path;
   kernel.emit("vfs");
@@ -583,7 +583,7 @@ function fillNorito() {
   if (!veil) return;
   const lines = [
     "高天原に神留り坐す",
-    "神標給え清めたまえ",
+    "祓い給え清めたまえ",
     "この端末は器である",
     "柏手は、認証である",
     "神はマイクロサービスである",
