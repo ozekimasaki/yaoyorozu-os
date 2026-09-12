@@ -64,6 +64,9 @@ try {
   note(await page.evaluate(() =>
     [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "konoyo")
   ), "\u30db\u30fc\u30e0\u306b\u6b64\u5cb8");
+  note(await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "watari")
+  ), "\u30db\u30fc\u30e0\u306b\u6e21\u308a");
   const marks = await page.evaluate(() =>
     [...document.querySelectorAll(".desk-icon .fuda-mark")].map((el) => el.dataset.icon || el.querySelector("img")?.src || "")
   );
