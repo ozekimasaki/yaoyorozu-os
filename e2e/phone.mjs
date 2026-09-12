@@ -67,6 +67,21 @@ try {
   note(await page.evaluate(() =>
     [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "watari")
   ), "\u30db\u30fc\u30e0\u306b\u6e21\u308a");
+  note(await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "utsushi")
+  ), "\u30db\u30fc\u30e0\u306b\u5199\u3057");
+  note(await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "keshiki")
+  ), "\u30db\u30fc\u30e0\u306b\u666f\u8272");
+  note(await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "utsuwa")
+  ), "\u30db\u30fc\u30e0\u306b\u5668");
+  note(await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "okoshi")
+  ), "\u30db\u30fc\u30e0\u306b\u8d77\u3053\u3057");
+  note(await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "kagi")
+  ), "\u30db\u30fc\u30e0\u306b\u9375");
   const marks = await page.evaluate(() =>
     [...document.querySelectorAll(".desk-icon .fuda-mark")].map((el) => el.dataset.icon || el.querySelector("img")?.src || "")
   );
@@ -188,6 +203,9 @@ try {
     return el && !el.hidden;
   }), "\u901a\u77e5\u5e55");
   note(!!(await page.$("#phone-shade [data-shade=ma]")), "\u5e55\u306e\u9593");
+  note(!!(await page.$("#phone-shade [data-shade=utsushi]")), "\u5e55\u306e\u6620\u3059");
+  note(!!(await page.$("#phone-shade [data-shade=keshiki]")), "\u5e55\u306e\u666f\u8272");
+  note(!!(await page.$("#phone-shade [data-shade=kagi]")), "\u5e55\u306e\u9375");
   note(!!(await page.$("#phone-shade-journal")), "\u5e55\u306e\u65e5\u8a8c");
   await h.shot("shade");
   await page.evaluate(() => document.getElementById("phone-shade-hit")?.click());
