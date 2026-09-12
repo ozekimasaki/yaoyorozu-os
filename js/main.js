@@ -21,6 +21,7 @@ import { startField } from "./field.js";
 import { startIrq } from "./irq.js";
 import { peekPath as peekPathIo, showFileStat as showStatIo, copyPathNow as copyPathIo, closeEl } from "./desk-io.js";
 import { bindSwitchers } from "./switchers.js";
+import { bindPhone, isPhone } from "./phone.js";
 
 register(oncall);
 register(map);
@@ -605,6 +606,16 @@ async function startDesktop() {
   bindWm(document.getElementById("window-layer"), document.getElementById("taskbar"));
   const switchers = bindSwitchers({ kernel, getWm, openPath });
   const torii = bindTorii(document.getElementById("torii-gate"), kernel);
+  bindPhone({
+    kernel,
+    wm: getWm(),
+    launch,
+    openPath,
+    openTorii: () => torii.open(),
+    openOshi: () => document.getElementById("oshi-pill")?.click(),
+    openRecents: () => switchers.toggleWin(),
+    openSpaces: () => switchers.toggleSpaces(),
+  });
   const kashiwa = bindKashiwa(document.getElementById("kashiwa-stage"), kernel, applyJob);
   const field = startField(document.getElementById("kami-field"), kernel);
   startIrq(document.getElementById("irq-layer"), kernel, field, launch);
@@ -1066,6 +1077,7 @@ async function startDesktop() {
   }
 
   desktop.addEventListener("pointerdown", (e) => {
+    if (isPhone()) return;
     if (e.button !== 0) return;
     if (e.target.closest(".window") || e.target.closest(".taskbar") || e.target.closest(".menubar")) return;
     if (e.target.closest(".desk-icon")) return;
@@ -1256,8 +1268,12 @@ async function startDesktop() {
 
   if (!kernel.state.authenticated) {
     setTimeout(() => kashiwa.open(), 600);
-  } else if (!getWm().list().length) {
+  } else if (!getWm().list().length && !isPhone()) {
     launch("oncall");
+  }
+  if (isPhone()) {
+    const phoneWm = getWm();
+    if (phoneWm && phoneWm.hideAll) phoneWm.hideAll();
   }
 }
 
