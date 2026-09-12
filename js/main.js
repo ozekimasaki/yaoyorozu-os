@@ -43,3 +43,196 @@ function landColor(cpu) {
   if (cpu >= 35) return "#8a4a1c";
   return "#7a241c";
 }
+
+function applyJob(job) {
+  if (!job) return;
+  if (job.prefId) {
+    kernel.emit("spotlight", job.prefId);
+  }
+  if (job.kind === "attach" || job.kind === "route" || job.kind === "migrate") launch("map");
+  if (job.kind === "hold" && job.article) openPath("/etc/ofuda/constitution.20");
+}
+
+let lastDeskSig = "";
+let lastDeskPick = "";
+let deskPos = null;
+let deskSelected = new Set();
+let deskClipboard = { mode: "copy", paths: [] };
+let switcherIndex = 0;
+let muenUndo = [];
+let deskTypeQ = "";
+let deskTypeT = 0;
+let marquee = null;
+
+function endMarquee() {
+  if (!marquee) return;
+  marquee = null;
+  const band = document.getElementById("desk-marquee");
+  if (band) band.hidden = true;
+}
+
+async function loadDeskPos() {
+  if (deskPos) return deskPos;
+  try {
+    deskPos = (await kernel.vfs.metaGet("deskPos")) || {};
+  } catch (err) {
+    deskPos = {};
+  }
+  return deskPos;
+}
+
+function saveDeskPos() {
+  if (!deskPos) return;
+  kernel.vfs.metaSet("deskPos", deskPos);
+}
+
+async function paintDesktop() {
+  const desk = document.getElementById("desktop");
+  const pref = kernel.spacePref();
+  desk.style.setProperty("--space-land", landColor(pref.unusedCpu));
+  const spaceText = `kernel: ${pref.name}`;
+  const kamiText = `kami: ${kernel.state.processes.filter((p) => p.kind !== "app").length}`;
+  const spaceEl = document.getElementById("space-pill");
+  const kamiEl = document.getElementById("kami-pill");
+  if (spaceEl.textContent !== spaceText) spaceEl.textContent = spaceText;
+  if (kamiEl.textContent !== kamiText) kamiEl.textContent = kamiText;
+  const icons = document.getElementById("desktop-icons");
+  let rows = [];
+  try {
+    rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/desktop`);
+  } catch (err) {
+    rows = [];
+  }
+  const sig = rows.map((f) => f.path).join("\n");
+  if (sig === lastDeskSig && icons.children.length) {
+    paintDeskMarks();
+    return;
+  }
+  lastDeskSig = sig;
+  const pos = await loadDeskPos();
+  icons.innerHTML = "";
+  rows.forEach((f, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "desk-icon";
+    btn.dataset.path = f.path;
+    btn.textContent = f.name.replace(".gate", "");
+    const saved = pos[f.path];
+    const left = saved ? saved.x : 18;
+    const top = saved ? saved.y : 58 + i * 52;
+    btn.style.left = `${left}px`;
+    btn.style.top = `${top}px`;
+    let dragging = false;
+    let moved = false;
+    let ox = 0;
+    let oy = 0;
+    let sx = left;
+    let sy = top;
+    let group = [];
+    btn.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      moved = false;
+      icons.style.zIndex = "20";
+      sx = btn.offsetLeft;
+      sy = btn.offsetTop;
+      ox = e.clientX - sx;
+      oy = e.clientY - sy;
+      if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !deskSelected.has(f.path)) {
+        deskSelected = new Set([f.path]);
+        lastDeskPick = f.path;
+        paintDeskMarks();
+      }
+      const paths = deskSelected.has(f.path) ? [...deskSelected] : [f.path];
+      group = paths
+        .map((path) => {
+          const el = [...icons.querySelectorAll(".desk-icon")].find((n) => n.dataset.path === path);
+          return el ? { el, path, x: el.offsetLeft, y: el.offsetTop } : null;
+        })
+        .filter(Boolean);
+      const move = (ev) => {
+        if (!dragging) return;
+        const x = Math.max(8, ev.clientX - ox);
+        const y = Math.max(48, ev.clientY - oy);
+        const dx = x - sx;
+        const dy = y - sy;
+        if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+        for (const g of group) {
+          g.el.style.left = `${Math.max(8, g.x + dx)}px`;
+          g.el.style.top = `${Math.max(48, g.y + dy)}px`;
+        }
+        clearDropMarks();
+        if (moved) {
+          const win = windowAt(ev.clientX, ev.clientY);
+          if (win) win.classList.add("is-drop");
+        }
+      };
+      const up = (ev) => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        dragging = false;
+        icons.style.zIndex = "";
+        lastDeskPick = f.path;
+        const win = moved ? windowAt(ev.clientX, ev.clientY) : null;
+        clearDropMarks();
+        if (moved && win) {
+          for (const g of group) {
+            g.el.style.left = `${g.x}px`;
+            g.el.style.top = `${g.y}px`;
+          }
+          dropOnWindow(
+            win,
+            group.map((g) => g.path)
+          );
+          return;
+        }
+        if (moved) {
+          for (const g of group) {
+            const snapped = snapDesk(g.el.offsetLeft, g.el.offsetTop);
+            g.el.style.left = `${snapped.x}px`;
+            g.el.style.top = `${snapped.y}px`;
+            pos[g.path] = snapped;
+          }
+          deskPos = pos;
+          saveDeskPos();
+          return;
+        }
+        if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
+          if (deskSelected.has(f.path)) deskSelected.delete(f.path);
+          else deskSelected.add(f.path);
+          paintDeskMarks();
+          return;
+        }
+        deskSelected = new Set([f.path]);
+        paintDeskMarks();
+        openPath(f.path);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    });
+    icons.appendChild(btn);
+  });
+  paintDeskMarks();
+}
+
+function paintDeskMarks() {
+  const cut = deskClipboard.mode === "cut" ? new Set(deskClipboard.paths) : null;
+  document.querySelectorAll(".desk-icon").forEach((el) => {
+    const p = el.dataset.path;
+    el.classList.toggle("is-on", deskSelected.has(p) || p === lastDeskPick);
+    el.classList.toggle("is-cut", !!(cut && cut.has(p)));
+  });
+}
+
+function selectedDeskPaths() {
+  if (deskSelected.size) return [...deskSelected];
+  if (lastDeskPick) return [lastDeskPick];
+  return [];
+}
+
+function snapDesk(x, y) {
+  const gx = 120;
+  const gy = 64;
+  const col = Math.max(0, Math.round((x - 18) / gx));
+  const row = Math.max(0, Math.round((y - 58) / gy));
+  retur
