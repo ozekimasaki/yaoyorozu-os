@@ -71,8 +71,12 @@ export function startField(canvas, kernel) {
     return document.getElementById("desktop")?.classList.contains("is-app");
   }
 
+  function keshikiOn() {
+    return document.documentElement.dataset.keshiki === "1";
+  }
+
   function shouldRun() {
-    return !document.hidden && !kernel.state.maLocked && !deskBusy();
+    return !document.hidden && !kernel.state.maLocked && !deskBusy() && !keshikiOn();
   }
 
   function tick(ts) {
@@ -91,7 +95,7 @@ export function startField(canvas, kernel) {
       if (p.x < 0) p.x = canvas.width;
       if (p.x > canvas.width) p.x = 0;
       if (p.y < 0) p.y = canvas.height;
-      if (p.y > canvas.height) p.y = 0;
+      p.y = 0;
     }
     draw(now);
     if (!reduced) raf = requestAnimationFrame(tick);
@@ -101,6 +105,7 @@ export function startField(canvas, kernel) {
   }
   document.addEventListener("visibilitychange", resume);
   kernel.addEventListener("ma", resume);
+  kernel.addEventListener("keshiki", resume);
   const desk = document.getElementById("desktop");
   if (desk && typeof MutationObserver !== "undefined") {
     new MutationObserver(resume).observe(desk, { attributes: true, attributeFilter: ["class"] });
