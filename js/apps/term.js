@@ -1,4 +1,4 @@
-import { openPath } from "../runtime.js";
+import { openPath, sharePath } from "../runtime.js";
 
 const HELP = `八百万OS 奉納シェル
   help                 この文
@@ -57,6 +57,12 @@ const HELP = `八百万OS 奉納シェル
   cron / at / atq / atrm  \u6642\u5831
   assoc [match app]    \u672d\u306e\u95a2\u9023\u4ed8\u3051
   open -a <app> <path> \u3053\u308c\u3067\u958b\u304f
+  share [-a app] <path> \u672d\u3092\u6e21\u3059
+  journal              \u6838\u306e\u65e5\u8a8c
+  oto [toggle|ma|next] \u97f3\u970a
+  cat /proc/oto        \u4eca\u9cf4\u308b\u5ea7
+  konoyo [bind|wake|unbind|take|send] \u6b64\u5cb8
+  cat /proc/konoyo     \u6b64\u5cb8\u306e\u7d50
   kill [-STOP|-CONT]   \u7a93\u3092\u4f11\u307e\u305b\u308b
   cat /proc/apps       \u7a93\u306e\u4f11\u6b62
   logout               EPERM
@@ -136,6 +142,10 @@ const COMMANDS = [
   "atq",
   "atrm",
   "assoc",
+  "journal",
+  "share",
+  "oto",
+  "konoyo",
 ];
 
 export default {
@@ -143,7 +153,7 @@ export default {
   title: "奉納",
   width: "min(720px, 84vw)",
   height: "min(520px, 70vh)",
-  spawn({ kernel, launch, pid, wm }) {
+  spawn({ kernel, launch, pid, wm, offer }) {
     const el = document.createElement("div");
     el.innerHTML = `
       <div class="term-out" id="term-out"></div>
@@ -721,6 +731,66 @@ export default {
             out(`assoc ${rest[0]} ${rest[1]}`);
             break;
           }
+          case "journal":
+            out(kernel.journalText());
+            break;
+          case "oto":
+            if (rest[0]) kernel.otoCmd(rest[0]);
+            out(kernel.otoText());
+            break;
+          case "konoyo": {
+            const k = kernel.konoyo;
+            if (!k) throw new Error("ENOSYS");
+            const sub = rest[0] || "";
+            if (!sub) {
+              out(k.procText());
+              break;
+            }
+            if (sub === "bind") {
+              const rec = await k.bindDir();
+              out(`bind ${rec.id} ${rec.name}`);
+              break;
+            }
+            if (sub === "unbind") {
+              if (!rest[1]) throw new Error("EINVAL");
+              await k.unbind(rest[1]);
+              out(`unbind ${rest[1]}`);
+              break;
+            }
+            if (sub === "wake") {
+              if (!rest[1]) throw new Error("EINVAL");
+              await k.wake(rest[1]);
+              out(`wake ${rest[1]}`);
+              break;
+            }
+            if (sub === "take") {
+              const dest = rest[1] ? resolve(rest[1]) : cwd;
+              const paths = await k.takeIn(dest);
+              out(paths.join("\n") || "empty");
+              break;
+            }
+            if (sub === "send") {
+              if (!rest[1]) throw new Error("EINVAL");
+              const name = await k.sendOut(resolve(rest[1]));
+              out(`send ${name}`);
+              break;
+            }
+            out("konoyo [bind|unbind|wake|take|send]");
+            break;
+          }
+          case "share": {
+            let to = "";
+            const args = rest.slice();
+            if (args[0] === "-a" || args[0] === "--to") {
+              to = args[1] || "";
+              args.splice(0, 2);
+            }
+            const dest = resolve(args[0] || "");
+            if (!args[0]) throw new Error("EINVAL");
+            await sharePath(dest, to ? { to } : {});
+            out(to ? `share -a ${to} ${dest}` : `share ${dest}`);
+            break;
+          }
           case "env":
             out(
               Object.entries(kernel.state.env || {})
@@ -886,6 +956,7 @@ export default {
     }
 
     out(`八百万OS 奉納シェル。${kernel.state.ujiko} として接続。help / kashiwa / oncall / ps`);
+    if (offer) out(`offer ${offer.path || offer.text || ""}`);
     (async () => {
       try {
         const rc = `/home/${kernel.state.ujiko}/.hounourc`;
@@ -1001,6 +1072,10 @@ export default {
         if (!add) return;
         input.value = input.value ? `${input.value.replace(/\s+$/, "")} ${add}` : add;
         input.focus();
+      },
+      onOffer(next) {
+        if (!next) return;
+        out(`offer ${next.path || next.text || ""}`);
       },
     };
   },
