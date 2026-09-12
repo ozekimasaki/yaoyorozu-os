@@ -33,6 +33,11 @@ body {
   overflow: hidden;
 }
 
+html {
+  --ui-scale: 1;
+  font-size: calc(16px * var(--ui-scale, 1));
+}
+
 button,
 input,
 textarea {
