@@ -28,7 +28,7 @@ function readFileAsData(file) {
 
 export default {
   id: "oto",
-  title: "\\u97f3\\u970a",
+  title: "\u97f3\u970a",
   width: "min(640px, 86vw)",
   height: "min(580px, 76vh)",
   spawn({ kernel, wm, pid, path: startPath, offer }) {
@@ -55,17 +55,17 @@ export default {
     function nowText() {
       const st = engine.status();
       const seat = seats[pick];
-      if (!seat) return "\\u5ea7\\u3092\\u62db\\u3051\\u3002";
+      if (!seat) return "\u5ea7\u3092\u62db\u3051\u3002";
       if (mode === "media") {
         const n = mediaNode();
         const clock = `${fmtTime(n.currentTime)} / ${fmtTime(n.duration)}`;
-        if (!n.paused && !n.ended) return `\\u9cf4\\u308b  ${seat.title}  ${clock}`;
-        if (n.paused && n.currentTime > 0) return `\\u9593  ${seat.title}  ${clock}`;
-        return `\\u5ea7  ${seat.title}`;
+        if (!n.paused && !n.ended) return `\u9cf4\u308b  ${seat.title}  ${clock}`;
+        if (n.paused && n.currentTime > 0) return `\u9593  ${seat.title}  ${clock}`;
+        return `\u5ea7  ${seat.title}`;
       }
-      if (st.playing && st.paused) return `\\u9593  ${seat.title}`;
-      if (st.playing) return `\\u9cf4\\u308b  ${seat.title}`;
-      return `\\u5ea7  ${seat.title}`;
+      if (st.playing && st.paused) return `\u9593  ${seat.title}`;
+      if (st.playing) return `\u9cf4\u308b  ${seat.title}`;
+      return `\u5ea7  ${seat.title}`;
     }
 
     function mediaProgress() {
@@ -160,7 +160,7 @@ export default {
       if (maBtn) maBtn.classList.toggle("is-on", ma);
       if (loopBtn) loopBtn.classList.toggle("is-on", st.loop);
       const seat = seats[pick];
-      if (wm && wm.setTitle && pid) wm.setTitle(pid, seat ? seat.title : "\\u97f3\\u970a");
+      if (wm && wm.setTitle && pid) wm.setTitle(pid, seat ? seat.title : "\u97f3\u970a");
       el.querySelectorAll("[data-seat]").forEach((b) => {
         b.classList.toggle("is-on", b.dataset.seat === (seat && seat.id));
       });
@@ -324,13 +324,13 @@ export default {
         return {
           id: seatId(path, name),
           kind: "media",
-          title: name.replace(/\\.[^.]+$/, ""),
+          title: name.replace(/\.[^.]+$/, ""),
           path,
           file,
         };
       }
       const score = parseScore(file.body || "");
-      if (!score.title || score.title === "\\u7121\\u540d\\u306e\\u5ea7") score.title = name.replace(/\\.oto$|\\.kagura$/i, "");
+      if (!score.title || score.title === "\u7121\u540d\u306e\u5ea7") score.title = name.replace(/\.oto$|\.kagura$/i, "");
       return { id: seatId(path, score.title), kind: "score", title: score.title, path, score, file };
     }
 
@@ -395,22 +395,22 @@ export default {
       if (bound) return;
       bound = true;
       el.innerHTML = `
-        <p class="lede">\\u97f3\\u970a</p>
-        <p class="muted" id="oto-now">\\u5ea7\\u3092\\u62db\\u3051\\u3002</p>
+        <p class="lede">\u97f3\u970a</p>
+        <p class="muted" id="oto-now">\u5ea7\u3092\u62db\u3051\u3002</p>
         <canvas id="oto-field" width="560" height="160" aria-hidden="true"></canvas>
-        <div id="oto-meter" role="slider" aria-label="\\u7e01"><i id="oto-meter-fill"></i></div>
+        <div id="oto-meter" role="slider" aria-label="\u7e01"><i id="oto-meter-fill"></i></div>
         <div class="oto-stage" hidden></div>
         <div class="boot-actions" style="margin:12px 0;justify-content:flex-start;flex-wrap:wrap">
-          <button class="btn primary" type="button" id="oto-invite">\\u62db\\u304f</button>
-          <button class="btn" type="button" id="oto-ma">\\u9593</button>
-          <button class="btn" type="button" id="oto-send">\\u9001\\u308b</button>
-          <button class="btn is-on" type="button" id="oto-loop">\\u5de1\\u308b</button>
-          <button class="btn" type="button" id="oto-prev">\\u524d\\u306e\\u5ea7</button>
-          <button class="btn" type="button" id="oto-next">\\u6b21\\u306e\\u5ea7</button>
+          <button class="btn primary" type="button" id="oto-invite">\u62db\u304f</button>
+          <button class="btn" type="button" id="oto-ma">\u9593</button>
+          <button class="btn" type="button" id="oto-send">\u9001\u308b</button>
+          <button class="btn is-on" type="button" id="oto-loop">\u5de1\u308b</button>
+          <button class="btn" type="button" id="oto-prev">\u524d\u306e\u5ea7</button>
+          <button class="btn" type="button" id="oto-next">\u6b21\u306e\u5ea7</button>
         </div>
-        <label class="oto-en">\\u7e01 <input id="oto-en" type="range" min="0" max="100" value="42" /></label>
+        <label class="oto-en">\u7e01 <input id="oto-en" type="range" min="0" max="100" value="42" /></label>
         <div id="oto-seats" class="oto-seats"></div>
-        <p class="muted">\\u97f3\\u306f\\u6bba\\u3055\\u306a\\u3044\\u3002\\u5bb6\\u306b\\u623b\\u3063\\u3066\\u3082\\u9cf4\\u308b\\u3002\\u672d\\u306e .oto \\u306f\\u5ea7\\u306e\\u8b5c\\u3002</p>
+        <p class="muted">\u97f3\u306f\u6bba\u3055\u306a\u3044\u3002\u5bb6\u306b\u623b\u3063\u3066\u3082\u9cf4\u308b\u3002\u672d\u306e .oto \u306f\u5ea7\u306e\u8b5c\u3002</p>
       `;
       const stage = el.querySelector(".oto-stage");
       stage.append(video);
