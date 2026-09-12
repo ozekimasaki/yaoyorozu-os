@@ -15,6 +15,7 @@ export default {
     let autosaveT = 0;
     let readonly = false;
     let bound = false;
+    let wrap = false;
 
     function leafName() {
       return current.split("/").pop() || "言霊";
@@ -28,9 +29,15 @@ export default {
         if (pathEl.textContent !== line) pathEl.textContent = line;
       }
       const ta = el.querySelector(".editor");
-      if (ta) ta.readOnly = readonly;
+      if (ta) {
+        ta.readOnly = readonly;
+        ta.classList.toggle("is-wrap", wrap);
+        ta.setAttribute("wrap", wrap ? "soft" : "off");
+      }
       const save = el.querySelector("#save");
       if (save) save.disabled = readonly;
+      const wrapBtn = el.querySelector("#ed-wrap");
+      if (wrapBtn) wrapBtn.textContent = wrap ? "ほどく" : "折り返す";
       if (wm && pid) wm.setTitle(pid, `${dirty ? "* " : ""}${leafName()}`);
     }
 
@@ -75,11 +82,12 @@ export default {
         <textarea class="editor" spellcheck="false"></textarea>
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn primary" type="button" id="save">書く</button>
-          <button class="btn" type="button" id="ed-box">匡を開く</button>
+          <button class="btn" type="button" id="ed-box">匣を開く</button>
           <input class="search" id="ed-find" placeholder="札の中を探る" style="margin:0;max-width:200px" />
           <button class="btn" type="button" id="ed-find-go">探る</button>
           <input class="search" id="ed-line" placeholder="行" inputmode="numeric" style="margin:0;max-width:72px" />
           <button class="btn" type="button" id="ed-goto">行へ</button>
+          <button class="btn" type="button" id="ed-wrap">折り返す</button>
         </div>
       `;
       const ta = el.querySelector(".editor");
@@ -155,6 +163,11 @@ export default {
       };
       el.querySelector("#ed-box").onclick = () => {
         launch("fs", { path: kernel.vfs.parentOf(current) });
+      };
+      el.querySelector("#ed-wrap").onclick = () => {
+        wrap = !wrap;
+        kernel.vfs.metaSet("editorWrap", wrap);
+        syncChrome();
       };
     }
 
@@ -233,6 +246,14 @@ export default {
       }
     };
     kernel.addEventListener("vfs", onVfs);
+
+    kernel.vfs
+      .metaGet("editorWrap")
+      .then((v) => {
+        wrap = !!v;
+        syncChrome();
+      })
+      .catch(() => {});
 
     load();
     return {
