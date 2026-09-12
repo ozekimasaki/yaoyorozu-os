@@ -198,8 +198,9 @@ export default {
             text =
               kids
                 .slice(0, 16)
+                .map((k) => `${k.type === "dir" ? "▸" : k.type === "link" ? "�n                .slice(0, 16)
                 .map((k) => `${k.type === "dir" ? "▸" : k.type === "link" ? "↦" : "·"} ${k.name}`)
-                .join("\n") || "（空の匡）";
+                .join("\n") || "（空の匣）";
             sig = `${path}|dir|${kids.length}|${node.updated || 0}`;
           } else if (node.type === "link") {
             text = `↦ ${node.target || ""}`;
@@ -253,7 +254,7 @@ export default {
 
     async function pasteHere() {
       if (isVirtual(cwd)) {
-        kernel.log("仮想匡には貼れない", "fs");
+        kernel.log("仮想匣には貼れない", "fs");
         return;
       }
       const clip = kernel.state.vfsClip;
@@ -306,7 +307,7 @@ export default {
 
     async function ingest(paths) {
       if (isVirtual(cwd)) {
-        kernel.log("仮想匡には落とせない", "fs");
+        kernel.log("仮想匣には落とせない", "fs");
         return;
       }
       let rows = [];
@@ -472,7 +473,7 @@ export default {
       bodyEl.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
         <div class="fs-crumbs">${crumbs(cwd)}</div>
-        <input class="search" id="fs-go" value="${cwd}" aria-label="匡の道" style="margin:8px 0;max-width:100%" />
+        <input class="search" id="fs-go" value="${cwd}" aria-label="匣の道" style="margin:8px 0;max-width:100%" />
         <input class="search" id="fs-filter" placeholder="名で絞る" aria-label="名で絞る" style="margin:0 0 8px;max-width:100%" />
         <div class="fs-tree">
           ${cwd !== "/" ? `<button type="button" data-path="${parent}" data-type="dir" data-up="1">../</button>` : ""}
@@ -487,8 +488,8 @@ export default {
           <button class="btn" type="button" id="fs-back" ${histI <= 0 ? "disabled" : ""}>戻る</button>
           <button class="btn" type="button" id="fs-fwd" ${histI >= hist.length - 1 ? "disabled" : ""}>進む</button>
           <button class="btn" type="button" id="fs-sort">${sortKey === "updated" ? "時順" : "名順"}</button>
-          <input class="search" id="fs-name" placeholder="匡の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
-          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匡を作る</button>
+          <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
+          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
           <button class="btn" type="button" id="fs-new" ${locked ? "disabled" : ""}>札を作る</button>
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-cut" ${locked ? "disabled" : ""}>切る</button>
@@ -724,6 +725,15 @@ export default {
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         moveSel(-1, e.shiftKey);
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        const first = fileBtns()[0];
+        if (first) setPick(first.dataset.path, e);
+      } else if (e.key === "End") {
+        e.preventDefault();
+        const rows = fileBtns();
+        const last = rows[rows.length - 1];
+        if (last) setPick(last.dataset.path, e);
       } else if (e.key === "Enter" && (lastFsPick || selected.size)) {
         e.preventDefault();
         const path = lastFsPick || selectedPaths()[0];
