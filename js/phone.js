@@ -1,5 +1,6 @@
 import { listHandlers, sharePath } from "./runtime.js";
 import { attachOto } from "./oto-kern.js";
+import { iconNode, labelWithIcon } from "./icons.js";
 
 const HAND_LABEL = {
   editor: "\u8a00\u970a",
@@ -44,6 +45,22 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
   const actions = document.getElementById("phone-actions");
   const actionsTrack = document.getElementById("phone-actions-track");
   const actionsKick = document.getElementById("phone-actions-kicker");
+
+  function dressMarks() {
+    if (dock) {
+      dock.querySelectorAll("[data-phone]").forEach((btn) => {
+        const name = (btn.querySelector(".fuda-name")?.textContent || btn.textContent || "").trim();
+        labelWithIcon(btn, btn.dataset.phone, name);
+      });
+    }
+    if (shade) {
+      shade.querySelectorAll("[data-shade]").forEach((btn) => {
+        const name = (btn.querySelector(".fuda-name")?.textContent || btn.textContent || "").trim();
+        labelWithIcon(btn, btn.dataset.shade, name);
+      });
+    }
+  }
+  dressMarks();
 
   function frontApp() {
     if (!wm) return null;
@@ -164,6 +181,7 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
         card.dataset.pid = String(w.pid);
         const chrome = document.createElement("div");
         chrome.className = "phone-card-chrome";
+        chrome.appendChild(iconNode(w.appId));
         const title = document.createElement("strong");
         title.textContent = w.title || w.appId;
         const close = document.createElement("button");
