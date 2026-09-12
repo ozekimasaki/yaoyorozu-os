@@ -988,7 +988,7 @@ async function startDesktop() {
   }
 
   document.querySelector(".hint").textContent =
-    "/ \u9ce5\u5c45 \u00b7 ; \u7a93 \u00b7 ' \u7a7a\u9593 \u00b7 r \u6700\u8fd1 \u00b7 ? \u64cd\u4f5c \u00b7 \u7a7a\u6b04 " + String.fromCharCode(0x8997) + "\u304f \u00b7 \u56f2\u3046 \u00b7 \u843d\u3068\u3059";
+    "/ \u9ce5\u5c45 \u00b7 ; \u7a93 \u00b7 ' \u7a7a\u9593 \u00b7 e \u4fef\u77b0 \u00b7 r \u6700\u8fd1 \u00b7 ? \u64cd\u4f5c \u00b7 \u7a7a\u6b04 " + String.fromCharCode(0x8997) + "\u304f \u00b7 \u56f2\u3046 \u00b7 \u843d\u3068\u3059";
 
   const oshiList = document.getElementById("oshi-list");
   const oshiLog = document.getElementById("oshi-log");
@@ -1198,6 +1198,10 @@ async function startDesktop() {
     if (act === "tile") {
       const wm = getWm();
       if (wm) wm.tile();
+    }
+    if (act === "expose") {
+      const wm = getWm();
+      if (wm && wm.expose) wm.expose();
     }
     if (act === "center") {
       const w = focusedWin();
