@@ -198,7 +198,6 @@ export default {
             text =
               kids
                 .slice(0, 16)
-                .map((k) => `${k.type === "dir" ? "▸" : k.type === "link" ? "�n                .slice(0, 16)
                 .map((k) => `${k.type === "dir" ? "▸" : k.type === "link" ? "↦" : "·"} ${k.name}`)
                 .join("\n") || "（空の匣）";
             sig = `${path}|dir|${kids.length}|${node.updated || 0}`;
