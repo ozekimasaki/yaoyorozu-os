@@ -38,7 +38,7 @@ export default {
       setText("[data-k=auth] .muted", s.officialStatus || "未柏手");
       setText("[data-k=up] h3", fmtUp());
       setText("[data-k=disk] h3", `${disk.files}札`);
-      setText("[data-k=disk] .muted", `${disk.bytes}B · 匡 ${disk.dirs}`);
+      setText("[data-k=disk] .muted", `${disk.bytes}B · 匣 ${disk.dirs}`);
     }
 
     async function refreshDisk() {
@@ -48,7 +48,7 @@ export default {
         if (tok !== diskTok) return;
         disk = u;
         setText("[data-k=disk] h3", `${disk.files}札`);
-        setText("[data-k=disk] .muted", `${disk.bytes}B · 匡 ${disk.dirs}`);
+        setText("[data-k=disk] .muted", `${disk.bytes}B · 匣 ${disk.dirs}`);
       } catch (err) {
         if (tok !== diskTok) return;
       }
@@ -69,7 +69,7 @@ export default {
       }
       lastSig = sig;
       el.innerHTML = `
-        <p class="lede">このブラウザが、箔体である</p>
+        <p class="lede">このブラウザが、箍体である</p>
         <div class="grid-2">
           <div class="card" data-k="uid"><div class="tag">UID</div><h3></h3><p class="muted"></p></div>
           <div class="card" data-k="space"><div class="tag">SPACE</div><h3></h3><p class="muted">47のうちの一つ。親ではない。</p></div>
