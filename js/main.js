@@ -468,6 +468,8 @@ async function peekPath(path) {
       const kids = await kernel.vfs.ls(path);
       body.textContent = kids.map((k) => `${k.type === "dir" ? "▸" : "·"} ${k.name}`).join("\n") || "（空の匣）";
     } else if (node.type === "link") {
+      body.textContent = `� || "（空の匣）";
+    } else if (node.type === "link") {
       body.textContent = `↦ ${node.target || node.body || ""}`;
     } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
       body.textContent = `くぐると起動: ${String(node.body).trim()}`;
@@ -564,6 +566,22 @@ function closeFileStat() {
 function closeRecent() {
   const box = document.getElementById("recent-list");
   if (box) box.hidden = true;
+}
+
+function copyPathNow(path) {
+  const p = path || lastDeskPick || selectedDeskPaths()[0];
+  if (!p) return;
+  kernel.clipPush(p);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(p).catch(() => {});
+  }
+  kernel.log(`道を写した ${p}`, "desk");
+}
+
+function openPickedBox() {
+  const path = lastDeskPick || selectedDeskPaths()[0];
+  const dest = path ? kernel.vfs.parentOf(path) : `/home/${kernel.state.ujiko}/desktop`;
+  launch("fs", { path: dest || "/" });
 }
 
 async function renamePicked() {
@@ -721,7 +739,6 @@ async function startDesktop() {
   scheduleUsage();
   paintNet();
   kernel.addEventListener("net", paintNet);
-  kernel.addEventListener("tick", paintNet);
 
   const meta = document.getElementById("menubar-meta");
   const paintMeta = () => {
@@ -947,6 +964,13 @@ async function startDesktop() {
       const wm = getWm();
       if (wm) wm.hideAll();
     }
+    if (e.shiftKey && (e.key === "." || e.key === ">" || e.key === "。")) {
+      e.preventDefault();
+      const w = focusedWin();
+      const wm = getWm();
+      if (w && wm && wm.center) wm.center(w.pid);
+      return;
+    }
     if (e.key === "." || e.key === "。") {
       e.preventDefault();
       const wm = getWm();
@@ -982,6 +1006,11 @@ async function startDesktop() {
       if ((e.key === "i" || e.key === "I") && deskKeys) {
         e.preventDefault();
         showFileStat(lastDeskPick || selectedDeskPaths()[0]);
+        return;
+      }
+      if (e.shiftKey && (e.key === "c" || e.key === "C") && (deskKeys || lastDeskPick || deskSelected.size)) {
+        e.preventDefault();
+        copyPathNow();
         return;
       }
     }
@@ -1407,6 +1436,16 @@ async function startDesktop() {
       showFileStat(path);
       return;
     }
+    if (act === "path") {
+      lastDeskPick = path;
+      copyPathNow(path);
+      return;
+    }
+    if (act === "box") {
+      lastDeskPick = path;
+      openPickedBox();
+      return;
+    }
     if (act === "muen") {
       await sendToMuen([path]);
     }
@@ -1424,6 +1463,11 @@ async function startDesktop() {
     if (act === "tile") {
       const wm = getWm();
       if (wm) wm.tile();
+    }
+    if (act === "center") {
+      const w = focusedWin();
+      const wm = getWm();
+      if (w && wm && wm.center) wm.center(w.pid);
     }
     if (act === "tidy") tidyDesk();
     if (act === "paste") pasteDesk();
