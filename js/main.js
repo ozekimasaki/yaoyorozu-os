@@ -492,6 +492,80 @@ function closeDeskPeek() {
   }
 }
 
+function fmtWhen(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function kindLabel(node, path) {
+  if (!node) return "無い";
+  if (node.type === "dir") return "匣";
+  if (node.type === "link") return "結び";
+  if ((path && path.endsWith(".gate")) || node.mime === "gate/app") return "鳥居";
+  return "札";
+}
+
+async function showFileStat(path) {
+  const box = document.getElementById("file-stat");
+  if (!box) return;
+  if (!path) {
+    box.hidden = true;
+    return;
+  }
+  if (!box.hidden && box.dataset.path === path) {
+    box.hidden = true;
+    return;
+  }
+  closeDeskPeek();
+  const title = document.getElementById("file-stat-path");
+  const body = document.getElementById("file-stat-body");
+  title.textContent = path;
+  box.dataset.path = path;
+  try {
+    const node = path === "/" ? { type: "dir", mime: "inode/directory", updated: 0 } : await kernel.vfs.getFile(path);
+    if (!node) {
+      body.textContent = "ENOENT";
+    } else {
+      const lines = [`種  ${kindLabel(node, path)}`, `型  ${node.mime || "—"}`];
+      if (node.type === "link") lines.push(`先  ${node.target || node.body || "—"}`);
+      if (node.type === "file" || node.type === "link") {
+        lines.push(`量  ${(node.body || "").length}B`);
+        lines.push(`行  ${node.exec ? "くぐれる" : "読む"}`);
+      }
+      if (node.type === "dir") {
+        try {
+          const u = await kernel.vfs.usage(path);
+          lines.push(`量  匣${u.dirs} · 札${u.files} · ${u.bytes}B`);
+        } catch (err) {
+          lines.push("量  —");
+        }
+      }
+      if (node.origin) lines.push(`元  ${node.origin}`);
+      lines.push(`時  ${fmtWhen(node.updated)}`);
+      const text = lines.join("\n");
+      if (body.textContent !== text) body.textContent = text;
+    }
+  } catch (err) {
+    body.textContent = err.message;
+  }
+  box.hidden = false;
+}
+
+function closeFileStat() {
+  const box = document.getElementById("file-stat");
+  if (box) {
+    box.hidden = true;
+    box.dataset.path = "";
+  }
+}
+
+function closeRecent() {
+  const box = document.getElementById("recent-list");
+  if (box) box.hidden = true;
+}
+
 async function renamePicked() {
   const path = lastDeskPick || selectedDeskPaths()[0];
   if (!path) return;
@@ -562,6 +636,20 @@ async function paintUsage() {
   }
 }
 
+let lastNetText = "";
+
+function paintNet() {
+  const pill = document.getElementById("net-pill");
+  if (!pill) return;
+  const socks = kernel.state.sockets || [];
+  let n = 0;
+  for (const s of socks) if (s.state === "ESTAB") n += 1;
+  const text = `縁: ${n}`;
+  if (text === lastNetText) return;
+  lastNetText = text;
+  pill.textContent = text;
+}
+
 let lastClock = "";
 
 function clock() {
@@ -621,12 +709,19 @@ async function startDesktop() {
   if (diskPill) {
     diskPill.addEventListener("click", () => launch("fs", { path: `/home/${kernel.state.ujiko}` }));
   }
+  const netPill = document.getElementById("net-pill");
+  if (netPill) {
+    netPill.addEventListener("click", () => launch("net"));
+  }
 
   fillNorito();
   clock();
   setInterval(clock, 1000);
   await paintDesktop();
   scheduleUsage();
+  paintNet();
+  kernel.addEventListener("net", paintNet);
+  kernel.addEventListener("tick", paintNet);
 
   const meta = document.getElementById("menubar-meta");
   const paintMeta = () => {
@@ -645,6 +740,9 @@ async function startDesktop() {
   });
   kernel.addEventListener("peek", (ev) => {
     peekPath(ev.detail);
+  });
+  kernel.addEventListener("stat", (ev) => {
+    showFileStat(ev.detail);
   });
   kernel.addEventListener("space", () => {
     paintDesktop();
@@ -737,6 +835,8 @@ async function startDesktop() {
       const tm = document.getElementById("task-menu");
       if (tm) tm.hidden = true;
       closeDeskPeek();
+      closeFileStat();
+      closeRecent();
       endMarquee();
       const km = document.getElementById("keymap");
       if (km) km.hidden = true;
@@ -838,6 +938,10 @@ async function startDesktop() {
       e.preventDefault();
       toggleOshi();
     }
+    if (e.key === "r") {
+      e.preventDefault();
+      toggleRecent();
+    }
     if (e.key === "," || e.key === "、") {
       e.preventDefault();
       const wm = getWm();
@@ -873,6 +977,11 @@ async function startDesktop() {
       if ((e.key === "d" || e.key === "D") && (deskKeys || deskSelected.size || lastDeskPick)) {
         e.preventDefault();
         duplicateDesk();
+        return;
+      }
+      if ((e.key === "i" || e.key === "I") && deskKeys) {
+        e.preventDefault();
+        showFileStat(lastDeskPick || selectedDeskPaths()[0]);
         return;
       }
     }
@@ -914,7 +1023,7 @@ async function startDesktop() {
         !e.ctrlKey &&
         !e.metaKey &&
         !e.altKey &&
-        !"/;'[]\\kmn,.?、。’；。？".includes(e.key) &&
+        !"/;'[]\\kmnr,.?、。’；。？".includes(e.key) &&
         !e.isComposing
       ) {
         e.preventDefault();
@@ -954,6 +1063,8 @@ async function startDesktop() {
       !document.getElementById("ujiko-drawer").hidden ||
       !document.getElementById("oshi-list").hidden ||
       !document.getElementById("desk-icon-menu").hidden ||
+      (document.getElementById("recent-list") && !document.getElementById("recent-list").hidden) ||
+      (document.getElementById("file-stat") && !document.getElementById("file-stat").hidden) ||
       (document.getElementById("task-menu") && !document.getElementById("task-menu").hidden) ||
       (document.getElementById("keymap") && !document.getElementById("keymap").hidden)
     );
@@ -967,7 +1078,7 @@ async function startDesktop() {
   }
 
   document.querySelector(".hint").textContent =
-    "/ 鳥居 · ; 窓 · ' 空間 · ? 操作 · 空欄 覗く · 囲う · 落とす";
+    "/ 鳥居 · ; 窓 · ' 空間 · r 最近 · ? 操作 · 空欄 覗く · 囲う · 落とす";
 
   const switcher = document.getElementById("win-switcher");
   let lastSwitcherSig = "";
@@ -1077,12 +1188,15 @@ async function startDesktop() {
   const oshiPill = document.getElementById("oshi-pill");
   const paintOshiPill = () => {
     const n = kernel.state.oshiUnread || 0;
-    oshiPill.textContent = n ? `告げ: ${n}` : "告げ";
+    const text = n ? `告げ: ${n}` : "告げ";
+    if (oshiPill.textContent !== text) oshiPill.textContent = text;
     oshiPill.classList.toggle("has-note", n > 0);
   };
   const paintOshi = () => {
     const rows = kernel.state.oshi || [];
-    oshiLog.textContent = rows.map((r) => `${r.tag}  ${r.t}`).join("\n") || "（札は届いていない）";
+    const text = rows.map((r) => `${r.tag}  ${r.t}`).join("\n") || "（札は届いていない）";
+    if (oshiLog.textContent === text) return;
+    oshiLog.textContent = text;
   };
   function toggleOshi() {
     const open = oshiList.hidden;
@@ -1109,6 +1223,52 @@ async function startDesktop() {
     if (!oshiList.hidden) paintOshi();
   });
   kernel.addEventListener("oshi-read", paintOshiPill);
+
+  const recentList = document.getElementById("recent-list");
+  const recentLog = document.getElementById("recent-log");
+  let lastRecentSig = "";
+  function paintRecent() {
+    if (!recentLog) return;
+    const rows = kernel.state.recent || [];
+    const sig = rows.map((r) => r.path).join("\n");
+    if (sig === lastRecentSig && recentLog.childNodes.length) return;
+    lastRecentSig = sig;
+    recentLog.replaceChildren();
+    if (!rows.length) {
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = "（まだ札はない）";
+      recentLog.appendChild(p);
+      return;
+    }
+    for (const r of rows) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.path = r.path;
+      btn.textContent = r.path;
+      recentLog.appendChild(btn);
+    }
+  }
+  function toggleRecent() {
+    if (!recentList) return;
+    const open = recentList.hidden;
+    recentList.hidden = !open;
+    if (open) paintRecent();
+  }
+  if (recentList) {
+    recentList.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const btn = e.target.closest("[data-path]");
+      if (!btn) return;
+      recentList.hidden = true;
+      openPath(btn.dataset.path);
+    });
+  }
+  kernel.addEventListener("recent", () => {
+    if (recentList && !recentList.hidden) paintRecent();
+  });
+  const fileStatEl = document.getElementById("file-stat");
+  if (fileStatEl) fileStatEl.addEventListener("click", (e) => e.stopPropagation());
 
   const eaves = document.getElementById("eaves-menu");
   const iconMenu = document.getElementById("desk-icon-menu");
@@ -1242,6 +1402,11 @@ async function startDesktop() {
       peekDesk();
       return;
     }
+    if (act === "stat") {
+      lastDeskPick = path;
+      showFileStat(path);
+      return;
+    }
     if (act === "muen") {
       await sendToMuen([path]);
     }
@@ -1262,6 +1427,7 @@ async function startDesktop() {
     }
     if (act === "tidy") tidyDesk();
     if (act === "paste") pasteDesk();
+    if (act === "recent") toggleRecent();
     if (act === "ofuda") newDeskOfuda();
   });
   document.addEventListener("click", () => {
@@ -1271,6 +1437,8 @@ async function startDesktop() {
     document.getElementById("ujiko-drawer").hidden = true;
     document.getElementById("oshi-list").hidden = true;
     document.getElementById("space-switcher").classList.remove("open");
+    closeRecent();
+    closeFileStat();
     const km = document.getElementById("keymap");
     if (km) km.hidden = true;
   });
