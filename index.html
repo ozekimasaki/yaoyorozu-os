@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="css/desktop.css" />
     <link rel="stylesheet" href="css/irq.css" />
     <link rel="stylesheet" href="css/phone.css" />
+    <link rel="stylesheet" href="css/oto.css" />
   </head>
   <body>
     <div id="boot">
@@ -71,8 +72,14 @@
         <span class="pill" id="disk-pill" title="&#x6c0f;&#x5b50;&#x306e;&#x5668;">&#x5668;: &#x2026;</span>
         <span class="pill" id="net-pill" title="&#x7e01;">&#x7e01;: &#x2026;</span>
         <span class="pill" id="oshi-pill">&#x544a;&#x3052;</span>
+        <span class="pill" id="oto-pill" hidden>&#x97f3;&#x970a;</span>
         <div class="task-apps"></div>
       </footer>
+      <div id="phone-now" hidden>
+        <button type="button" id="phone-now-open">&#x97f3;&#x970a;</button>
+        <button type="button" data-oto="toggle" id="phone-now-toggle">&#x62db;&#x304f;</button>
+        <button type="button" data-oto="next">&#x6b21;</button>
+      </div>
       <nav id="phone-dock" aria-label="dock">
         <button type="button" data-phone="oncall">&#x5f53;&#x76f4;</button>
         <button type="button" data-phone="torii">&#x9ce5;&#x5c45;</button>
@@ -95,6 +102,15 @@
         </div>
         <p class="muted">&#x304a;&#x544a;&#x3052;</p>
         <div id="phone-shade-oshi" class="term-out"></div>
+        <p class="muted" id="phone-shade-oto-kicker" hidden>&#x97f3;&#x970a;</p>
+        <div id="phone-shade-oto" hidden>
+          <p id="phone-shade-oto-title"></p>
+          <div class="phone-shade-quick">
+            <button type="button" data-oto="toggle">&#x62db;&#x304f;</button>
+            <button type="button" data-oto="next">&#x6b21;&#x306e;&#x5ea7;</button>
+            <button type="button" data-oto="send">&#x9001;&#x308b;</button>
+          </div>
+        </div>
         <p class="muted">&#x65e5;&#x8a8c;</p>
         <div id="phone-shade-journal"></div>
       </div>
@@ -199,6 +215,7 @@
         <div><kbd>Ctrl+L</kbd> &#x5949;&#x7d0d;&#x3092;&#x6e05;&#x3081;&#x308b;</div>
         <div><kbd>Ctrl+Shift+C</kbd> &#x9053;&#x3092;&#x5199;&#x3059;</div>
         <div><kbd>n</kbd> &#x304a;&#x544a;&#x3052;</div>
+        <div><kbd>Space</kbd> &#x97f3;&#x970a;&#x3092;&#x62db;&#x304f; / &#x9593;</div>
         <div><kbd>r</kbd> &#x6700;&#x8fd1;&#x306e;&#x672d;</div>
         <div><kbd>Ctrl+I</kbd> &#x5c5e;&#x6027;</div>
         <div><kbd>k</kbd> &#x67cf;&#x624b;</div>
