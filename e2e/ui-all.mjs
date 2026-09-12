@@ -260,6 +260,32 @@ try {
   await section("map", async () => {
     if (!(await h.vis("map"))) await h.openTorii("\u5217\u5cf6", "map");
     await page.waitForFunction(() => document.querySelector(".window[data-app=map] svg.japan-map .pref"));
+    const clicked = await page.evaluate(async () => {
+      const win = document.querySelector(".window[data-app=map]:not(.is-min)");
+      const space0 = document.getElementById("space-pill")?.textContent || "";
+      const other = [...win.querySelectorAll("svg .pref")].find((n) => !n.classList.contains("is-selected"));
+      if (other) other.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 180));
+      const sel = win.querySelector("#map-select");
+      if (sel) {
+        const next = [...sel.options].find((o) => o.value && o.value !== sel.value);
+        if (next) {
+          sel.value = next.value;
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+      await new Promise((r) => setTimeout(r, 160));
+      return {
+        still: !!document.querySelector(".window[data-app=map]:not(.is-min):not(.is-away)"),
+        same: space0 === (document.getElementById("space-pill")?.textContent || ""),
+        viewed: win.querySelector("svg .pref.is-view")?.dataset.pref || "",
+        selected: win.querySelector("svg .pref.is-selected")?.dataset.pref || "",
+        h2: win.querySelector("#map-panel h2")?.textContent || "",
+      };
+    });
+    note(clicked.still, "map click keeps window");
+    note(clicked.same, "map click keeps space");
+    note(!!clicked.viewed && clicked.viewed !== clicked.selected, `map click views ${clicked.viewed}`);
     const jumped = await page.evaluate(async () => {
       const win = document.querySelector(".window[data-app=map]:not(.is-min)");
       const host = win.querySelector(".map-wrap");
@@ -610,6 +636,7 @@ try {
       return kernel.okoshi.list();
     });
     note(oshi.includes("term"), `sys okoshi ${oshi.join(",")}`);
+    note(!!(await hasApp("sys", "#sys-kagi-lock")), "sys kagi");
     await h.closeWin("sys");
   });
 
@@ -730,6 +757,7 @@ try {
     known.add("\u666f\u8272");
     known.add("\u5668");
     known.add("\u8d77\u3053\u3057");
+    known.add("\u9375");
     const targets = names.filter((label) => [...known].some((t) => label.includes(t)));
     for (const label of targets) {
       await resetUi();
