@@ -404,8 +404,13 @@
   font-size: 11px;
 }
 
-#oshi-pill.has-note {
+#oshi-pill.has-note,
+#oto-pill.is-live {
   color: var(--gold-2);
+}
+
+#oto-pill {
+  cursor: pointer;
 }
 
 #task-menu,
