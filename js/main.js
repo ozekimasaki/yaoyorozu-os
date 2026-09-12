@@ -840,4 +840,65 @@ async function startDesktop() {
       (tag === "INPUT" || tag === "TEXTAREA") && (!inWin || !inWin.classList.contains("is-min"));
     if (e.key === "Escape") {
       document.getElementById("torii-gate").classList.remove("open");
+      document.getElementById("kashiwa-stage").classList.remove("open");
+      document.getElementById("win-switcher").classList.remove("open");
+      document.getElementById("eaves-menu").hidden = true;
+      document.getElementById("ujiko-drawer").hidden = true;
+      document.getElementById("space-switcher").classList.remove("open");
+      document.getElementById("oshi-list").hidden = true;
+      document.getElementById("desk-icon-menu").hidden = true;
+      const tm = document.getElementById("task-menu");
+      if (tm) tm.hidden = true;
+      closeDeskPeek();
+      closeFileStat();
+      closeRecent();
+      endMarquee();
+      const km = document.getElementById("keymap");
+      if (km) km.hidden = true;
+    }
+    if (kernel.state.maLocked) {
+      if (e.key === "k") kashiwa.open();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "w" || e.key === "W")) {
+      e.preventDefault();
+      const w = focusedWin();
+      if (w) getWm().close(w.pid);
+      return;
+    }
+    if (e.key === "F5") {
+      e.preventDefault();
+      lastDeskSig = "";
+      paintDesktop();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N")) {
+      e.preventDefault();
+      if (e.shiftKey) newDeskBox();
+      else newDeskOfuda();
+      return;
+    }
+    if (typing) return;
+    if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && onDesktopKeys() && !overlaysOpen()) {
+      e.preventDefault();
+      undoMuen();
+      return;
+    }
+    const switcherOpen = document.getElementById("win-switcher").classList.contains("open");
+    if (switcherOpen) {
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        moveSwitcher(-1);
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        moveSwitcher(1);
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        activateSwitcher();
+        return;
+      }
     
