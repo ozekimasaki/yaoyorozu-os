@@ -139,6 +139,9 @@
 
 .task-app {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--washi-dim);
   border: 1px solid var(--line);
@@ -146,6 +149,12 @@
   font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.task-app .fuda-mark {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
 }
 
 .task-app.is-focus {
