@@ -33,7 +33,7 @@ const HELP = `八百万OS 奉納シェル
   migrate 東京         過密の再配置
   spawn <名> <役割>    神を立てる
   hounou <text>        奉納
-  sysctl key=val       ma.silent / irq.ms / sound
+  sysctl key=val       ma.silent / irq.ms / sound / ui.scale / fs.quota
   uname                機械
   date                 祭暦の今日
   top                  CPU上位
@@ -65,6 +65,14 @@ const HELP = `八百万OS 奉納シェル
   cat /proc/konoyo     \u6b64\u5cb8\u306e\u7d50
   watari [open|join|far|send|close] \u6e21\u308a
   cat /proc/watari     \u6e21\u308a\u306e\u821f
+  utsushi [snap]       \u5199\u3057
+  cat /proc/utsushi    \u5199\u3057\u306e\u7e01
+  keshiki [set|clear|last] \u666f\u8272
+  cat /proc/keshiki    \u666f\u8272\u306e\u7e01
+  sweep                \u5668\u3092\u6383\u304f
+  cat /proc/utsuwa     \u5668\u306e\u7e01
+  okoshi [add|rm]      \u8d77\u3053\u3057
+  cat /proc/okoshi     \u8d77\u3053\u3057\u306e\u7e01
   kill [-STOP|-CONT]   \u7a93\u3092\u4f11\u307e\u305b\u308b
   cat /proc/apps       \u7a93\u306e\u4f11\u6b62
   logout               EPERM
@@ -149,6 +157,10 @@ const COMMANDS = [
   "oto",
   "konoyo",
   "watari",
+  "utsushi",
+  "keshiki",
+  "sweep",
+  "okoshi",
 ];
 
 export default {
@@ -412,7 +424,8 @@ export default {
           }
           case "df": {
             const u = await kernel.vfs.usage("/");
-            out(`縁fs  files=${u.files} dirs=${u.dirs} bytes=${u.bytes}`);
+            const q = kernel.vfs.quotaOf ? kernel.vfs.quotaOf() : 0;
+            out(`縁fs  files=${u.files} dirs=${u.dirs} bytes=${u.bytes} quota=${q}`);
             break;
           }
           case "du": {
@@ -661,7 +674,9 @@ export default {
           case "sysctl": {
             const [k, v] = (rest[0] || "").split("=");
             const s = kernel.sysctl(k, v);
-            out(`silent=${s.silent} irq.ms=${s.irqMs} sound=${s.sound}`);
+            const scale = s.scale != null ? s.scale : kernel.keshiki && kernel.keshiki.snapshot ? kernel.keshiki.snapshot().scale : 1;
+            const quota = s.quota != null ? s.quota : kernel.vfs.quotaOf ? kernel.vfs.quotaOf() : 0;
+            out(`silent=${s.silent} irq.ms=${s.irqMs} sound=${s.sound} scale=${scale} quota=${quota}`);
             break;
           }
           case "logout":
@@ -821,6 +836,87 @@ export default {
               break;
             }
             out("watari [open|join|far|send|close]");
+            break;
+          }
+          case "utsushi": {
+            const u = kernel.utsushi;
+            if (!u) throw new Error("ENOSYS");
+            const sub = rest[0] || "";
+            if (!sub || sub === "stat") {
+              out(u.procText());
+              break;
+            }
+            if (sub === "snap" || sub === "utsusu" || sub === "\u6620\u3059") {
+              const hit = await u.snap({ reason: "term" });
+              out(hit.path);
+              break;
+            }
+            out("utsushi [snap]");
+            break;
+          }
+          case "keshiki": {
+            const kesh = kernel.keshiki;
+            if (!kesh) throw new Error("ENOSYS");
+            const sub = rest[0] || "";
+            if (!sub || sub === "stat") {
+              out(kesh.procText());
+              break;
+            }
+            if (sub === "clear" || sub === "\u6255\u3046") {
+              await kesh.clear();
+              out(kesh.procText());
+              break;
+            }
+            if (sub === "last" || sub === "\u6577\u304f" || sub === "\u5199\u3057") {
+              const hit = await kesh.fromLast();
+              out(hit.path);
+              break;
+            }
+            if (sub === "set" || sub === "scale") {
+              if (sub === "scale") {
+                await kesh.setScale(rest[1]);
+                out(kesh.procText());
+                break;
+              }
+              const dest = resolve(rest[1] || "");
+              if (!rest[1]) throw new Error("EINVAL");
+              const hit = await kesh.set(dest);
+              out(hit.path);
+              break;
+            }
+            out("keshiki [set|clear|last|scale]");
+            break;
+          }
+          case "sweep": {
+            const u = kernel.utsuwa;
+            if (!u || !u.sweep) throw new Error("ENOSYS");
+            const hit = await u.sweep({ hard: rest[0] === "hard" });
+            out(`dropped=${hit.dropped} bytes=${hit.bytes}`);
+            break;
+          }
+          case "okoshi": {
+            const o = kernel.okoshi;
+            if (!o) throw new Error("ENOSYS");
+            const sub = rest[0] || "";
+            if (!sub || sub === "list" || sub === "stat") {
+              out(o.procText());
+              break;
+            }
+            if (sub === "add") {
+              const id = rest[1] || "";
+              if (!id) throw new Error("EINVAL");
+              await o.add(id);
+              out(o.procText());
+              break;
+            }
+            if (sub === "rm") {
+              const id = rest[1] || "";
+              if (!id) throw new Error("EINVAL");
+              await o.rm(id);
+              out(o.procText());
+              break;
+            }
+            out("okoshi [add|rm|list]");
             break;
           }
           case "share": {
