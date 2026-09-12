@@ -126,6 +126,31 @@ try {
     await h.closeWin("watari");
   });
 
+  await section("kagami", async () => {
+    await h.openTorii("\u93e1", "kagami");
+    note(!!(await h.vis("kagami")), "kagami");
+    await page.evaluate(() => document.querySelector(".window[data-app=kagami] #kagami-snap")?.click());
+    await sleep(400);
+    await h.shot("kagami");
+    await page.evaluate(() => document.querySelector(".window[data-app=kagami] #kagami-desk")?.click());
+    await sleep(240);
+    await h.shot("keshiki");
+    await h.closeWin("kagami");
+  });
+
+  await section("sys-board", async () => {
+    await h.openTorii("\u6a5f\u68b0", "sys");
+    note(!!(await page.$(".window[data-app=sys] #sys-keshiki-last")), "sys keshiki");
+    await page.evaluate(() => document.querySelector(".window[data-app=sys] [data-scale='1.15']")?.click());
+    await sleep(200);
+    await h.shot("sys");
+    await page.evaluate(() => document.querySelector(".window[data-app=sys] [data-scale='1']")?.click());
+    await page.evaluate(() => document.querySelector(".window[data-app=sys] #sys-utsuwa-sweep")?.click());
+    await sleep(200);
+    await h.shot("sys-utsuwa");
+    await h.closeWin("sys");
+  });
+
   await section("fs-term", async () => {
     await h.openTorii("\u7e01fs", "fs");
     note(!!(await h.vis("fs")), "fs");
