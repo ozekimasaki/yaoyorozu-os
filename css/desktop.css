@@ -111,9 +111,9 @@
 
 .fs-peek {
   max-height: 132px;
+  overflow: auto;
   margin: 8px 0 0;
   padding: 8px;
-  overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -355,9 +355,14 @@
   word-break: break-all;
 }
 
-#recent-log button:hover {
+#recent-log button:hover,
+#recent-log button.is-on {
   border-color: var(--gold);
   color: var(--gold-2);
+}
+
+#recent-log button.is-on {
+  box-shadow: inset 0 0 0 1px var(--gold);
 }
 
 #desk-peek .term-out {
@@ -531,8 +536,14 @@
 }
 
 #space-switcher button:hover,
-#space-switcher button.is-here {
+#space-switcher button.is-here,
+#space-switcher button.is-on {
   border-color: var(--gold);
+}
+
+#space-switcher button.is-on {
+  box-shadow: inset 0 0 0 1px var(--gold);
+  color: var(--gold-2);
 }
 
 #space-switcher small {
