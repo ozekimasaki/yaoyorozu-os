@@ -58,6 +58,9 @@ try {
   note(chrome.grid === "grid", `\u30db\u30fc\u30e0\u30b0\u30ea\u30c3\u30c9 ${chrome.grid}`);
   note(chrome.iconPos === "static", `\u672d\u306f\u9759\u7684 ${chrome.iconPos}`);
   note(!!chrome.space, `\u72b6\u6cc1\u306e\u7a7a\u9593 ${chrome.space}`);
+  note(await page.evaluate(() =>
+    [...document.querySelectorAll(".desk-icon")].some((b) => (b.textContent || "").includes("\u97f3\u970a"))
+  ), "\u30db\u30fc\u30e0\u306b\u97f3\u970a");
   await h.shot("home");
 
   await page.evaluate(() => {
@@ -213,6 +216,31 @@ try {
   await page.evaluate(() => {
     document.getElementById("phone-recents").hidden = true;
   });
+
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll(".desk-icon")].find((b) => (b.textContent || "").includes("\u97f3\u970a"));
+    btn?.click();
+  });
+  await sleep(500);
+  note(!!(await front("oto")), "\u97f3\u970a\u304c\u30d5\u30eb\u30b9\u30af\u30ea\u30fc\u30f3");
+  await page.evaluate(() => document.querySelector(".window[data-app=oto] #oto-invite")?.click());
+  await sleep(360);
+  note(await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "live").catch(() => false), "\u62db\u3044\u3066\u9cf4\u308b");
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(280);
+  note(!(await front("oto")), "\u97f3\u970a\u304b\u3089\u30db\u30fc\u30e0");
+  note(await page.evaluate(() => {
+    const bar = document.getElementById("phone-now");
+    const app = document.querySelector(".window[data-app=oto] .oto-app");
+    return !!(bar && !bar.hidden && app && app.dataset.state === "live" && document.documentElement.dataset.oto === "live");
+  }), "\u30db\u30fc\u30e0\u3067\u3082\u9cf4\u308b");
+  await h.shot("now");
+  await page.evaluate(() => document.querySelector("#phone-now [data-oto=toggle]")?.click());
+  await sleep(220);
+  note(await page.evaluate(() => {
+    const app = document.querySelector(".window[data-app=oto] .oto-app");
+    return !!(app && app.dataset.state === "ma" && document.documentElement.dataset.oto === "ma");
+  }), "\u5e55\u4e0b\u3067\u9593");
 
   await page.setViewport({ width: 844, height: 390, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await sleep(300);
