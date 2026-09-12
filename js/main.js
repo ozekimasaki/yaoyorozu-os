@@ -138,4 +138,59 @@ async function paintDesktop() {
       sy = btn.offsetTop;
       ox = e.clientX - sx;
       oy = e.clientY - sy;
-      if
+      if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !deskSelected.has(f.path)) {
+        deskSelected = new Set([f.path]);
+        lastDeskPick = f.path;
+        paintDeskMarks();
+      }
+      const paths = deskSelected.has(f.path) ? [...deskSelected] : [f.path];
+      group = paths
+        .map((path) => {
+          const el = [...icons.querySelectorAll(".desk-icon")].find((n) => n.dataset.path === path);
+          return el ? { el, path, x: el.offsetLeft, y: el.offsetTop } : null;
+        })
+        .filter(Boolean);
+      const move = (ev) => {
+        if (!dragging) return;
+        const x = Math.max(8, ev.clientX - ox);
+        const y = Math.max(48, ev.clientY - oy);
+        const dx = x - sx;
+        const dy = y - sy;
+        if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+        for (const g of group) {
+          g.el.style.left = `${Math.max(8, g.x + dx)}px`;
+          g.el.style.top = `${Math.max(48, g.y + dy)}px`;
+        }
+        clearDropMarks();
+        if (moved) {
+          const win = windowAt(ev.clientX, ev.clientY);
+          if (win) win.classList.add("is-drop");
+        }
+      };
+      const up = (ev) => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        dragging = false;
+        icons.style.zIndex = "";
+        lastDeskPick = f.path;
+        const win = moved ? windowAt(ev.clientX, ev.clientY) : null;
+        clearDropMarks();
+        if (moved && win) {
+          for (const g of group) {
+            g.el.style.left = `${g.x}px`;
+            g.el.style.top = `${g.y}px`;
+          }
+          dropOnWindow(
+            win,
+            group.map((g) => g.path)
+          );
+          return;
+        }
+        if (moved) {
+          for (const g of group) {
+            const snapped = snapDesk(g.el.offsetLeft, g.el.offsetTop);
+            g.el.style.left = `${snapped.x}px`;
+            g.el.style.top = `${snapped.y}px`;
+            pos[g.path] = snapped;
+          }
+          des
