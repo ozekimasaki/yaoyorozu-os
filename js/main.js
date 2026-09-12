@@ -610,4 +610,70 @@ function focusedWin() {
 }
 
 async function maybeOpenInitGates() {
-  if (sessionStorage.getItem("y8-i
+  if (sessionStorage.getItem("y8-init-opened")) return;
+  const wm = getWm();
+  if (wm && wm.list().length) return;
+  let rows = [];
+  try {
+    rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/.init`);
+  } catch (err) {
+    return;
+  }
+  const gates = rows.filter((e) => (e.name || "").endsWith(".gate")).slice(0, 4);
+  if (!gates.length) return;
+  sessionStorage.setItem("y8-init-opened", "1");
+  for (const g of gates) await openPath(g.path);
+}
+
+let lastUsageText = "";
+let usageTimer = 0;
+
+function scheduleUsage() {
+  if (usageTimer) return;
+  usageTimer = setTimeout(() => {
+    usageTimer = 0;
+    paintUsage();
+  }, 280);
+}
+
+async function paintUsage() {
+  const pill = document.getElementById("disk-pill");
+  if (!pill) return;
+  try {
+    const u = await kernel.vfs.usage(`/home/${kernel.state.ujiko}`);
+    const text = `器: ${u.files}札`;
+    if (text === lastUsageText) return;
+    lastUsageText = text;
+    pill.textContent = text;
+  } catch (err) {
+    if (lastUsageText) return;
+    lastUsageText = "器: —";
+    pill.textContent = lastUsageText;
+  }
+}
+
+let lastNetText = "";
+
+function paintNet() {
+  const pill = document.getElementById("net-pill");
+  if (!pill) return;
+  const socks = kernel.state.sockets || [];
+  let n = 0;
+  for (const s of socks) if (s.state === "ESTAB") n += 1;
+  const text = `縁: ${n}`;
+  if (text === lastNetText) return;
+  lastNetText = text;
+  pill.textContent = text;
+}
+
+let lastClock = "";
+
+function clock() {
+  const el = document.getElementById("clock");
+  const now = new Date();
+  const pref = kernel.spacePref();
+  const key = `${now.getFullYear()}.${now.getMonth()}.${now.getDate()}.${now.getHours()}.${now.getMinutes()}.${pref.season}`;
+  if (key === lastClock) return;
+  lastClock = key;
+  const w = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
+  el.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}（${w}） ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}  
