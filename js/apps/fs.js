@@ -1,3 +1,5 @@
+import { openPath as osOpen, listHandlers } from "../runtime.js";
+
 const VIRTUAL = new Set(["/proc/kami", "/proc/pref", "/var/dmesg"]);
 
 function isVirtual(path) {
@@ -441,12 +443,7 @@ export default {
           return openPath(node.target, dest ? dest.type : "file");
         }
       }
-      if (p.endsWith(".gate")) {
-        const f = await kernel.readPath(p);
-        launch(f.body.trim());
-        return;
-      }
-      launch("editor", { path: p });
+      osOpen(p);
     }
 
     async function render() {
@@ -512,6 +509,8 @@ export default {
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-cut" ${locked ? "disabled" : ""}>切る</button>
           <button class="btn" type="button" id="fs-paste" ${locked ? "disabled" : ""}>貼る</button>
+          <button class="btn" type="button" id="fs-open">くぐる</button>
+          <button class="btn" type="button" id="fs-with">これで開く</button>
           <button class="btn" type="button" id="fs-stat">属性</button>
           <button class="btn" type="button" id="fs-path">道を写す</button>
           <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
@@ -565,6 +564,17 @@ export default {
       applyFilter();
       paintMarks();
       paintPeek();
+      el.querySelector("#fs-open").onclick = () => {
+        const p = lastFsPick || selectedPaths()[0];
+        if (p) osOpen(p);
+      };
+      el.querySelector("#fs-with").onclick = async () => {
+        const p = lastFsPick || selectedPaths()[0];
+        if (!p) return;
+        const rows = await listHandlers(p);
+        const pick = window.prompt(rows.map((r) => r.id).join(" "), rows[0]?.id || "editor");
+        if (pick) osOpen(p, { with: pick });
+      };
       el.querySelector("#fs-stat").onclick = () => {
         kernel.emit("stat", lastFsPick || selectedPaths()[0] || cwd);
       };
