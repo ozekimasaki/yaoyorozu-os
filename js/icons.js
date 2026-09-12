@@ -22,6 +22,7 @@ const IDS = [
   "kashiwa",
   "silent",
   "spaces",
+  "konoyo",
 ];
 
 const KNOWN = new Set(IDS);
@@ -48,6 +49,7 @@ const NAMES = {
   "\u67cf\u624b": "kashiwa",
   "\u6c88\u9ed9": "silent",
   "\u7a7a\u9593": "spaces",
+  "\u6b64\u5cb8": "konoyo",
 };
 
 const EXT = {
@@ -83,6 +85,7 @@ export function guessIcon(file) {
   const mime = String((file && file.mime) || "");
   if (mime.startsWith("audio/") || mime.startsWith("video/") || mime === "text/oto") return "oto";
   if (mime === "gate/app") return body && KNOWN.has(body) ? body : "torii";
+  if (path === "/konoyo" || path.startsWith("/konoyo/")) return "konoyo";
   if (file && file.type === "dir") return "box";
   return "ofuda";
 }
