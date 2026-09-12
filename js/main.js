@@ -471,4 +471,70 @@ async function peekPath(path) {
       body.textContent = `↦ ${node.target || node.body || ""}`;
     } else if ((path.endsWith(".gate") || node.mime === "gate/app") && node.body) {
       body.textContent = `くぐると起動: ${String(node.body).trim()}`;
-   
+    } else {
+      body.textContent = String(node.body || "").split("\n").slice(0, 24).join("\n") || "（空の札）";
+    }
+  } catch (err) {
+    body.textContent = err.message;
+  }
+  box.hidden = false;
+}
+
+async function peekDesk() {
+  await peekPath(lastDeskPick || selectedDeskPaths()[0]);
+}
+
+function closeDeskPeek() {
+  const box = document.getElementById("desk-peek");
+  if (box) {
+    box.hidden = true;
+    box.dataset.path = "";
+  }
+}
+
+function fmtWhen(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function kindLabel(node, path) {
+  if (!node) return "無い";
+  if (node.type === "dir") return "匣";
+  if (node.type === "link") return "結び";
+  if ((path && path.endsWith(".gate")) || node.mime === "gate/app") return "鳥居";
+  return "札";
+}
+
+async function showFileStat(path) {
+  const box = document.getElementById("file-stat");
+  if (!box) return;
+  if (!path) {
+    box.hidden = true;
+    return;
+  }
+  if (!box.hidden && box.dataset.path === path) {
+    box.hidden = true;
+    return;
+  }
+  closeDeskPeek();
+  const title = document.getElementById("file-stat-path");
+  const body = document.getElementById("file-stat-body");
+  title.textContent = path;
+  box.dataset.path = path;
+  try {
+    const node = path === "/" ? { type: "dir", mime: "inode/directory", updated: 0 } : await kernel.vfs.getFile(path);
+    if (!node) {
+      body.textContent = "ENOENT";
+    } else {
+      const lines = [`種  ${kindLabel(node, path)}`, `型  ${node.mime || "—"}`];
+      if (node.type === "link") lines.push(`先  ${node.target || node.body || "—"}`);
+      if (node.type === "file" || node.type === "link") {
+        lines.push(`量  ${(node.body || "").length}B`);
+        lines.push(`行  ${node.exec ? "くぐれる" : "読む"}`);
+      }
+      if (node.type === "dir") {
+        try {
+          const u = await kernel.vfs.usage(path);
+          lines.push(`量 
