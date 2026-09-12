@@ -1,0 +1,424 @@
+#phone-dock,
+#phone-homebar {
+  display: none;
+}
+
+html.is-phone,
+html.is-phone body {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.is-phone #desktop {
+  position: fixed;
+  inset: 0;
+}
+
+html.is-phone #desktop,
+html.is-phone #window-layer,
+html.is-phone #desktop-icons {
+  touch-action: manipulation;
+}
+
+html.is-phone .hint,
+html.is-phone .taskbar,
+html.is-phone .desk-icon {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html.is-phone .hint,
+html.is-phone .taskbar {
+  display: none !important;
+}
+
+html.is-phone .menubar {
+  height: calc(32px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 12px 0;
+  z-index: 50;
+}
+
+html.is-phone .brand {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+
+html.is-phone .menubar-meta {
+  display: none;
+}
+
+html.is-phone #norito-veil {
+  opacity: 0.28;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+}
+
+html.is-phone .clock {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+#phone-space {
+  display: none;
+}
+
+html.is-phone #phone-space {
+  display: block;
+  color: var(--gold-2);
+  letter-spacing: 0.12em;
+}
+
+html.is-phone #desktop-icons {
+  position: absolute;
+  inset: calc(40px + env(safe-area-inset-top, 0px)) 16px calc(96px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 10px;
+  align-content: start;
+  align-items: start;
+  overflow: auto;
+  pointer-events: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 5;
+}
+
+html.is-phone .desk-icon {
+  position: static !important;
+  left: auto !important;
+  top: auto !important;
+  width: auto;
+  min-height: 86px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 6px 10px;
+  border-radius: 18px;
+  background: rgba(22, 20, 15, 0.72);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+html.is-phone .desk-icon::before {
+  content: "";
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(194, 58, 43, 0.95), #8a241c);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+
+html.is-phone #desktop.is-app #desktop-icons {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+html.is-phone #phone-dock {
+  display: flex;
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 48;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 8px 10px;
+  background: rgba(12, 11, 9, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  backdrop-filter: blur(16px);
+}
+
+html.is-phone #phone-dock button {
+  appearance: none;
+  flex: 1;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--washi-dim);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  border-radius: 16px;
+  cursor: pointer;
+}
+
+html.is-phone #phone-dock button.is-on,
+html.is-phone #phone-dock #phone-home {
+  color: var(--gold-2);
+  background: rgba(201, 162, 39, 0.12);
+}
+
+html.is-phone #phone-homebar {
+  display: block;
+  position: absolute;
+  left: 50%;
+  bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  width: 108px;
+  height: 5px;
+  transform: translateX(-50%);
+  border-radius: 99px;
+  background: rgba(244, 234, 216, 0.42);
+  z-index: 49;
+}
+
+html.is-phone #window-layer {
+  inset: calc(32px + env(safe-area-inset-top, 0px)) 0 calc(88px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+}
+
+html.is-phone .window,
+html.is-phone .window.is-phone-scene,
+html.is-phone .window.is-max {
+  inset: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  border-radius: 14px 14px 0 0;
+  border-width: 1px 0 0;
+  box-shadow: none;
+}
+
+html.is-phone .window.is-phone-back {
+  display: none !important;
+}
+
+html.is-phone .window .rz,
+html.is-phone .win-pin,
+html.is-phone .win-max {
+  display: none !important;
+}
+
+html.is-phone .titlebar {
+  height: 48px;
+  cursor: default;
+  padding: 0 8px 0 16px;
+}
+
+html.is-phone .titlebar span {
+  font-size: 14px;
+}
+
+html.is-phone .titlebar .win-btns button {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+}
+
+html.is-phone .win-body {
+  padding: 14px 14px 20px;
+}
+
+html.is-phone input,
+html.is-phone textarea,
+html.is-phone select {
+  font-size: 16px;
+}
+
+html.is-phone .search,
+html.is-phone .term-row input {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+html.is-phone .btn {
+  min-height: 44px;
+  padding: 12px 16px;
+}
+
+html.is-phone .grid-2,
+html.is-phone .article,
+html.is-phone .sim-stats {
+  grid-template-columns: 1fr;
+}
+
+html.is-phone .proc-table,
+html.is-phone .os-table {
+  display: block;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.is-phone .fs-tree button,
+html.is-phone .row-actions .btn {
+  min-height: 40px;
+  padding: 10px 8px;
+}
+
+html.is-phone .term-out {
+  min-height: 0;
+}
+
+html.is-phone .editor {
+  min-height: 220px;
+  font-size: 16px;
+}
+
+html.is-phone .hash-bits i {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+html.is-phone #boot {
+  padding: 24px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+html.is-phone .boot-actions {
+  flex-direction: column;
+  width: min(360px, 92vw);
+}
+
+html.is-phone .boot-actions .btn {
+  width: 100%;
+}
+
+html.is-phone #boot-log {
+  min-height: 120px;
+  font-size: 11px;
+}
+
+html.is-phone #torii-gate {
+  padding: calc(28px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+html.is-phone #torii-search {
+  font-size: 16px;
+  min-height: 48px;
+}
+
+html.is-phone #torii-list {
+  grid-template-columns: 1fr;
+}
+
+html.is-phone .torii-item {
+  min-height: 56px;
+  padding: 14px;
+}
+
+html.is-phone #kashiwa-stage {
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  justify-content: flex-start;
+}
+
+html.is-phone .kashiwa-hands {
+  width: 100%;
+  max-width: 420px;
+  gap: 12px;
+}
+
+html.is-phone .hand {
+  flex: 1;
+  width: auto;
+  height: 46vh;
+  max-height: 280px;
+  font-size: 22px;
+}
+
+html.is-phone #oshi-list,
+html.is-phone #ujiko-drawer,
+html.is-phone #recent-list,
+html.is-phone #file-stat,
+html.is-phone #desk-peek,
+html.is-phone #keymap,
+html.is-phone #win-switcher,
+html.is-phone #space-switcher {
+  left: 0;
+  right: 0;
+  top: auto;
+  bottom: 0;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  max-height: min(78dvh, 640px);
+  border-radius: 18px 18px 0 0;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+html.is-phone #win-switcher.open {
+  display: grid;
+}
+
+html.is-phone #space-switcher.open {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+html.is-phone #space-switcher {
+  top: env(safe-area-inset-top, 0px);
+  bottom: 0;
+  max-height: none;
+  height: 100dvh;
+  border-radius: 0;
+}
+
+html.is-phone #space-switcher button,
+html.is-phone #win-switcher button {
+  min-height: 52px;
+  padding: 12px;
+}
+
+html.is-phone #eaves-menu,
+html.is-phone #task-menu,
+html.is-phone #desk-icon-menu {
+  left: 10px !important;
+  right: 10px;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  top: auto !important;
+  width: auto;
+  min-width: 0;
+}
+
+html.is-phone #eaves-menu button,
+html.is-phone #task-menu button,
+html.is-phone #desk-icon-menu button {
+  min-height: 44px;
+  padding: 12px 14px;
+}
+
+html.is-phone #ma-lock {
+  padding: calc(32px + env(safe-area-inset-top, 0px)) 20px calc(32px + env(safe-area-inset-bottom, 0px));
+}
+
+html.is-phone .map-wrap {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(200px, 1fr) minmax(180px, 40%);
+}
+
+html.is-phone .map-stage {
+  min-height: 200px;
+}
+
+html.is-phone .map-panel {
+  border-left: 0;
+  border-top: 1px solid var(--line);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  html.is-phone #desktop-icons {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    inset: calc(36px + env(safe-area-inset-top, 0px)) 12px calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  html.is-phone .desk-icon {
+    min-height: 64px;
+  }
+
+  html.is-phone .hand {
+    height: 56vh;
+    max-height: 180px;
+  }
+}
