@@ -17,7 +17,8 @@ export default {
   spawn({ kernel, launch, path: startPath }) {
     const el = document.createElement("div");
     let cwd = startPath || "/";
-    let selected = "";
+    let selected = new Set();
+    let lastFsPick = "";
     let lastSig = "";
     let hist = [cwd];
     let histI = 0;
@@ -31,11 +32,61 @@ export default {
       histI = hist.length - 1;
     }
 
+    function selectedPaths() {
+      if (selected.size) return [...selected];
+      if (lastFsPick) return [lastFsPick];
+      return [];
+    }
+
+    function fileBtns() {
+      return [...el.querySelectorAll(".fs-tree [data-path]:not([data-up])")];
+    }
+
+    function paintSel() {
+      el.querySelectorAll("[data-path]").forEach((b) => {
+        b.classList.toggle("is-on", !b.dataset.up && selected.has(b.dataset.path));
+      });
+    }
+
+    function crumbs(path) {
+      const parts = String(path || "/").split("/").filter(Boolean);
+      let acc = "";
+      const bits = [`<button type="button" data-go="/">/</button>`];
+      for (const part of parts) {
+        acc += `/${part}`;
+        bits.push(`<button type="button" data-go="${acc}">${part}</button>`);
+      }
+      return bits.join("<span class=\"muted\"> / </span>");
+    }
+
+    function setPick(path, ev) {
+      if (ev && (ev.ctrlKey || ev.metaKey)) {
+        if (selected.has(path)) selected.delete(path);
+        else selected.add(path);
+      } else if (ev && ev.shiftKey && lastFsPick) {
+        const paths = fileBtns().map((b) => b.dataset.path);
+        const a = paths.indexOf(lastFsPick);
+        const b = paths.indexOf(path);
+        if (a >= 0 && b >= 0) {
+          const lo = Math.min(a, b);
+          const hi = Math.max(a, b);
+          selected = new Set(paths.slice(lo, hi + 1));
+        } else {
+          selected = new Set([path]);
+        }
+      } else {
+        selected = new Set([path]);
+      }
+      lastFsPick = path;
+      paintSel();
+    }
+
     function back() {
       if (histI <= 0) return;
       histI -= 1;
       cwd = hist[histI];
-      selected = "";
+      selected = new Set();
+      lastFsPick = "";
       render();
     }
 
@@ -43,8 +94,59 @@ export default {
       if (histI >= hist.length - 1) return;
       histI += 1;
       cwd = hist[histI];
-      selected = "";
+      selected = new Set();
+      lastFsPick = "";
       render();
+    }
+
+    function clipSel(cut) {
+      const paths = selectedPaths();
+      if (!paths.length) return;
+      kernel.clipVfs(cut ? "cut" : "copy", paths);
+      kernel.log(cut ? "縁fsを切った" : "縁fsを写した", "fs");
+    }
+
+    async function pasteHere() {
+      if (isVirtual(cwd)) {
+        kernel.log("仮想匣には貼れない", "fs");
+        return;
+      }
+      const clip = kernel.state.vfsClip;
+      if (!clip || !clip.paths.length) return;
+      let rows = [];
+      try {
+        rows = await kernel.vfs.ls(cwd);
+      } catch (e) {
+        rows = [];
+      }
+      const taken = new Set(rows.map((r) => r.name));
+      let n = 0;
+      for (const src of clip.paths) {
+        const name = uniqueName(kernel.vfs.nameOf(src), taken);
+        taken.add(name);
+        const dest = kernel.vfs.normalize(`${cwd}/${name}`);
+        try {
+          if (clip.mode === "cut") {
+            try {
+              await kernel.vfs.rename(src, dest);
+            } catch (e) {
+              await kernel.vfs.copyTree(src, dest);
+              await kernel.vfs.moveToMuen(src);
+            }
+          } else {
+            await kernel.vfs.copyTree(src, dest);
+          }
+          kernel.noteRecent(dest);
+          n += 1;
+        } catch (e) {
+          kernel.log(`貼る: ${e.message}`, "fs");
+        }
+      }
+      if (clip.mode === "cut") kernel.clipVfs("copy", []);
+      if (n) {
+        kernel.emit("vfs");
+        kernel.log(`縁fsに貼った ×${n}`, "fs");
+      }
     }
 
     function uniqueName(name, taken) {
@@ -98,14 +200,17 @@ export default {
       return copy;
     }
 
-    function moveSel(delta) {
-      const btns = [...el.querySelectorAll(".fs-tree [data-path]")];
+    function moveSel(delta, extend) {
+      const btns = fileBtns();
       if (!btns.length) return;
-      let i = btns.findIndex((b) => b.dataset.path === selected);
+      let i = btns.findIndex((b) => b.dataset.path === lastFsPick);
       if (i < 0) i = 0;
       else i = (i + delta + btns.length) % btns.length;
-      selected = btns[i].dataset.path || "";
-      btns.forEach((b) => b.classList.toggle("is-on", b.dataset.path === selected));
+      const path = btns[i].dataset.path || "";
+      lastFsPick = path;
+      if (!extend) selected = new Set(path ? [path] : []);
+      else if (path) selected.add(path);
+      paintSel();
       btns[i].focus();
     }
 
@@ -123,7 +228,8 @@ export default {
         }
       }
       cwd = dest;
-      selected = "";
+      selected = new Set();
+      lastFsPick = "";
       pushCwd(dest);
       render();
     }
@@ -156,7 +262,8 @@ export default {
     async function openPath(p, type) {
       if (type === "dir" || p.split("/").filter(Boolean).length < 2 || VIRTUAL.has(p) || p.endsWith("/shrines")) {
         cwd = p;
-        selected = "";
+        selected = new Set();
+        lastFsPick = "";
         pushCwd(p);
         render();
         return;
@@ -190,7 +297,7 @@ export default {
       entries = sortEntries(entries);
       const listSig = `${cwd}\n${err}\n${locked}\n${sortKey}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
       if (listSig === lastSig && el.querySelector(".fs-tree")) {
-        el.querySelectorAll("[data-path]").forEach((b) => b.classList.toggle("is-on", b.dataset.path === selected));
+        paintSel();
         return;
       }
       lastSig = listSig;
@@ -209,13 +316,14 @@ export default {
       }
       el.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
+        <div class="fs-crumbs">${crumbs(cwd)}</div>
         <input class="search" id="fs-go" value="${cwd}" aria-label="匣の道" style="margin:8px 0;max-width:100%" />
         <div class="fs-tree">
-          ${cwd !== "/" ? `<button type="button" data-path="${parent}" data-type="dir">../</button>` : ""}
+          ${cwd !== "/" ? `<button type="button" data-path="${parent}" data-type="dir" data-up="1">../</button>` : ""}
           ${entries
             .map(
               (f) =>
-                `<button type="button" class="${f.path === selected ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
+                `<button type="button" class="${selected.has(f.path) ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "�.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
             )
             .join("")}
         </div>
@@ -227,6 +335,8 @@ export default {
           <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
           <button class="btn" type="button" id="fs-new" ${locked ? "disabled" : ""}>札を作る</button>
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
+          <button class="btn" type="button" id="fs-cut" ${locked ? "disabled" : ""}>切る</button>
+          <button class="btn" type="button" id="fs-paste" ${locked ? "disabled" : ""}>貼る</button>
           <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
           <button class="btn" type="button" id="fs-rename" ${locked ? "disabled" : ""}>改名</button>
           <button class="btn" type="button" id="fs-muen" ${locked ? "disabled" : ""}>無縁へ</button>
@@ -234,16 +344,22 @@ export default {
           <button class="btn" type="button" id="muen-scan">無縁スキャン</button>
         </div>
       `;
+      el.querySelectorAll(".fs-crumbs [data-go]").forEach((btn) => {
+        btn.onclick = () => goPath(btn.dataset.go);
+      });
       el.querySelectorAll("[data-path]").forEach((btn) => {
-        btn.onclick = () => {
+        btn.onclick = (e) => {
           const p = btn.dataset.path;
           const type = btn.dataset.type;
-          if (type === "dir") {
+          if (btn.dataset.up) {
+            openPath(p, "dir");
+            return;
+          }
+          if (type === "dir" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
             openPath(p, type);
             return;
           }
-          selected = p;
-          el.querySelectorAll("[data-path]").forEach((b) => b.classList.toggle("is-on", b.dataset.path === p));
+          setPick(p, e);
         };
         btn.ondblclick = () => openPath(btn.dataset.path, btn.dataset.type);
       });
@@ -287,10 +403,11 @@ export default {
       };
       el.querySelector("#fs-link").onclick = async () => {
         const name = (nameEl.value || "").trim();
-        if (!selected || !name) return;
+        const src = lastFsPick || selectedPaths()[0];
+        if (!src || !name) return;
         try {
           const dest = kernel.vfs.normalize(`${cwd}/${name}`);
-          await kernel.vfs.link(selected, dest);
+          await kernel.vfs.link(src, dest);
           kernel.noteRecent(dest);
           kernel.emit("vfs");
         } catch (e) {
@@ -299,47 +416,62 @@ export default {
       };
       el.querySelector("#fs-copy").onclick = async () => {
         const name = (nameEl.value || "").trim();
-        if (!selected || !name) return;
+        if (!name) {
+          clipSel(false);
+          return;
+        }
+        const src = lastFsPick || selectedPaths()[0];
+        if (!src) return;
         try {
           const dest = kernel.vfs.normalize(`${cwd}/${name}`);
-          await kernel.vfs.copy(selected, dest);
+          await kernel.vfs.copyTree(src, dest);
           kernel.noteRecent(dest);
           kernel.emit("vfs");
         } catch (e) {
           kernel.log(`cp: ${e.message}`, "fs");
         }
       };
+      el.querySelector("#fs-cut").onclick = () => clipSel(true);
+      el.querySelector("#fs-paste").onclick = () => pasteHere();
       el.querySelector("#fs-rename").onclick = async () => {
         const name = (nameEl.value || "").trim();
-        if (!selected || !name) return;
+        const src = lastFsPick || selectedPaths()[0];
+        if (!src || !name) return;
         try {
           const dest = kernel.vfs.normalize(`${cwd}/${name}`);
-          await kernel.vfs.rename(selected, dest);
+          await kernel.vfs.rename(src, dest);
           kernel.noteRecent(dest);
-          selected = dest;
+          selected = new Set([dest]);
+          lastFsPick = dest;
           kernel.emit("vfs");
         } catch (e) {
           kernel.log(`rename: ${e.message}`, "fs");
         }
       };
       el.querySelector("#fs-muen").onclick = async () => {
-        if (!selected) return;
-        try {
-          const dest = await kernel.vfs.moveToMuen(selected);
-          kernel.log(`無縁へ ${selected} → ${dest}`, "fs");
-          selected = "";
-          kernel.emit("vfs");
-        } catch (e) {
-          kernel.log(`muen: ${e.message}`, "fs");
+        const paths = selectedPaths();
+        if (!paths.length) return;
+        for (const src of paths) {
+          try {
+            const dest = await kernel.vfs.moveToMuen(src);
+            kernel.log(`無縁へ ${src} → ${dest}`, "fs");
+          } catch (e) {
+            kernel.log(`muen: ${e.message}`, "fs");
+          }
         }
+        selected = new Set();
+        lastFsPick = "";
+        kernel.emit("vfs");
       };
       el.querySelector("#fs-restore").onclick = async () => {
-        if (!selected) return;
+        const src = lastFsPick || selectedPaths()[0];
+        if (!src) return;
         try {
-          const dest = await kernel.vfs.restoreFromMuen(selected);
-          kernel.log(`restore ${selected} → ${dest}`, "fs");
+          const dest = await kernel.vfs.restoreFromMuen(src);
+          kernel.log(`restore ${src} → ${dest}`, "fs");
           kernel.noteRecent(dest);
-          selected = "";
+          selected = new Set();
+          lastFsPick = "";
           kernel.emit("vfs");
         } catch (e) {
           kernel.log(`restore: ${e.message}`, "fs");
@@ -373,22 +505,55 @@ export default {
         return;
       }
       if (e.target && e.target.tagName === "INPUT") return;
+      if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        fileBtns().forEach((b) => selected.add(b.dataset.path));
+        paintSel();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        clipSel(false);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "x" || e.key === "X")) {
+        e.preventDefault();
+        clipSel(true);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V")) {
+        e.preventDefault();
+        pasteHere();
+        return;
+      }
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        moveSel(1);
+        moveSel(1, e.shiftKey);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        moveSel(-1);
-      } else if (e.key === "Enter" && selected) {
+        moveSel(-1, e.shiftKey);
+      } else if (e.key === "Enter" && (lastFsPick || selected.size)) {
         e.preventDefault();
-        const btn = [...el.querySelectorAll(".fs-tree [data-path]")].find((b) => b.dataset.path === selected);
-        openPath(selected, btn ? btn.dataset.type : "file");
+        const path = lastFsPick || selectedPaths()[0];
+        const btn = fileBtns().find((b) => b.dataset.path === path);
+        openPath(path, btn ? btn.dataset.type : "file");
       } else if (e.key === "Backspace" && cwd !== "/") {
         e.preventDefault();
         openPath(kernel.vfs.parentOf(cwd), "dir");
+      } else if (e.key === "Delete") {
+        e.preventDefault();
+        el.querySelector("#fs-muen")?.click();
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        const nameEl = el.querySelector("#fs-name");
+        if (nameEl && lastFsPick) {
+          nameEl.value = kernel.vfs.nameOf(lastFsPick);
+          nameEl.focus();
+          nameEl.select();
+        }
       } else if (e.key === " ") {
         e.preventDefault();
-        kernel.emit("peek", selected || cwd);
+        kernel.emit("peek", lastFsPick || selectedPaths()[0] || cwd);
       }
     });
     render();
