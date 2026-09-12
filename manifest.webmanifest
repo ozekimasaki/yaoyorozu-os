@@ -4,6 +4,8 @@
   "description": "ブラウザを筐体にする、八百万の関係性のオペレーティングシステム。",
   "start_url": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#0c0b09",
   "theme_color": "#0c0b09",
   "lang": "ja",
