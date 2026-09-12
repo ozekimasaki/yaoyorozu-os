@@ -19,7 +19,7 @@
 .map-stage {
   position: relative;
   min-width: 0;
-  min-height: 0;
+  min-height: 360px;
   overflow: hidden;
   background:
     radial-gradient(ellipse 70% 55% at 58% 36%, rgba(30, 58, 95, 0.42), transparent 58%),
