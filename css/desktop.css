@@ -85,6 +85,30 @@
   font-size: 11px;
 }
 
+.fs-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.fs-marks button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--washi-dim);
+  padding: 3px 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.fs-marks button:hover,
+.fs-marks button.is-on {
+  border-color: var(--gold);
+  color: var(--gold-2);
+}
+
 .fs-crumbs {
   display: flex;
   flex-wrap: wrap;
