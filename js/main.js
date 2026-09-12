@@ -20,6 +20,7 @@ import { bindKashiwa } from "./kashiwa.js";
 import { startField } from "./field.js";
 import { startIrq } from "./irq.js";
 import { peekPath as peekPathIo, showFileStat as showStatIo, copyPathNow as copyPathIo, closeEl } from "./desk-io.js";
+import { bindSwitchers } from "./switchers.js";
 
 register(oncall);
 register(map);
@@ -59,7 +60,6 @@ let lastDeskPick = "";
 let deskPos = null;
 let deskSelected = new Set();
 let deskClipboard = { mode: "copy", paths: [] };
-let switcherIndex = 0;
 let muenUndo = [];
 let deskTypeQ = "";
 let deskTypeT = 0;
@@ -575,7 +575,7 @@ function clock() {
   if (key === lastClock) return;
   lastClock = key;
   const w = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
-  el.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}（${w}） ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}  ${pref.season}`;
+  el.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}(（${w}） ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}  ${pref.season}`;
 }
 
 function fillNorito() {
@@ -583,7 +583,7 @@ function fillNorito() {
   if (!veil) return;
   const lines = [
     "高天原に神留り坐す",
-    "祓い給え清めたまえ",
+    "神祭い給え清めたまえ",
     "この端末は器である",
     "柏手は、認証である",
     "神はマイクロサービスである",
@@ -603,13 +603,17 @@ async function startDesktop() {
   desktop.classList.add("on");
 
   bindWm(document.getElementById("window-layer"), document.getElementById("taskbar"));
+  const switchers = bindSwitchers({ kernel, getWm, openPath });
   const torii = bindTorii(document.getElementById("torii-gate"), kernel);
   const kashiwa = bindKashiwa(document.getElementById("kashiwa-stage"), kernel, applyJob);
   const field = startField(document.getElementById("kami-field"), kernel);
   startIrq(document.getElementById("irq-layer"), kernel, field, launch);
 
   document.querySelector(".brand").addEventListener("click", () => torii.open());
-  document.getElementById("space-pill").addEventListener("click", () => toggleSpaces());
+  document.getElementById("space-pill").addEventListener("click", (e) => {
+    e.stopPropagation();
+    switchers.toggleSpaces();
+  });
   document.getElementById("kami-pill").addEventListener("click", () => launch("proc"));
   document.getElementById("logout-pill").addEventListener("click", () => {
     try {
@@ -697,7 +701,7 @@ async function startDesktop() {
   const paintUjiko = (reset = false) => {
     const lines = kernel.state.dmesg || [];
     if (reset || ujikoLen > lines.length) {
-      ujikoLog.textContent = lines.slice(-16).join("\n") || "（氏子課は沈黙）";
+      ujikoLog.textContent = lines.slice(-16).join("\n") || "(（氏子課は沈黙）";
       ujikoLen = lines.length;
       ujikoLog.scrollTop = ujikoLog.scrollHeight;
       return;
@@ -705,7 +709,7 @@ async function startDesktop() {
     if (lines.length === ujikoLen) return;
     const add = lines.slice(ujikoLen);
     ujikoLen = lines.length;
-    if (!ujikoLog.textContent || ujikoLog.textContent === "（氏子課は沈黙）") ujikoLog.textContent = add.join("\n");
+    if (!ujikoLog.textContent || ujikoLog.textContent === "(（氏子課は沈黙）") ujikoLog.textContent = add.join("\n");
     else ujikoLog.textContent += `\n${add.join("\n")}`;
     const shown = ujikoLog.textContent.split("\n");
     if (shown.length > 16) ujikoLog.textContent = shown.slice(-16).join("\n");
@@ -740,17 +744,15 @@ async function startDesktop() {
     if (e.key === "Escape") {
       document.getElementById("torii-gate").classList.remove("open");
       document.getElementById("kashiwa-stage").classList.remove("open");
-      document.getElementById("win-switcher").classList.remove("open");
       document.getElementById("eaves-menu").hidden = true;
       document.getElementById("ujiko-drawer").hidden = true;
-      document.getElementById("space-switcher").classList.remove("open");
       document.getElementById("oshi-list").hidden = true;
       document.getElementById("desk-icon-menu").hidden = true;
       const tm = document.getElementById("task-menu");
       if (tm) tm.hidden = true;
       closeDeskPeek();
       closeFileStat();
-      closeRecent();
+      switchers.closeAll();
       endMarquee();
       const km = document.getElementById("keymap");
       if (km) km.hidden = true;
@@ -783,24 +785,6 @@ async function startDesktop() {
       undoMuen();
       return;
     }
-    const switcherOpen = document.getElementById("win-switcher").classList.contains("open");
-    if (switcherOpen) {
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        e.preventDefault();
-        moveSwitcher(-1);
-        return;
-      }
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-        e.preventDefault();
-        moveSwitcher(1);
-        return;
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        activateSwitcher();
-        return;
-      }
-    }
     if (e.key === "/") {
       e.preventDefault();
       torii.open();
@@ -831,7 +815,7 @@ async function startDesktop() {
     }
     if (e.key === ";" || e.key === "；") {
       e.preventDefault();
-      toggleSwitcher();
+      switchers.toggleWin();
     }
     if (e.key === "k") kashiwa.open();
     if (e.key === "m") {
@@ -840,7 +824,7 @@ async function startDesktop() {
     }
     if (e.key === "'" || e.key === "’") {
       e.preventDefault();
-      toggleSpaces();
+      switchers.toggleSpaces();
     }
     if (e.key === "?" || e.key === "？") {
       e.preventDefault();
@@ -854,7 +838,7 @@ async function startDesktop() {
     }
     if (e.key === "r") {
       e.preventDefault();
-      toggleRecent();
+      switchers.toggleRecent();
     }
     if (e.key === "," || e.key === "、") {
       e.preventDefault();
@@ -1004,110 +988,7 @@ async function startDesktop() {
   }
 
   document.querySelector(".hint").textContent =
-    "/ 鳥居 · ; 窓 · ' 空間 · r 最近 · ? 操作 · 空欄 覗く · 囲う · 落とす";
-
-  const switcher = document.getElementById("win-switcher");
-  let lastSwitcherSig = "";
-  function paintSwitcher(keepIndex) {
-    const wm = getWm();
-    const wins = wm ? wm.list().filter((w) => !w.el.classList.contains("is-away")) : [];
-    if (!wins.length) {
-      lastSwitcherSig = "";
-      switcher.innerHTML = `<p class="muted">走っている窓はない。鳥居をくぐれ。</p>`;
-      switcher.classList.add("open");
-      return;
-    }
-    if (!keepIndex) {
-      const fi = wins.findIndex((w) => w.el.classList.contains("focused"));
-      switcherIndex = fi >= 0 ? fi : 0;
-    }
-    if (switcherIndex >= wins.length) switcherIndex = 0;
-    if (switcherIndex < 0) switcherIndex = wins.length - 1;
-    const listSig = wins.map((w) => `${w.pid}:${w.title}:${w.appId}`).join("|");
-    if (listSig === lastSwitcherSig && switcher.querySelector("[data-pid]")) {
-      switcher.querySelectorAll("[data-pid]").forEach((btn, i) => {
-        btn.classList.toggle("is-on", i === switcherIndex);
-      });
-      switcher.classList.add("open");
-      const on = switcher.querySelector("button.is-on");
-      if (on) on.focus();
-      return;
-    }
-    lastSwitcherSig = listSig;
-    switcher.innerHTML = wins
-      .map(
-        (w, i) =>
-          `<button type="button" class="${i === switcherIndex ? "is-on" : ""}" data-pid="${w.pid}">${w.title}<small>${w.appId} · ${w.pid}</small></button>`
-      )
-      .join("");
-    switcher.classList.add("open");
-    switcher.querySelectorAll("[data-pid]").forEach((btn) => {
-      btn.onclick = () => {
-        wm.restore(Number(btn.dataset.pid));
-        wm.focus(Number(btn.dataset.pid));
-        switcher.classList.remove("open");
-      };
-    });
-    const on = switcher.querySelector("button.is-on");
-    if (on) on.focus();
-  }
-  function toggleSwitcher() {
-    if (switcher.classList.contains("open")) {
-      switcher.classList.remove("open");
-      return;
-    }
-    paintSwitcher(false);
-  }
-  function moveSwitcher(dir) {
-    switcherIndex += dir;
-    paintSwitcher(true);
-  }
-  function activateSwitcher() {
-    const btn = switcher.querySelector("button.is-on[data-pid]");
-    if (!btn) {
-      switcher.classList.remove("open");
-      return;
-    }
-    const wm = getWm();
-    const pid = Number(btn.dataset.pid);
-    if (wm) {
-      wm.restore(pid);
-      wm.focus(pid);
-    }
-    switcher.classList.remove("open");
-  }
-
-  const spaces = document.getElementById("space-switcher");
-  let lastSpaceSig = "";
-  function toggleSpaces() {
-    if (spaces.classList.contains("open")) {
-      spaces.classList.remove("open");
-      return;
-    }
-    const here = kernel.state.currentSpace;
-    const sig = kernel.state.prefs.map((p) => `${p.id}:${p.unusedCpu}:${p.season}`).join("|");
-    if (sig === lastSpaceSig && spaces.querySelector("[data-id]")) {
-      spaces.querySelectorAll("[data-id]").forEach((btn) => {
-        btn.classList.toggle("is-here", btn.dataset.id === here);
-      });
-      spaces.classList.add("open");
-      return;
-    }
-    lastSpaceSig = sig;
-    spaces.innerHTML = kernel.state.prefs
-      .map(
-        (p) =>
-          `<button type="button" class="${p.id === here ? "is-here" : ""}" data-id="${p.id}">${p.name}<small>未使用CPU ${p.unusedCpu}% · ${p.season}</small></button>`
-      )
-      .join("");
-    spaces.classList.add("open");
-    spaces.querySelectorAll("[data-id]").forEach((btn) => {
-      btn.onclick = () => {
-        kernel.setSpace(btn.dataset.id);
-        spaces.classList.remove("open");
-      };
-    });
-  }
+    "/ 鳥居 · ; 窓 · ' 空間 · r 最近 · ? 操作 · 空欄 " + String.fromCharCode(0x8997) + "く · 囲う · 落とす";
 
   const oshiList = document.getElementById("oshi-list");
   const oshiLog = document.getElementById("oshi-log");
@@ -1120,7 +1001,7 @@ async function startDesktop() {
   };
   const paintOshi = () => {
     const rows = kernel.state.oshi || [];
-    const text = rows.map((r) => `${r.tag}  ${r.t}`).join("\n") || "（札は届いていない）";
+    const text = rows.map((r) => `${r.tag}  ${r.t}`).join("\n") || "(（札は届いていない）";
     if (oshiLog.textContent === text) return;
     oshiLog.textContent = text;
   };
@@ -1150,49 +1031,6 @@ async function startDesktop() {
   });
   kernel.addEventListener("oshi-read", paintOshiPill);
 
-  const recentList = document.getElementById("recent-list");
-  const recentLog = document.getElementById("recent-log");
-  let lastRecentSig = "";
-  function paintRecent() {
-    if (!recentLog) return;
-    const rows = kernel.state.recent || [];
-    const sig = rows.map((r) => r.path).join("\n");
-    if (sig === lastRecentSig && recentLog.childNodes.length) return;
-    lastRecentSig = sig;
-    recentLog.replaceChildren();
-    if (!rows.length) {
-      const p = document.createElement("p");
-      p.className = "muted";
-      p.textContent = "（まだ札はない）";
-      recentLog.appendChild(p);
-      return;
-    }
-    for (const r of rows) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.path = r.path;
-      btn.textContent = r.path;
-      recentLog.appendChild(btn);
-    }
-  }
-  function toggleRecent() {
-    if (!recentList) return;
-    const open = recentList.hidden;
-    recentList.hidden = !open;
-    if (open) paintRecent();
-  }
-  if (recentList) {
-    recentList.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const btn = e.target.closest("[data-path]");
-      if (!btn) return;
-      recentList.hidden = true;
-      openPath(btn.dataset.path);
-    });
-  }
-  kernel.addEventListener("recent", () => {
-    if (recentList && !recentList.hidden) paintRecent();
-  });
   const fileStatEl = document.getElementById("file-stat");
   if (fileStatEl) fileStatEl.addEventListener("click", (e) => e.stopPropagation());
 
@@ -1368,26 +1206,30 @@ async function startDesktop() {
     }
     if (act === "tidy") tidyDesk();
     if (act === "paste") pasteDesk();
-    if (act === "recent") toggleRecent();
+    if (act === "recent") switchers.toggleRecent();
     if (act === "ofuda") newDeskOfuda();
   });
   document.addEventListener("click", (e) => {
-    if (e.target.closest(".window") || e.target.closest("#file-stat") || e.target.closest("#recent-list") || e.target.closest("#desk-peek")) {
+    if (
+      e.target.closest(".window") ||
+      e.target.closest("#file-stat") ||
+      e.target.closest("#recent-list") ||
+      e.target.closest("#desk-peek") ||
+      e.target.closest("#win-switcher") ||
+      e.target.closest("#space-switcher") ||
+      e.target.closest("#space-pill")
+    ) {
       return;
     }
     eaves.hidden = true;
     iconMenu.hidden = true;
-    switcher.classList.remove("open");
+    switchers.closeAll();
     document.getElementById("ujiko-drawer").hidden = true;
     document.getElementById("oshi-list").hidden = true;
-    document.getElementById("space-switcher").classList.remove("open");
-    closeRecent();
     closeFileStat();
     const km = document.getElementById("keymap");
     if (km) km.hidden = true;
   });
-  switcher.addEventListener("click", (e) => e.stopPropagation());
-  spaces.addEventListener("click", (e) => e.stopPropagation());
   eaves.addEventListener("click", (e) => e.stopPropagation());
   iconMenu.addEventListener("click", (e) => e.stopPropagation());
   const keymapEl = document.getElementById("keymap");
