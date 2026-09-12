@@ -80,7 +80,11 @@ export async function openPath(path, opts = {}) {
     if (withId && withId !== "gate") return launch(withId, { path: dest });
     const table = await kernel.assocTable();
     const hit = withId === "gate" ? { app: "gate" } : resolveOpen(dest, f, table);
-    if (hit.app === "gate") return launch(String(f.body || "").trim());
+    if (hit.app === "gate") {
+      const dest = String(f.body || "").trim();
+      if (dest.startsWith("/")) return openPath(dest);
+      return launch(dest);
+    }
     if (hit.app === "fs") return launch("fs", { path: dest });
     return launch(hit.app, { path: dest });
   } catch (err) {
