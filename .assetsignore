@@ -1,6 +1,7 @@
 dist/
 .netlify/
 e2e/
+worker.js
 js/oracle.js
 .git/
 node_modules/
