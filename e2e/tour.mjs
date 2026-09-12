@@ -108,6 +108,17 @@ try {
     await h.closeWin("map");
   });
 
+  await section("oto", async () => {
+    await h.closeWin("oncall");
+    await h.closeWin("map");
+    await h.openTorii("\u97f3\u970a", "oto");
+    note(!!(await h.vis("oto")), "oto");
+    await page.evaluate(() => document.querySelector(".window[data-app=oto] #oto-invite")?.click());
+    await sleep(400);
+    await h.shot("oto");
+    await h.closeWin("oto");
+  });
+
   await section("fs-term", async () => {
     await h.openTorii("\u7e01fs", "fs");
     note(!!(await h.vis("fs")), "fs");
