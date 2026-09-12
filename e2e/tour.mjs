@@ -115,8 +115,15 @@ try {
     await h.openTorii("\u5949\u7d0d", "term");
     await h.term("ls /etc");
     await h.term("whoami");
+    await h.term("cron every 2 e2e-toki");
+    await sleep(2400);
+    await h.term("cron");
     note(!!(await h.vis("term")), "term");
     await h.shot("term");
+    await h.key("n");
+    await sleep(200);
+    await h.shot("oshi-cron");
+    await h.key("Escape");
   });
 
   await section("wins-expose", async () => {
