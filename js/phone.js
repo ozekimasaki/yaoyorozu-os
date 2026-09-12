@@ -282,6 +282,15 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
     }
     const silentBtn = shade.querySelector("[data-shade=silent]");
     if (silentBtn) silentBtn.classList.toggle("is-on", !!(kernel.state.settings && kernel.state.settings.silent));
+    const keshikiBtn = shade.querySelector("[data-shade=keshiki]");
+    if (keshikiBtn) {
+      const on = !!(kernel.keshiki && kernel.keshiki.snapshot && kernel.keshiki.snapshot().has);
+      keshikiBtn.classList.toggle("is-on", on);
+    }
+    const kagiBtn = shade.querySelector("[data-shade=kagi]");
+    if (kagiBtn) {
+      kagiBtn.classList.toggle("is-on", !!(kernel.kagi && kernel.kagi.locked && kernel.kagi.locked()));
+    }
     paintShadeJournal();
     paintOto();
     shade.hidden = false;
@@ -449,6 +458,35 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
         const on = !(kernel.state.settings && kernel.state.settings.silent);
         kernel.sysctl("ma.silent", on ? "1" : "0");
         btn.classList.toggle("is-on", on);
+        return;
+      }
+      if (act === "utsushi") {
+        closeSheets();
+        if (kernel.utsushi && kernel.utsushi.snap) {
+          kernel.utsushi
+            .snap({ reason: "shade" })
+            .then(() => launch("kagami"))
+            .catch((err) => kernel.log(`utsushi: ${err.message}`, "utsushi"));
+        } else {
+          launch("kagami");
+        }
+        return;
+      }
+      if (act === "keshiki") {
+        closeSheets();
+        if (kernel.keshiki && kernel.keshiki.fromLast) {
+          kernel.keshiki.fromLast().catch((err) => {
+            kernel.log(`keshiki: ${err.message}`, "keshiki");
+            if (launch) launch("sys");
+          });
+        } else if (launch) {
+          launch("sys");
+        }
+        return;
+      }
+      if (act === "kagi") {
+        closeSheets();
+        if (kernel.kagi && !kernel.kagi.locked()) kernel.kagi.lock();
       }
     });
   }
