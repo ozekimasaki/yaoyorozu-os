@@ -341,6 +341,23 @@ export function createVfs() {
     return write(to, src.body, src.mime || "text/plain");
   }
 
+  async function copyTree(from, to) {
+    const src = await getFile(from);
+    if (!src) throw new Error("ENOENT");
+    const dest = normalize(to);
+    if (normalize(from) === dest) throw new Error("EINVAL");
+    if (src.type === "dir") {
+      await mkdir(dest);
+      const kids = await ls(from);
+      for (const k of kids) {
+        await copyTree(k.path, normalize(`${dest}/${k.name}`));
+      }
+      return dest;
+    }
+    await copy(from, dest);
+    return dest;
+  }
+
   async function rename(from, to) {
     const src = await getFile(from);
     if (!src) throw new Error("ENOENT");
@@ -436,6 +453,7 @@ export function createVfs() {
     append,
     chmod,
     copy,
+    copyTree,
     rename,
     remove,
     moveToMuen,
