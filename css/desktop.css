@@ -423,6 +423,43 @@
   display: none;
 }
 
+#os-sheet {
+  position: fixed;
+  z-index: 72;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  width: min(360px, 92vw);
+  background: #16140f;
+  border: 1px solid var(--line);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+  box-shadow: var(--shadow);
+}
+
+#os-sheet[hidden] {
+  display: none;
+}
+
+#os-sheet-track {
+  display: grid;
+}
+
+#os-sheet-track button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--washi);
+  text-align: left;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+#os-sheet-track button:hover {
+  background: rgba(201, 162, 39, 0.12);
+}
+
 #task-menu button,
 #desk-icon-menu button {
   appearance: none;
