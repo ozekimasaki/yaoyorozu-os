@@ -69,7 +69,7 @@ export default {
       }
       lastSig = sig;
       el.innerHTML = `
-        <p class="lede">このブラウザが、\\u7b8d\\u4f53である</p>
+        <p class="lede">このブラウザが、箍体である</p>
         <div class="grid-2">
           <div class="card" data-k="uid"><div class="tag">UID</div><h3></h3><p class="muted"></p></div>
           <div class="card" data-k="space"><div class="tag">SPACE</div><h3></h3><p class="muted">47のうちの一つ。親ではない。</p></div>
