@@ -35,3 +35,107 @@ register(cal);
 register(clip);
 register(sys);
 register(muen);
+
+function landColor(cpu) {
+  if (cpu >= 85) return "#4f7d61";
+  if (cpu >= 70) return "#3d5c4a";
+  if (cpu >= 50) return "#8a7328";
+  if (cpu >= 35) return "#8a4a1c";
+  return "#7a241c";
+}
+
+function applyJob(job) {
+  if (!job) return;
+  if (job.prefId) {
+    kernel.emit("spotlight", job.prefId);
+  }
+  if (job.kind === "attach" || job.kind === "route" || job.kind === "migrate") launch("map");
+  if (job.kind === "hold" && job.article) openPath("/etc/ofuda/constitution.20");
+}
+
+let lastDeskSig = "";
+let lastDeskPick = "";
+let deskPos = null;
+let deskSelected = new Set();
+let deskClipboard = { mode: "copy", paths: [] };
+let switcherIndex = 0;
+let muenUndo = [];
+let deskTypeQ = "";
+let deskTypeT = 0;
+let marquee = null;
+
+function endMarquee() {
+  if (!marquee) return;
+  marquee = null;
+  const band = document.getElementById("desk-marquee");
+  if (band) band.hidden = true;
+}
+
+async function loadDeskPos() {
+  if (deskPos) return deskPos;
+  try {
+    deskPos = (await kernel.vfs.metaGet("deskPos")) || {};
+  } catch (err) {
+    deskPos = {};
+  }
+  return deskPos;
+}
+
+function saveDeskPos() {
+  if (!deskPos) return;
+  kernel.vfs.metaSet("deskPos", deskPos);
+}
+
+async function paintDesktop() {
+  const desk = document.getElementById("desktop");
+  const pref = kernel.spacePref();
+  desk.style.setProperty("--space-land", landColor(pref.unusedCpu));
+  const spaceText = `kernel: ${pref.name}`;
+  const kamiText = `kami: ${kernel.state.processes.filter((p) => p.kind !== "app").length}`;
+  const spaceEl = document.getElementById("space-pill");
+  const kamiEl = document.getElementById("kami-pill");
+  if (spaceEl.textContent !== spaceText) spaceEl.textContent = spaceText;
+  if (kamiEl.textContent !== kamiText) kamiEl.textContent = kamiText;
+  const icons = document.getElementById("desktop-icons");
+  let rows = [];
+  try {
+    rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/desktop`);
+  } catch (err) {
+    rows = [];
+  }
+  const sig = rows.map((f) => f.path).join("\n");
+  if (sig === lastDeskSig && icons.children.length) {
+    paintDeskMarks();
+    return;
+  }
+  lastDeskSig = sig;
+  const pos = await loadDeskPos();
+  icons.innerHTML = "";
+  rows.forEach((f, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "desk-icon";
+    btn.dataset.path = f.path;
+    btn.textContent = f.name.replace(".gate", "");
+    const saved = pos[f.path];
+    const left = saved ? saved.x : 18;
+    const top = saved ? saved.y : 58 + i * 52;
+    btn.style.left = `${left}px`;
+    btn.style.top = `${top}px`;
+    let dragging = false;
+    let moved = false;
+    let ox = 0;
+    let oy = 0;
+    let sx = left;
+    let sy = top;
+    let group = [];
+    btn.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      moved = false;
+      icons.style.zIndex = "20";
+      sx = btn.offsetLeft;
+      sy = btn.offsetTop;
+      ox = e.clientX - sx;
+      oy = e.clientY - sy;
+      if
