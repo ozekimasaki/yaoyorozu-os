@@ -395,6 +395,15 @@ export default {
         load();
         files.slice(1).forEach((p) => launch("editor", { path: p }));
       },
+      onOffer(offer) {
+        if (!offer || !offer.path) return;
+        if (dirty) {
+          launch("editor", { path: offer.path });
+          return;
+        }
+        current = offer.path;
+        load();
+      },
       onClose() {
         kernel.removeEventListener("vfs", onVfs);
         clearTimeout(autosaveT);
