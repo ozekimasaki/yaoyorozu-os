@@ -151,6 +151,12 @@
   pointer-events: none;
 }
 
+#desktop.is-expose #desktop-icons,
+#desktop.is-expose .hint {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 #window-layer .window {
   pointer-events: auto;
 }
