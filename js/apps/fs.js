@@ -323,7 +323,7 @@ export default {
           ${entries
             .map(
               (f) =>
-                `<button type="button" class="${selected.has(f.path) ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "�.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
+                `<button type="button" class="${selected.has(f.path) ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
             )
             .join("")}
         </div>
