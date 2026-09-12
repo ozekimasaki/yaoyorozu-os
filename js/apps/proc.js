@@ -7,6 +7,7 @@ export default {
     const el = document.createElement("div");
     let q = "";
     let page = 0;
+    let lastSig = "";
     const pageSize = 24;
 
     const rowsOf = () => {
@@ -18,6 +19,9 @@ export default {
 
     const render = () => {
       const { total, rows } = rowsOf();
+      const sig = `${q}|${page}|${total}|${rows.map((r) => `${r.id}:${r.status}:${r.name}`).join("|")}`;
+      if (sig === lastSig && el.querySelector(".proc-table")) return;
+      lastSig = sig;
       el.innerHTML = `
         <p class="muted">稼働中の神 ${total} 柱（ページ ${page + 1}）。新しい神を立ててよい。殺してはならない。</p>
         <input class="search" type="search" placeholder="神を検索（会議、無縁、睡眠…）" value="${q}" />

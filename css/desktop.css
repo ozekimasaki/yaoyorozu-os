@@ -173,6 +173,34 @@
   cursor: pointer;
 }
 
+#desk-peek {
+  position: fixed;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  z-index: 67;
+  width: min(520px, 90vw);
+  max-height: 60vh;
+  overflow: auto;
+  background: #16140f;
+  border: 1px solid var(--gold);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+
+#desk-peek[hidden] {
+  display: none;
+}
+
+#desk-peek .term-out {
+  min-height: 80px;
+  max-height: 42vh;
+  overflow: auto;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
 #oshi-list {
   position: fixed;
   top: 42px;
