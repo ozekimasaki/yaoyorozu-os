@@ -3,6 +3,7 @@ import { createBus, tabId } from "./bus.js";
 import { createVfs } from "./vfs.js";
 import { attachCron } from "./cron.js";
 import { attachKonoyo } from "./konoyo.js";
+import { attachWatari } from "./watari.js";
 import { assocText, defaultAssoc, parseAssoc, resolveOpen } from "./intent.js";
 
 const KAMI_TEMPLATES = [
@@ -184,6 +185,7 @@ class Kernel extends EventTarget {
       "/var",
       "/var/dmesg",
       "/var/muen",
+      "/var/watari",
       "/mnt",
       "/konoyo",
       home,
@@ -678,6 +680,7 @@ class Kernel extends EventTarget {
       },
       "/proc/oto": () => this.otoText(),
       "/proc/konoyo": () => (this.konoyo ? this.konoyo.procText() : "supported=0"),
+      "/proc/watari": () => (this.watari ? this.watari.procText() : "supported=0"),
     };
     if (!files[n]) return null;
     return { path: n, type: "file", body: files[n](), mime: "text/proc", updated: Date.now() };
@@ -693,7 +696,7 @@ class Kernel extends EventTarget {
     const n = this.vfs.normalize(path);
     if (n === "/proc") {
       const real = await this.vfs.ls("/proc");
-      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps", "journal", "offer", "oto", "konoyo"].map((name) => ({
+      const virt = ["version", "uptime", "self", "oncall", "spaces", "env", "apps", "journal", "offer", "oto", "konoyo", "watari"].map((name) => ({
         name,
         path: `/proc/${name}`,
         type: "file",
@@ -778,6 +781,8 @@ class Kernel extends EventTarget {
     await this.vfs.ensureIndex();
     attachKonoyo(this);
     await this.konoyo.restore();
+    attachWatari(this);
+    if (this.watari && this.watari.ready) await this.watari.ready;
     this.vfs.watch((path, op) => {
       if (path === "/etc/assoc") this._assoc = null;
       this.emit("vfs", { path, op });
