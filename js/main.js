@@ -1,5 +1,5 @@
 import { kernel } from "./kernel.js";
-import { register, bindWm, launch, openPath, getWm, listHandlers } from "./runtime.js";
+import { register, bindWm, launch, openPath, getWm } from "./runtime.js";
 import oncall from "./apps/oncall.js";
 import map from "./apps/map.js";
 import proc from "./apps/proc.js";
@@ -15,6 +15,7 @@ import cal from "./apps/cal.js";
 import clip from "./apps/clip.js";
 import sys from "./apps/sys.js";
 import muen from "./apps/muen.js";
+import oto from "./apps/oto.js";
 import { bindTorii } from "./apps/torii.js";
 import { bindKashiwa } from "./kashiwa.js";
 import { startField } from "./field.js";
@@ -22,6 +23,7 @@ import { startIrq } from "./irq.js";
 import { peekPath as peekPathIo, showFileStat as showStatIo, copyPathNow as copyPathIo, closeEl } from "./desk-io.js";
 import { bindSwitchers } from "./switchers.js";
 import { bindPhone, isPhone } from "./phone.js";
+import { bindSheet, openWithSheet, openShareSheet, closeSheet } from "./sheet.js";
 
 register(oncall);
 register(map);
@@ -38,6 +40,7 @@ register(cal);
 register(clip);
 register(sys);
 register(muen);
+register(oto);
 
 function landColor(cpu) {
   if (cpu >= 85) return "#4f7d61";
@@ -616,6 +619,7 @@ async function startDesktop() {
     openKashiwa: () => kashiwa.open(),
     openSpaces: () => switchers.toggleSpaces(),
   });
+  bindSheet();
   const field = startField(document.getElementById("kami-field"), kernel);
   startIrq(document.getElementById("irq-layer"), kernel, field, launch);
 
@@ -758,6 +762,7 @@ async function startDesktop() {
       document.getElementById("ujiko-drawer").hidden = true;
       document.getElementById("oshi-list").hidden = true;
       document.getElementById("desk-icon-menu").hidden = true;
+      closeSheet();
       const tm = document.getElementById("task-menu");
       if (tm) tm.hidden = true;
       closeDeskPeek();
@@ -1138,9 +1143,11 @@ async function startDesktop() {
       return;
     }
     if (act === "with") {
-      const rows = await listHandlers(path);
-      const pick = window.prompt(rows.map((r) => r.id).join(" "), rows[0]?.id || "editor");
-      if (pick) openPath(path, { with: pick });
+      openWithSheet(path);
+      return;
+    }
+    if (act === "share") {
+      openShareSheet(path);
       return;
     }
     if (act === "copy") {
