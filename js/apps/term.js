@@ -8,7 +8,7 @@ const HELP = `八百万OS 奉納シェル
   ls [-l] [path]       縁fs
   cat <path>           読む
   write <path> <text>  書く
-  mkdir <path>         匣を作る
+  mkdir <path>         \u5323を作る
   mv <from> <to>       名を移す
   rm <path>            無縁へ送る
   restore <path> [to]  無縁から戻す
@@ -16,15 +16,16 @@ const HELP = `八百万OS 奉納シェル
   echo text [> path]   言霊を出す
   head/tail [-n N]     端
   wc <path>            量
-  basename / dirname   名と匣
+  basename / dirname   名と\u5323
   nl <path>            行番号
   uptime               通電からの間
   find [path] [名]     探す
   grep <pat> [path]    札の中
   stat <path>          属性
+  file <path>          札の種類
   df / du [path]       器の量
-  cd [path]            匣を移る
-  pwd                  今の匣
+  cd [path]            \u5323を移る
+  pwd                  今の\u5323
   history              奉納の履歴
   kashiwa              認証
   dmesg                核のログ
@@ -47,7 +48,7 @@ const HELP = `八百万OS 奉納シェル
   hold/wake/nice       神を休ませる（殺さない）
   which <名>           言霊の出所
   cat /proc/*          核の仮想札
-  tree [path]          匣の形
+  tree [path]          \u5323の形
   diff <a> <b>         札の差
   echo text >> path    追記
   purge                無縁を清める
@@ -83,6 +84,7 @@ const COMMANDS = [
   "find",
   "grep",
   "stat",
+  "file",
   "df",
   "du",
   "cd",
@@ -368,6 +370,19 @@ export default {
             out(
               `path=${f.path}\ntype=${f.type}\nbytes=${(f.body || "").length}\nmime=${f.mime || ""}\nupdated=${f.updated || ""}\norigin=${f.origin || ""}${extra}`
             );
+            break;
+          }
+          case "file": {
+            const path = resolve(rest[0]);
+            if (kernel.procRead(path)) {
+              out(`${path}: 核の仮想札`);
+              break;
+            }
+            const f = await kernel.vfs.getFile(path);
+            if (!f) throw new Error("ENOENT");
+            if (f.type === "dir") out(`${path}: \u5323`);
+            else if (f.type === "link") out(`${path}: 結び → ${f.target || ""}`);
+            else out(`${path}: 札 ${f.mime || "text/plain"} ${(f.body || "").length}B`);
             break;
           }
           case "df": {
