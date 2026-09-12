@@ -202,7 +202,7 @@ try {
     document.querySelector(".window[data-app=editor] #ed-goto")?.click();
   });
   await sleep(150);
-  note(true, "\u8a00\u970a\u306e\u884c\\u3078");
+  note(true, "\u8a00\u970a\u306e\u884c\u3078");
   await h.closeWin("editor");
 
   await h.openTorii("\u6ce8\u9023\u7e04", "fw");
@@ -348,7 +348,7 @@ try {
   await h.openTorii("\u8a00\u970a", "editor");
   await sleep(300);
   const visEds = await page.$$eval(".window[data-app=editor]:not(.is-away)", (els) => els.map((el) => el.dataset.pid));
-  note(visEds.length >= 2, `\u8a00\\u970a\\u4e8c\\u679a ${visEds.join(",")}`);
+  note(visEds.length >= 2, `\u8a00\u970a\u4e8c\u679a ${visEds.join(",")}`);
   const pidA = await page.evaluate((pid) => {
     const w = document.querySelector(`.window[data-app=editor][data-pid="${pid}"]`);
     if (!w) return "";
