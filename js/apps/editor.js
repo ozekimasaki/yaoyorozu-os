@@ -23,7 +23,8 @@ export default {
     function syncChrome() {
       const pathEl = el.querySelector(".ed-path");
       if (pathEl) {
-        const line = `${current}${readonly ? " · 読むだけ" : ""}${dirty ? " · 未書" : ""}`;
+        const lines = body ? body.split("\n").length : 1;
+        const line = `${current}${readonly ? " · 読むだけ" : ""}${dirty ? " · 未書" : ""} · ${lines}行`;
         if (pathEl.textContent !== line) pathEl.textContent = line;
       }
       const ta = el.querySelector(".editor");
@@ -74,7 +75,7 @@ export default {
         <textarea class="editor" spellcheck="false"></textarea>
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn primary" type="button" id="save">書く</button>
-          <button class="btn" type="button" id="ed-box">匣を開く</button>
+          <button class="btn" type="button" id="ed-box">匡を開く</button>
           <input class="search" id="ed-find" placeholder="札の中を探る" style="margin:0;max-width:200px" />
           <button class="btn" type="button" id="ed-find-go">探る</button>
         </div>
@@ -83,6 +84,7 @@ export default {
       ta.addEventListener("input", () => {
         body = ta.value;
         markDirty();
+        syncChrome();
         syncWarn();
         clearTimeout(autosaveT);
         if (!readonly) autosaveT = setTimeout(() => persist(true).catch(() => {}), 1800);
