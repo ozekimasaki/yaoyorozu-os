@@ -8,8 +8,9 @@ function geomOf(w) {
     left: `${w.el.offsetLeft}px`,
     top: `${w.el.offsetTop}px`,
     width: `${w.el.offsetWidth}px`,
-    height: `${w.el.offsetHeight}px`,
+    height: w.shaded ? w.preShadeH || `${w.el.offsetHeight}px` : `${w.el.offsetHeight}px`,
     maximized: !!w.maximized,
+    shaded: !!w.shaded,
   };
 }
 
@@ -78,6 +79,7 @@ export function createWm(root, taskbar, kernel) {
     `<button type="button" data-act="pin">全県に結ぶ</button>` +
     `<button type="button" data-act="prev">左の県へ</button>` +
     `<button type="button" data-act="next">右の県へ</button>` +
+    `<button type="button" data-act="shade">巻く</button>` +
     `<button type="button" data-act="close">閉じる</button>`;
   document.body.appendChild(taskMenu);
   let taskMenuPid = 0;
@@ -106,6 +108,8 @@ export function createWm(root, taskbar, kernel) {
     const w = windows.get(pid);
     const pinBtn = taskMenu.querySelector("[data-act=pin]");
     if (pinBtn) pinBtn.textContent = w && !w.space ? "この県へ戻す" : "全県に結ぶ";
+    const shadeBtn = taskMenu.querySelector("[data-act=shade]");
+    if (shadeBtn) shadeBtn.textContent = w && w.shaded ? "広げる" : "巻く";
     taskMenu.style.left = `${x}px`;
     taskMenu.style.top = `${y}px`;
     taskMenu.hidden = false;
@@ -125,6 +129,7 @@ export function createWm(root, taskbar, kernel) {
       const p = neighborSpace(1);
       if (p) sendSpace(pid, p.id);
     }
+    else if (act === "shade") shade(pid);
     else if (act === "close") close(pid);
   });
   document.addEventListener("click", () => {
@@ -134,6 +139,11 @@ export function createWm(root, taskbar, kernel) {
   function snapEdge(pid, side) {
     const w = windows.get(pid);
     if (!w || w.maximized) return;
+    if (w.shaded) {
+      w.shaded = false;
+      w.el.classList.remove("is-shade");
+      w.el.style.height = w.preShadeH || w.el.style.height;
+    }
     w.el.classList.remove("is-max");
     if (side === "left") {
       w.el.style.left = `${INSET.left}px`;
@@ -163,7 +173,8 @@ export function createWm(root, taskbar, kernel) {
     const rh = availH / rows;
     vis.forEach((w, i) => {
       w.maximized = false;
-      w.el.classList.remove("is-max");
+      w.shaded = false;
+      w.el.classList.remove("is-max", "is-shade");
       const c = i % cols;
       const r = (i / cols) | 0;
       w.el.style.left = `${INSET.left + c * cw}px`;
@@ -255,9 +266,31 @@ export function createWm(root, taskbar, kernel) {
     kernel.log(w.space ? `窓 ${w.pid} をこの県へ戻した` : `窓 ${w.pid} を全県に結んだ`, "wm");
   }
 
+  function shade(pid) {
+    const w = windows.get(pid);
+    if (!w || w.maximized) return;
+    w.shaded = !w.shaded;
+    if (w.shaded) {
+      w.preShadeH = w.el.style.height || `${w.el.offsetHeight}px`;
+      w.el.style.height = "36px";
+      w.el.classList.add("is-shade");
+      kernel.log(`窓 ${pid} を巻いた`, "wm");
+    } else {
+      w.el.classList.remove("is-shade");
+      w.el.style.height = w.preShadeH || "min(520px, 72vh)";
+      kernel.log(`窓 ${pid} を広げた`, "wm");
+    }
+    schedulePersist();
+  }
+
   function maximize(pid) {
     const w = windows.get(pid);
     if (!w) return;
+    if (w.shaded) {
+      w.shaded = false;
+      w.el.classList.remove("is-shade");
+      w.el.style.height = w.preShadeH || w.el.style.height;
+    }
     w.maximized = !w.maximized;
     if (w.maximized) {
       w.prev = {
@@ -324,6 +357,10 @@ export function createWm(root, taskbar, kernel) {
       w.el.style.left = `${Math.max(0, e.clientX - ox)}px`;
       w.el.style.top = `${Math.max(42, e.clientY - oy)}px`;
     });
+    bar.addEventListener("dblclick", (e) => {
+      if (e.target.closest("button")) return;
+      shade(w.pid);
+    });
     bar.addEventListener("pointerup", (e) => {
       dragging = false;
       if (w.maximized) return;
@@ -363,7 +400,7 @@ export function createWm(root, taskbar, kernel) {
           h: w.el.offsetHeight,
         };
         const move = (ev) => {
-          if (w.maximized) return;
+          if (w.maximized || w.shaded) return;
           const dx = ev.clientX - start.x;
           const dy = ev.clientY - start.y;
           let left = start.left;
@@ -445,6 +482,8 @@ export function createWm(root, taskbar, kernel) {
       space: geom && geom.pinned ? null : space || kernel.state.currentSpace,
       minimized: false,
       maximized: false,
+      shaded: false,
+      preShadeH: "",
       zashikiOnce: false,
       onClose,
       onFocus,
@@ -465,6 +504,12 @@ export function createWm(root, taskbar, kernel) {
     focus(pid);
     applySpace(kernel.state.currentSpace);
     if (geom && geom.maximized) maximize(pid);
+    else if (geom && geom.shaded) {
+      w.shaded = true;
+      w.preShadeH = geom.height || `${w.el.offsetHeight}px`;
+      w.el.classList.add("is-shade");
+      w.el.style.height = "36px";
+    }
     schedulePersist();
     return w;
   }
@@ -512,5 +557,6 @@ export function createWm(root, taskbar, kernel) {
     snapEdge,
     sendSpace,
     neighborSpace,
+    shade,
   };
 }
