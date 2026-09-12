@@ -1,1 +1,45 @@
-PLACEHOLDER
+import { kernel } from "./kernel.js";
+import { register, bindWm, launch, openPath, getWm } from "./runtime.js";
+import oncall from "./apps/oncall.js";
+import map from "./apps/map.js";
+import proc from "./apps/proc.js";
+import fs from "./apps/fs.js";
+import editor from "./apps/editor.js";
+import fw from "./apps/fw.js";
+import net from "./apps/net.js";
+import dmesg from "./apps/dmesg.js";
+import term from "./apps/term.js";
+import sim from "./apps/sim.js";
+import ma from "./apps/ma.js";
+import cal from "./apps/cal.js";
+import clip from "./apps/clip.js";
+import sys from "./apps/sys.js";
+import muen from "./apps/muen.js";
+import { bindTorii } from "./apps/torii.js";
+import { bindKashiwa } from "./kashiwa.js";
+import { startField } from "./field.js";
+import { startIrq } from "./irq.js";
+
+register(oncall);
+register(map);
+register(proc);
+register(fs);
+register(editor);
+register(fw);
+register(net);
+register(dmesg);
+register(term);
+register(sim);
+register(ma);
+register(cal);
+register(clip);
+register(sys);
+register(muen);
+
+function landColor(cpu) {
+  if (cpu >= 85) return "#4f7d61";
+  if (cpu >= 70) return "#3d5c4a";
+  if (cpu >= 50) return "#8a7328";
+  if (cpu >= 35) return "#8a4a1c";
+  return "#7a241c";
+}
