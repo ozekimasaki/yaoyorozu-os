@@ -8,6 +8,7 @@ const LABELS = {
   cal: "\u796d\u66a6",
   muen: "\u7121\u7e01",
   oncall: "\u5f53\u76f4",
+  oto: "\u97f3\u970a",
 };
 
 let host = null;
