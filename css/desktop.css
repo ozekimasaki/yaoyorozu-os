@@ -35,6 +35,18 @@
   opacity: 0.42;
 }
 
+#desk-marquee {
+  position: fixed;
+  z-index: 6;
+  border: 1px solid var(--gold);
+  background: rgba(201, 162, 39, 0.12);
+  pointer-events: none;
+}
+
+#desk-marquee[hidden] {
+  display: none;
+}
+
 #desktop:focus {
   outline: none;
 }

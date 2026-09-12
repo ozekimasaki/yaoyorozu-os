@@ -50,6 +50,7 @@ export function launch(appId, opts = {}) {
     mount: view.el,
     onClose: view.onClose,
     onFocus: view.onFocus,
+    onDrop: view.onDrop,
   });
   kernel.log(`exec ${app.id} pid=${proc.pid}`, "runtime");
   return win;

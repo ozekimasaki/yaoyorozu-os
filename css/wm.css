@@ -15,6 +15,10 @@
   border-color: rgba(201, 162, 39, 0.55);
 }
 
+.window.is-drop {
+  outline: 1px solid var(--gold);
+}
+
 .window.is-min,
 .window.is-away {
   display: none !important;
