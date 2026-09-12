@@ -47,6 +47,66 @@
   display: none;
 }
 
+#keymap {
+  position: fixed;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  z-index: 68;
+  width: min(640px, 92vw);
+  max-height: 72vh;
+  overflow: auto;
+  background: #16140f;
+  border: 1px solid var(--gold);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+
+#keymap[hidden] {
+  display: none;
+}
+
+.keymap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 16px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.keymap-grid kbd {
+  display: inline-block;
+  min-width: 2.2em;
+  padding: 2px 6px;
+  margin-right: 6px;
+  border: 1px solid var(--line);
+  color: var(--gold-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.fs-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.fs-crumbs button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--gold-2);
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.fs-crumbs button:hover {
+  text-decoration: underline;
+}
+
 #desktop:focus {
   outline: none;
 }
