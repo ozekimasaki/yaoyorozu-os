@@ -135,8 +135,8 @@ export default {
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn" type="button" id="fs-back" ${histI <= 0 ? "disabled" : ""}>戻る</button>
           <button class="btn" type="button" id="fs-fwd" ${histI >= hist.length - 1 ? "disabled" : ""}>進む</button>
-          <input class="search" id="fs-name" placeholder="匭の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
-          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匭を作る</button>
+          <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
+          <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
           <button class="btn" type="button" id="fs-new" ${locked ? "disabled" : ""}>札を作る</button>
           <button class="btn" type="button" id="fs-copy" ${locked ? "disabled" : ""}>写す</button>
           <button class="btn" type="button" id="fs-link" ${locked ? "disabled" : ""}>結ぶ</button>
