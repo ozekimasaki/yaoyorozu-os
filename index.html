@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>八百万OS — 未開封の日本を、起動する</title>
+    <title>&#x516b;&#x767e;&#x4e07;OS &#x2014; &#x672a;&#x958b;&#x5c01;&#x306e;&#x65e5;&#x672c;&#x3092;&#x3001;&#x8d77;&#x52d5;&#x3059;&#x308b;</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 24'%3E%3Crect x='2' y='4' width='28' height='3' fill='%23c23a2b'/%3E%3Crect x='6' y='7' width='3' height='14' fill='%23c23a2b'/%3E%3Crect x='23' y='7' width='3' height='14' fill='%23c23a2b'/%3E%3C/svg%3E" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0c0b09" />
-    <meta name="description" content="ブラウザを&#x7b50;体にする、八百万の関係性のオペレーティングシステム。" />
+    <meta name="description" content="&#x30d6;&#x30e9;&#x30a6;&#x30b6;&#x3092;&#x7b50;&#x4f53;&#x306b;&#x3059;&#x308b;&#x3001;&#x516b;&#x767e;&#x4e07;&#x306e;&#x95a2;&#x4fc2;&#x6027;&#x306e;&#x30aa;&#x30da;&#x30ec;&#x30fc;&#x30c6;&#x30a3;&#x30f3;&#x30b0;&#x30b7;&#x30b9;&#x30c6;&#x30e0;&#x3002;" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Shippori+Mincho:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -27,12 +27,12 @@
         <rect x="86" y="38" width="8" height="28" fill="#c9a227" />
         <rect x="186" y="38" width="8" height="28" fill="#c9a227" />
       </svg>
-      <h1 class="boot-title">八百万OS</h1>
+      <h1 class="boot-title">&#x516b;&#x767e;&#x4e07;OS</h1>
       <div class="boot-sub">YAOYOROZU OPERATING SYSTEM</div>
       <div id="boot-log" aria-live="polite"></div>
       <div class="boot-actions" id="boot-ready" hidden>
-        <button class="btn primary" id="boot-start" type="button">誓約して起動する</button>
-        <button class="btn" id="boot-skip" type="button">名を預けずに急ぐ</button>
+        <button class="btn primary" id="boot-start" type="button">&#x8a93;&#x7d04;&#x3057;&#x3066;&#x8d77;&#x52d5;&#x3059;&#x308b;</button>
+        <button class="btn" id="boot-skip" type="button">&#x540d;&#x3092;&#x9810;&#x3051;&#x305a;&#x306b;&#x6025;&#x3050;</button>
       </div>
     </div>
 
@@ -42,39 +42,39 @@
       <div id="norito-veil" aria-hidden="true"></div>
       <div id="ofuda-stack" aria-live="polite"></div>
       <header class="menubar">
-        <div class="brand" title="鳥居を開く">八百万OS</div>
-        <div class="menubar-meta" id="menubar-meta" title="氏子課">oncall=… · kernel=…</div>
-        <div class="clock" id="clock" title="祭暦"></div>
+        <div class="brand" title="&#x9ce5;&#x5c45;&#x3092;&#x958b;&#x304f;">&#x516b;&#x767e;&#x4e07;OS</div>
+        <div class="menubar-meta" id="menubar-meta" title="&#x6c0f;&#x5b50;&#x8ab2;">oncall=&#x2026; &#xb7; kernel=&#x2026;</div>
+        <div class="clock" id="clock" title="&#x796d;&#x66a6;"></div>
       </header>
       <div id="desktop-icons"></div>
       <div id="window-layer"></div>
-      <div class="hint">/ 鳥居 · ; 窓 · ' 空間 · r 最近 · ? 操作 · 空欄 &#x8997;く · 囲う · 落とす</div>
+      <div class="hint">/ &#x9ce5;&#x5c45; &#xb7; ; &#x7a93; &#xb7; ' &#x7a7a;&#x9593; &#xb7; r &#x6700;&#x8fd1; &#xb7; ? &#x64cd;&#x4f5c; &#xb7; &#x7a7a;&#x6b04; &#x8997;&#x304f; &#xb7; &#x56f2;&#x3046; &#xb7; &#x843d;&#x3068;&#x3059;</div>
       <div id="desk-marquee" hidden></div>
       <footer class="taskbar" id="taskbar">
         <span class="pill" id="space-pill">kernel: 47</span>
         <span class="pill" id="kami-pill">kami: 8,000,000+</span>
-        <span class="pill" id="logout-pill">logout: 遷宮まで無効</span>
-        <span class="pill" id="ma-pill">status: 間</span>
-        <span class="pill" id="disk-pill" title="氏子の器">器: …</span>
-        <span class="pill" id="net-pill" title="縁">縁: …</span>
-        <span class="pill" id="oshi-pill">告げ</span>
+        <span class="pill" id="logout-pill">logout: &#x9077;&#x5bae;&#x307e;&#x3067;&#x7121;&#x52b9;</span>
+        <span class="pill" id="ma-pill">status: &#x9593;</span>
+        <span class="pill" id="disk-pill" title="&#x6c0f;&#x5b50;&#x306e;&#x5668;">&#x5668;: &#x2026;</span>
+        <span class="pill" id="net-pill" title="&#x7e01;">&#x7e01;: &#x2026;</span>
+        <span class="pill" id="oshi-pill">&#x544a;&#x3052;</span>
         <div class="task-apps"></div>
       </footer>
     </div>
 
     <div id="torii-gate">
-      <p class="torii-head">鳥居</p>
-      <p class="muted">くぐると起動する。戻る権利がある。Esc で戻る。</p>
-      <input id="torii-search" type="search" placeholder="アプリ、県、神、最近の札" autocomplete="off" />
+      <p class="torii-head">&#x9ce5;&#x5c45;</p>
+      <p class="muted">&#x304f;&#x3050;&#x308b;&#x3068;&#x8d77;&#x52d5;&#x3059;&#x308b;&#x3002;&#x623b;&#x308b;&#x6a29;&#x5229;&#x304c;&#x3042;&#x308b;&#x3002;Esc &#x3067;&#x623b;&#x308b;&#x3002;</p>
+      <input id="torii-search" type="search" placeholder="&#x30a2;&#x30d7;&#x30ea;&#x3001;&#x770c;&#x3001;&#x795e;&#x3001;&#x6700;&#x8fd1;&#x306e;&#x672d;" autocomplete="off" />
       <div id="torii-list"></div>
     </div>
 
     <div id="kashiwa-stage">
-      <p class="torii-head">柏手</p>
-      <p class="muted">左手と右手。二要素認証。引きではない。</p>
+      <p class="torii-head">&#x67cf;&#x624b;</p>
+      <p class="muted">&#x5de6;&#x624b;&#x3068;&#x53f3;&#x624b;&#x3002;&#x4e8c;&#x8981;&#x7d20;&#x8a8d;&#x8a3c;&#x3002;&#x5f15;&#x304d;&#x3067;&#x306f;&#x306a;&#x3044;&#x3002;</p>
       <div class="kashiwa-hands">
-        <button type="button" class="hand" data-hand="left">左手</button>
-        <button type="button" class="hand" data-hand="right">右手</button>
+        <button type="button" class="hand" data-hand="left">&#x5de6;&#x624b;</button>
+        <button type="button" class="hand" data-hand="right">&#x53f3;&#x624b;</button>
       </div>
       <div id="kashiwa-log"></div>
       <div id="kashiwa-result"></div>
@@ -83,91 +83,91 @@
     <div id="win-switcher"></div>
     <div id="space-switcher"></div>
     <div id="desk-icon-menu" hidden>
-      <button type="button" data-act="open">くぐる</button>
-      <button type="button" data-act="peek">&#x8997;く</button>
-      <button type="button" data-act="stat">属性</button>
-      <button type="button" data-act="rename">改名</button>
-      <button type="button" data-act="path">道を写す</button>
-      <button type="button" data-act="box">&#x5323;を開く</button>
-      <button type="button" data-act="copy">写す</button>
-      <button type="button" data-act="cut">切る</button>
-      <button type="button" data-act="paste">貼る</button>
-      <button type="button" data-act="muen">無縁へ</button>
+      <button type="button" data-act="open">&#x304f;&#x3050;&#x308b;</button>
+      <button type="button" data-act="peek">&#x8997;&#x304f;</button>
+      <button type="button" data-act="stat">&#x5c5e;&#x6027;</button>
+      <button type="button" data-act="rename">&#x6539;&#x540d;</button>
+      <button type="button" data-act="path">&#x9053;&#x3092;&#x5199;&#x3059;</button>
+      <button type="button" data-act="box">&#x5323;&#x3092;&#x958b;&#x304f;</button>
+      <button type="button" data-act="copy">&#x5199;&#x3059;</button>
+      <button type="button" data-act="cut">&#x5207;&#x308b;</button>
+      <button type="button" data-act="paste">&#x8cbc;&#x308b;</button>
+      <button type="button" data-act="muen">&#x7121;&#x7e01;&#x3078;</button>
     </div>
     <div id="eaves-menu" hidden>
-      <button type="button" data-act="torii">鳥居</button>
-      <button type="button" data-act="tile">窓を並べる</button>
-      <button type="button" data-act="center">窓を中央へ</button>
-      <button type="button" data-act="tidy">札を揃える</button>
-      <button type="button" data-act="paste">貼る</button>
-      <button type="button" data-act="recent">最近の札</button>
-      <button type="button" data-act="ofuda">新しい札</button>
-      <button type="button" data-act="box">新しい&#x5323;</button>
-      <button type="button" data-act="cal">祭暦</button>
-      <button type="button" data-act="clip">控え</button>
-      <button type="button" data-act="sys">機械</button>
-      <button type="button" data-act="muen">無縁</button>
-      <button type="button" data-act="ma">間</button>
+      <button type="button" data-act="torii">&#x9ce5;&#x5c45;</button>
+      <button type="button" data-act="tile">&#x7a93;&#x3092;&#x4e26;&#x3079;&#x308b;</button>
+      <button type="button" data-act="center">&#x7a93;&#x3092;&#x4e2d;&#x592e;&#x3078;</button>
+      <button type="button" data-act="tidy">&#x672d;&#x3092;&#x63c3;&#x3048;&#x308b;</button>
+      <button type="button" data-act="paste">&#x8cbc;&#x308b;</button>
+      <button type="button" data-act="recent">&#x6700;&#x8fd1;&#x306e;&#x672d;</button>
+      <button type="button" data-act="ofuda">&#x65b0;&#x3057;&#x3044;&#x672d;</button>
+      <button type="button" data-act="box">&#x65b0;&#x3057;&#x3044;&#x5323;</button>
+      <button type="button" data-act="cal">&#x796d;&#x66a6;</button>
+      <button type="button" data-act="clip">&#x63a7;&#x3048;</button>
+      <button type="button" data-act="sys">&#x6a5f;&#x68b0;</button>
+      <button type="button" data-act="muen">&#x7121;&#x7e01;</button>
+      <button type="button" data-act="ma">&#x9593;</button>
     </div>
     <div id="oshi-list" hidden>
-      <p class="muted">お告げ</p>
+      <p class="muted">&#x304a;&#x544a;&#x3052;</p>
       <div id="oshi-log" class="term-out"></div>
-      <button class="btn" type="button" id="oshi-clear">札を下ろす</button>
+      <button class="btn" type="button" id="oshi-clear">&#x672d;&#x3092;&#x4e0b;&#x308d;&#x3059;</button>
     </div>
     <div id="ujiko-drawer" hidden>
-      <p class="muted">氏子課</p>
+      <p class="muted">&#x6c0f;&#x5b50;&#x8ab2;</p>
       <div id="ujiko-log" class="term-out"></div>
-      <button class="btn" type="button" id="ujiko-open-dmesg">dmesg を開く</button>
+      <button class="btn" type="button" id="ujiko-open-dmesg">dmesg &#x3092;&#x958b;&#x304f;</button>
     </div>
     <div id="ma-lock">
-      <p class="torii-head">間</p>
-      <p class="muted">ログアウトではない。機械は眠っている。柏手か、下の文で起こす。</p>
-      <button class="btn primary" type="button" id="ma-wake">間を終える</button>
+      <p class="torii-head">&#x9593;</p>
+      <p class="muted">&#x30ed;&#x30b0;&#x30a2;&#x30a6;&#x30c8;&#x3067;&#x306f;&#x306a;&#x3044;&#x3002;&#x6a5f;&#x68b0;&#x306f;&#x7720;&#x3063;&#x3066;&#x3044;&#x308b;&#x3002;&#x67cf;&#x624b;&#x304b;&#x3001;&#x4e0b;&#x306e;&#x6587;&#x3067;&#x8d77;&#x3053;&#x3059;&#x3002;</p>
+      <button class="btn primary" type="button" id="ma-wake">&#x9593;&#x3092;&#x7d42;&#x3048;&#x308b;</button>
     </div>
     <div id="keymap" hidden>
-      <p class="torii-head">操作</p>
-      <p class="muted">この機械の鍵。ログアウトはない。</p>
+      <p class="torii-head">&#x64cd;&#x4f5c;</p>
+      <p class="muted">&#x3053;&#x306e;&#x6a5f;&#x68b0;&#x306e;&#x9375;&#x3002;&#x30ed;&#x30b0;&#x30a2;&#x30a6;&#x30c8;&#x306f;&#x306a;&#x3044;&#x3002;</p>
       <div class="keymap-grid">
-        <div><kbd>/</kbd> 鳥居</div>
-        <div><kbd>;</kbd> 窓送り</div>
-        <div><kbd>'</kbd> 空間</div>
-        <div><kbd>[ ]</kbd> 隣県</div>
-        <div><kbd>Shift+[ ]</kbd> 窓を隣県へ</div>
-        <div><kbd>,</kbd> 席を空ける</div>
-        <div><kbd>.</kbd> 窓を並べる</div>
-        <div><kbd>Shift+.</kbd> 窓を中央へ</div>
-        <div><kbd>Shift+↑↓</kbd> 窓を上下へ</div>
-        <div><kbd>Ctrl+G</kbd> 言霊の行へ</div>
-        <div><kbd>Ctrl+F</kbd> 言霊を探る</div>
-        <div><kbd>Ctrl+H</kbd> 言霊を換える</div>
-        <div><kbd>F3 / Shift+F3</kbd> 言霊の次と前</div>
-        <div><kbd>Home/End</kbd> 縁fs / 鳥居の端</div>
-        <div><kbd>印字</kbd> 縁fs / 無縁 / 注連縄 / 控え / 列島の頭文字</div>
-        <div><kbd>矢印 / Enter</kbd> 列島の県と空間</div>
-        <div><kbd>Shift+\\</kbd> 同じアプリの窓</div>
-        <div><kbd>PageUp/Down</kbd> 祭暦の年 / 神の頁</div>
-        <div><kbd>数字 / Enter</kbd> 祭暦の日の札</div>
-        <div><kbd>Ctrl+F</kbd> dmesg を探る</div>
-        <div><kbd>↑↓ Enter</kbd> 無縁を戻す / 注連縄を反転</div>
-        <div><kbd>Delete</kbd> 無縁を清める（二度）</div>
-        <div><kbd>Ctrl+L</kbd> 奉納を清める</div>
-        <div><kbd>Ctrl+Shift+C</kbd> 道を写す</div>
-        <div><kbd>n</kbd> お告げ</div>
-        <div><kbd>r</kbd> 最近の札</div>
-        <div><kbd>Ctrl+I</kbd> 属性</div>
-        <div><kbd>k</kbd> 柏手</div>
-        <div><kbd>m</kbd> 間</div>
-        <div><kbd>空欄</kbd> &#x8997;く</div>
-        <div><kbd>Ctrl+Z</kbd> 無縁を戻す</div>
-        <div><kbd>Ctrl+C/X/V</kbd> 写し切り</div>
-        <div><kbd>Ctrl+N</kbd> 新しい札</div>
-        <div><kbd>F2</kbd> 改名</div>
-        <div><kbd>Delete</kbd> 無縁へ</div>
-        <div><kbd>Esc</kbd> 閉じる</div>
+        <div><kbd>/</kbd> &#x9ce5;&#x5c45;</div>
+        <div><kbd>;</kbd> &#x7a93;&#x9001;&#x308a;</div>
+        <div><kbd>'</kbd> &#x7a7a;&#x9593;</div>
+        <div><kbd>[ ]</kbd> &#x96a3;&#x770c;</div>
+        <div><kbd>Shift+[ ]</kbd> &#x7a93;&#x3092;&#x96a3;&#x770c;&#x3078;</div>
+        <div><kbd>,</kbd> &#x5e2d;&#x3092;&#x7a7a;&#x3051;&#x308b;</div>
+        <div><kbd>.</kbd> &#x7a93;&#x3092;&#x4e26;&#x3079;&#x308b;</div>
+        <div><kbd>Shift+.</kbd> &#x7a93;&#x3092;&#x4e2d;&#x592e;&#x3078;</div>
+        <div><kbd>Shift+&#x2191;&#x2193;</kbd> &#x7a93;&#x3092;&#x4e0a;&#x4e0b;&#x3078;</div>
+        <div><kbd>Ctrl+G</kbd> &#x8a00;&#x970a;&#x306e;&#x884c;&#x3078;</div>
+        <div><kbd>Ctrl+F</kbd> &#x8a00;&#x970a;&#x3092;&#x63a2;&#x308b;</div>
+        <div><kbd>Ctrl+H</kbd> &#x8a00;&#x970a;&#x3092;&#x63db;&#x3048;&#x308b;</div>
+        <div><kbd>F3 / Shift+F3</kbd> &#x8a00;&#x970a;&#x306e;&#x6b21;&#x3068;&#x524d;</div>
+        <div><kbd>Home/End</kbd> &#x7e01;fs / &#x9ce5;&#x5c45; / &#x30b9;&#x30a4;&#x30c3;&#x30c1;&#x30e3;&#x306e;&#x7aef;</div>
+        <div><kbd>&#x5370;&#x5b57;</kbd> &#x7e01;fs / &#x7121;&#x7e01; / &#x6ce8;&#x9023;&#x7e04; / &#x63a7;&#x3048; / &#x5217;&#x5cf6; / &#x7a93; / &#x7a7a;&#x9593; / &#x6700;&#x8fd1;&#x306e;&#x982d;&#x6587;&#x5b57;</div>
+        <div><kbd>&#x77e2;&#x5370; / Enter</kbd> &#x5217;&#x5cf6;&#x306e;&#x770c;&#x3068;&#x7a7a;&#x9593; / &#x30b9;&#x30a4;&#x30c3;&#x30c1;&#x30e3;</div>
+        <div><kbd>Shift+\\</kbd> &#x540c;&#x3058;&#x30a2;&#x30d7;&#x30ea;&#x306e;&#x7a93;</div>
+        <div><kbd>PageUp/Down</kbd> &#x796d;&#x66a6;&#x306e;&#x5e74; / &#x795e;&#x306e;&#x9801; / &#x30b9;&#x30a4;&#x30c3;&#x30c1;&#x30e3;</div>
+        <div><kbd>&#x6570;&#x5b57; / Enter</kbd> &#x796d;&#x66a6;&#x306e;&#x65e5;&#x306e;&#x672d;</div>
+        <div><kbd>Ctrl+F</kbd> dmesg &#x3092;&#x63a2;&#x308b;</div>
+        <div><kbd>&#x2191;&#x2193; Enter</kbd> &#x7121;&#x7e01;&#x3092;&#x623b;&#x3059; / &#x6ce8;&#x9023;&#x7e04;&#x3092;&#x53cd;&#x8ee2;</div>
+        <div><kbd>Delete</kbd> &#x7121;&#x7e01;&#x3092;&#x6e05;&#x3081;&#x308b;&#xff08;&#x4e8c;&#x5ea6;&#xff09;</div>
+        <div><kbd>Ctrl+L</kbd> &#x5949;&#x7d0d;&#x3092;&#x6e05;&#x3081;&#x308b;</div>
+        <div><kbd>Ctrl+Shift+C</kbd> &#x9053;&#x3092;&#x5199;&#x3059;</div>
+        <div><kbd>n</kbd> &#x304a;&#x544a;&#x3052;</div>
+        <div><kbd>r</kbd> &#x6700;&#x8fd1;&#x306e;&#x672d;</div>
+        <div><kbd>Ctrl+I</kbd> &#x5c5e;&#x6027;</div>
+        <div><kbd>k</kbd> &#x67cf;&#x624b;</div>
+        <div><kbd>m</kbd> &#x9593;</div>
+        <div><kbd>&#x7a7a;&#x6b04;</kbd> &#x8997;&#x304f;</div>
+        <div><kbd>Ctrl+Z</kbd> &#x7121;&#x7e01;&#x3092;&#x623b;&#x3059;</div>
+        <div><kbd>Ctrl+C/X/V</kbd> &#x5199;&#x3057;&#x5207;&#x308a;</div>
+        <div><kbd>Ctrl+N</kbd> &#x65b0;&#x3057;&#x3044;&#x672d;</div>
+        <div><kbd>F2</kbd> &#x6539;&#x540d;</div>
+        <div><kbd>Delete</kbd> &#x7121;&#x7e01;&#x3078;</div>
+        <div><kbd>Esc</kbd> &#x9589;&#x3058;&#x308b;</div>
       </div>
     </div>
     <div id="recent-list" hidden>
-      <p class="muted">最近の札</p>
+      <p class="muted">&#x6700;&#x8fd1;&#x306e;&#x672d;</p>
       <div id="recent-log"></div>
     </div>
     <div id="file-stat" hidden>
