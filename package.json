@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node e2e/all.mjs && node e2e/phone.mjs && node e2e/ui-all.mjs",
+    "test": "node e2e/all.mjs && node e2e/phone.mjs",
     "test:e2e": "node e2e/all.mjs",
     "test:ui": "node e2e/ui-all.mjs",
     "test:shots": "node e2e/tour.mjs",
