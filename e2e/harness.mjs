@@ -106,7 +106,24 @@ export function attachPage(page, { fails, note, shots } = {}) {
   async function openTorii(title, appId) {
     try {
       await page.evaluate(() => document.getElementById("torii-gate")?.classList.remove("open"));
-      await page.click(".brand");
+      const opened = await page.evaluate(() => {
+        const phone = document.documentElement.classList.contains("is-phone");
+        const dock = document.querySelector("#phone-dock [data-phone=torii]");
+        const brand = document.querySelector(".brand");
+        if (phone && dock) {
+          dock.click();
+          return "dock";
+        }
+        if (brand) {
+          brand.click();
+          return "brand";
+        }
+        return "";
+      });
+      if (!opened) {
+        note(false, `torii open ${title}`);
+        return false;
+      }
       await sleep(260);
       await page.evaluate((q) => {
         const box = document.querySelector("#torii-search");
@@ -176,18 +193,34 @@ export function attachPage(page, { fails, note, shots } = {}) {
   }
 
   async function closeKashiwa() {
-    await page.evaluate(() => document.getElementById("kashiwa-stage")?.classList.remove("open"));
+    try {
+      await page.evaluate(() => document.getElementById("kashiwa-stage")?.classList.remove("open"));
+    } catch (err) {
+      if (!String(err.message || err).includes("detached")) throw err;
+    }
     await sleep(80);
   }
 
   async function clap() {
-    await closeKashiwa();
-    await key("k");
-    await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=left]")?.click());
-    await sleep(80);
-    await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=right]")?.click());
-    await sleep(1600);
-    await closeKashiwa();
+    try {
+      await closeKashiwa();
+      await key("k");
+      await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=left]")?.click());
+      await sleep(80);
+      await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=right]")?.click());
+      await sleep(1600);
+      await closeKashiwa();
+    } catch (err) {
+      if (!String(err.message || err).includes("detached")) throw err;
+      await boot();
+      await closeKashiwa();
+      await key("k");
+      await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=left]")?.click());
+      await sleep(80);
+      await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=right]")?.click());
+      await sleep(1600);
+      await closeKashiwa();
+    }
   }
 
   return { desk, key, boot, openTorii, closeWin, vis, term, closeKashiwa, clap, awaitApp, shot, tap };
