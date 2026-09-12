@@ -22,6 +22,7 @@ export default {
     let hist = [cwd];
     let histI = 0;
     let usedCache = { sig: "", text: "" };
+    let sortKey = "name";
 
     function pushCwd(p) {
       if (p === hist[histI]) return;
@@ -43,6 +44,46 @@ export default {
       histI += 1;
       cwd = hist[histI];
       selected = "";
+      render();
+    }
+
+    function sortEntries(rows) {
+      const copy = [...rows];
+      if (sortKey === "updated") {
+        copy.sort((a, b) => (b.updated || 0) - (a.updated || 0) || (a.name || "").localeCompare(b.name || "", "ja"));
+      } else {
+        copy.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ja"));
+      }
+      return copy;
+    }
+
+    function moveSel(delta) {
+      const btns = [...el.querySelectorAll(".fs-tree [data-path]")];
+      if (!btns.length) return;
+      let i = btns.findIndex((b) => b.dataset.path === selected);
+      if (i < 0) i = 0;
+      else i = (i + delta + btns.length) % btns.length;
+      selected = btns[i].dataset.path || "";
+      btns.forEach((b) => b.classList.toggle("is-on", b.dataset.path === selected));
+      btns[i].focus();
+    }
+
+    async function goPath(raw) {
+      const dest = kernel.vfs.normalize(raw || "/");
+      try {
+        const node = await kernel.vfs.getFile(dest);
+        if (node && node.type !== "dir" && dest !== "/") {
+          return openPath(dest, node.type);
+        }
+      } catch (err) {
+        if (dest !== "/") {
+          kernel.log(`cwd: ${err.message}`, "fs");
+          return;
+        }
+      }
+      cwd = dest;
+      selected = "";
+      pushCwd(dest);
       render();
     }
 
@@ -105,14 +146,18 @@ export default {
       }
       const parent = kernel.vfs.parentOf(cwd);
       const locked = isVirtual(cwd);
-      const listSig = `${cwd}\n${err}\n${locked}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
+      entries = sortEntries(entries);
+      const listSig = `${cwd}\n${err}\n${locked}\n${sortKey}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
       if (listSig === lastSig && el.querySelector(".fs-tree")) {
         el.querySelectorAll("[data-path]").forEach((b) => b.classList.toggle("is-on", b.dataset.path === selected));
         return;
       }
       lastSig = listSig;
       let used = usedCache.text;
-      if (usedCache.sig !== listSig) {
+      if (locked) {
+        used = "";
+        usedCache = { sig: listSig, text: used };
+      } else if (usedCache.sig !== listSig) {
         try {
           const u = await kernel.vfs.usage(cwd);
           used = ` · ${u.files}札 ${u.bytes}B`;
@@ -123,6 +168,7 @@ export default {
       }
       el.innerHTML = `
         <p class="muted">cwd ${cwd}${used}${err ? ` · ${err}` : ""}</p>
+        <input class="search" id="fs-go" value="${cwd}" aria-label="匣の道" style="margin:8px 0;max-width:100%" />
         <div class="fs-tree">
           ${cwd !== "/" ? `<button type="button" data-path="${parent}" data-type="dir">../</button>` : ""}
           ${entries
@@ -135,6 +181,7 @@ export default {
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn" type="button" id="fs-back" ${histI <= 0 ? "disabled" : ""}>戻る</button>
           <button class="btn" type="button" id="fs-fwd" ${histI >= hist.length - 1 ? "disabled" : ""}>進む</button>
+          <button class="btn" type="button" id="fs-sort">${sortKey === "updated" ? "時順" : "名順"}</button>
           <input class="search" id="fs-name" placeholder="匣の名 / 新しい名" ${locked ? "disabled" : ""} style="margin:0;max-width:200px" />
           <button class="btn" type="button" id="fs-mkdir" ${locked ? "disabled" : ""}>匣を作る</button>
           <button class="btn" type="button" id="fs-new" ${locked ? "disabled" : ""}>札を作る</button>
@@ -161,6 +208,18 @@ export default {
       });
       el.querySelector("#fs-back").onclick = () => back();
       el.querySelector("#fs-fwd").onclick = () => forward();
+      el.querySelector("#fs-sort").onclick = () => {
+        sortKey = sortKey === "name" ? "updated" : "name";
+        lastSig = "";
+        render();
+      };
+      const goEl = el.querySelector("#fs-go");
+      goEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          goPath(goEl.value.trim());
+        }
+      });
       const nameEl = el.querySelector("#fs-name");
       el.querySelector("#fs-new").onclick = async () => {
         const name = (nameEl.value || `${Date.now()}.ofuda`).trim();
@@ -253,13 +312,39 @@ export default {
 
     el.tabIndex = -1;
     el.addEventListener("keydown", (e) => {
-      if (!e.altKey) return;
-      if (e.key === "ArrowLeft") {
+      if (e.altKey && e.key === "ArrowLeft") {
         e.preventDefault();
         back();
-      } else if (e.key === "ArrowRight") {
+        return;
+      }
+      if (e.altKey && e.key === "ArrowRight") {
         e.preventDefault();
         forward();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "l" || e.key === "L")) {
+        e.preventDefault();
+        const go = el.querySelector("#fs-go");
+        if (go) {
+          go.focus();
+          go.select();
+        }
+        return;
+      }
+      if (e.target && e.target.tagName === "INPUT") return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        moveSel(1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        moveSel(-1);
+      } else if (e.key === "Enter" && selected) {
+        e.preventDefault();
+        const btn = [...el.querySelectorAll(".fs-tree [data-path]")].find((b) => b.dataset.path === selected);
+        openPath(selected, btn ? btn.dataset.type : "file");
+      } else if (e.key === "Backspace" && cwd !== "/") {
+        e.preventDefault();
+        openPath(kernel.vfs.parentOf(cwd), "dir");
       }
     });
     render();
