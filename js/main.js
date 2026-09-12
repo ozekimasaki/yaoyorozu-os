@@ -16,6 +16,7 @@ import clip from "./apps/clip.js";
 import sys from "./apps/sys.js";
 import muen from "./apps/muen.js";
 import oto from "./apps/oto.js";
+import watari from "./apps/watari.js";
 import { bindTorii } from "./apps/torii.js";
 import { bindKashiwa } from "./kashiwa.js";
 import { startField } from "./field.js";
@@ -42,6 +43,7 @@ register(clip);
 register(sys);
 register(muen);
 register(oto);
+register(watari);
 
 function landColor(cpu) {
   if (cpu >= 85) return "#4f7d61";
@@ -648,6 +650,10 @@ async function startDesktop() {
   const netPill = document.getElementById("net-pill");
   if (netPill) {
     netPill.addEventListener("click", () => launch("net"));
+  }
+  const watariPill = document.getElementById("watari-pill");
+  if (watariPill) {
+    watariPill.addEventListener("click", () => launch("watari"));
   }
 
   fillNorito();
