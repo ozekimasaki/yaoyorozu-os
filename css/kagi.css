@@ -1,0 +1,42 @@
+#kagi-veil {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 73;
+  background: radial-gradient(720px 440px at 50% 38%, #1a120e, #0c0b09);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+  padding: 32px;
+}
+
+#kagi-veil.open {
+  display: flex;
+}
+
+#kagi-veil input {
+  width: min(320px, 86vw);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--gold);
+  color: var(--washi);
+  font-size: 16px;
+  padding: 8px 0;
+  outline: none;
+  text-align: center;
+}
+
+#kagi-pill.is-on,
+[data-shade="kagi"].is-on {
+  color: var(--gold-2);
+}
+
+html[data-kagi="1"] #desktop {
+  pointer-events: none;
+}
+
+html[data-kagi="1"] #kami-field {
+  visibility: hidden;
+}
