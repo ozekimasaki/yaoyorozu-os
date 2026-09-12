@@ -48,6 +48,28 @@ html[data-keshiki="1"] .desktop-veil {
 }
 
 .sys-board [data-scale].is-on,
-.sys-board [data-shade].is-on {
+.sys-board [data-shade].is-on,
+.sys-board [data-okoshi].is-on {
   outline: 1px solid var(--gold);
+}
+
+.utsuwa-track {
+  height: 6px;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.utsuwa-track span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+}
+
+.utsuwa-track.is-full span {
+  background: #c45a3a;
+}
+
+#fs-utsuwa-track {
+  margin: 0 0 8px;
 }
