@@ -95,7 +95,7 @@ export function startField(canvas, kernel) {
       if (p.x < 0) p.x = canvas.width;
       if (p.x > canvas.width) p.x = 0;
       if (p.y < 0) p.y = canvas.height;
-      p.y = 0;
+      if (p.y > canvas.height) p.y = 0;
     }
     draw(now);
     if (!reduced) raf = requestAnimationFrame(tick);
