@@ -96,4 +96,46 @@ async function paintDesktop() {
   const kamiEl = document.getElementById("kami-pill");
   if (spaceEl.textContent !== spaceText) spaceEl.textContent = spaceText;
   if (kamiEl.textContent !== kamiText) kamiEl.textContent = kamiText;
-  const icons = document.g
+  const icons = document.getElementById("desktop-icons");
+  let rows = [];
+  try {
+    rows = await kernel.vfs.ls(`/home/${kernel.state.ujiko}/desktop`);
+  } catch (err) {
+    rows = [];
+  }
+  const sig = rows.map((f) => f.path).join("\n");
+  if (sig === lastDeskSig && icons.children.length) {
+    paintDeskMarks();
+    return;
+  }
+  lastDeskSig = sig;
+  const pos = await loadDeskPos();
+  icons.innerHTML = "";
+  rows.forEach((f, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "desk-icon";
+    btn.dataset.path = f.path;
+    btn.textContent = f.name.replace(".gate", "");
+    const saved = pos[f.path];
+    const left = saved ? saved.x : 18;
+    const top = saved ? saved.y : 58 + i * 52;
+    btn.style.left = `${left}px`;
+    btn.style.top = `${top}px`;
+    let dragging = false;
+    let moved = false;
+    let ox = 0;
+    let oy = 0;
+    let sx = left;
+    let sy = top;
+    let group = [];
+    btn.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      moved = false;
+      icons.style.zIndex = "20";
+      sx = btn.offsetLeft;
+      sy = btn.offsetTop;
+      ox = e.clientX - sx;
+      oy = e.clientY - sy;
+      if
