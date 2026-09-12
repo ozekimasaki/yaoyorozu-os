@@ -3,7 +3,7 @@ export default {
   title: "控え",
   width: "min(560px, 80vw)",
   height: "min(480px, 68vh)",
-  spawn({ kernel }) {
+  spawn({ kernel, offer, path }) {
     const el = document.createElement("div");
     let lastSig = "";
     let pick = 0;
@@ -138,6 +138,10 @@ export default {
         jumpName(e.key);
       }
     });
+    if (offer || path) {
+      const t = (offer && (offer.text || offer.path)) || path;
+      if (t) kernel.clipPush(t);
+    }
     render();
     const on = () => render();
     kernel.addEventListener("clip", on);
@@ -146,6 +150,11 @@ export default {
       title: "kotodama.clip",
       onFocus() {
         el.focus();
+      },
+      onOffer(next) {
+        const t = (next && (next.text || next.path)) || "";
+        if (t) kernel.clipPush(t);
+        render();
       },
       onClose() {
         kernel.removeEventListener("clip", on);
