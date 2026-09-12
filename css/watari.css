@@ -1,0 +1,50 @@
+.watari-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.watari-app[data-state="live"] #watari-stat {
+  color: var(--gold-2);
+}
+
+.watari-app[data-state="calling"] #watari-stat {
+  color: var(--vermilion);
+}
+
+.watari-app[data-state="ma"] #watari-stat {
+  color: var(--washi-dim);
+}
+
+#watari-fuda {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.watari-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.watari-log li {
+  margin: 0 0 6px;
+}
+
+.watari-log button {
+  background: none;
+  border: 0;
+  color: var(--washi);
+  cursor: pointer;
+  padding: 0;
+}
+
+#watari-pill {
+  cursor: pointer;
+}
+
+#watari-pill.is-live {
+  color: var(--gold-2);
+}
