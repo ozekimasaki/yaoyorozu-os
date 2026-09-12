@@ -60,6 +60,31 @@ try {
   note(!!chrome.space, `\u72b6\u6cc1\u306e\u7a7a\u9593 ${chrome.space}`);
   await h.shot("home");
 
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll(".desk-icon")].find((b) => (b.textContent || "").includes("\u5f53\u76f4"));
+    if (!btn) return;
+    btn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, clientX: 48, clientY: 180, pointerId: 7 }));
+  });
+  await sleep(560);
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll(".desk-icon")].find((b) => (b.textContent || "").includes("\u5f53\u76f4"));
+    if (!btn) return;
+    btn.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, pointerId: 7 }));
+  });
+  await sleep(240);
+  note(await page.evaluate(() => {
+    const el = document.getElementById("phone-actions");
+    return el && !el.hidden;
+  }), "\u672d\u30b7\u30fc\u30c8");
+  note(!!(await page.$("#phone-actions [data-with=editor]")), "\u3053\u308c\u3067\u8a00\u970a");
+  await h.shot("actions");
+  await page.evaluate(() => document.querySelector("#phone-actions [data-with=editor]")?.click());
+  await sleep(420);
+  note(!!(await front("editor")), "\u672d\u3092\u8a00\u970a\u3067\u958b\u304f");
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(240);
+  note(!(await front("editor")), "\u30b7\u30fc\u30c8\u304b\u3089\u5bb6\u3078");
+
   await h.clap();
 
   const opened = await page.evaluate(() => {
@@ -108,6 +133,38 @@ try {
   await h.shot("term");
   await page.evaluate(() => document.getElementById("phone-home")?.click());
   await sleep(200);
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(240);
+  const recents = await page.evaluate(() => {
+    const el = document.getElementById("phone-recents");
+    const cards = [...document.querySelectorAll("#phone-recents .phone-card")].map((c) => c.textContent || "");
+    return { open: el && !el.hidden, n: cards.length, text: cards.join("|") };
+  });
+  note(!!recents.open && recents.n >= 2, `\u6700\u8fd1\u306e\u5834\u9762 ${recents.n} ${recents.text.slice(0, 40)}`);
+  await h.shot("recents");
+  await page.evaluate(() => document.querySelector("#phone-recents .phone-card")?.click());
+  await sleep(360);
+  note(!!(await front("oncall")) || !!(await front("term")), "\u30ab\u30fc\u30c9\u3067\u5834\u9762\u3078");
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(200);
+  const before = await page.$$eval(".window[data-app=oncall]", (els) => els.length);
+  await page.evaluate(() => document.querySelector('#phone-dock [data-phone=oncall]')?.click());
+  await sleep(360);
+  const after = await page.$$eval(".window[data-app=oncall]", (els) => els.length);
+  note(after === before && after >= 1, `\u30c9\u30c3\u30af\u306f\u8d77\u3053\u3059 ${before}->${after}`);
+  note(!!(await front("oncall")), "\u8d77\u3053\u3057\u305f\u5f53\u76f4");
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(200);
+  await page.evaluate(() => document.getElementById("phone-shade-hit")?.click());
+  await sleep(200);
+  note(await page.evaluate(() => {
+    const el = document.getElementById("phone-shade");
+    return el && !el.hidden;
+  }), "\u901a\u77e5\u5e55");
+  note(!!(await page.$("#phone-shade [data-shade=ma]")), "\u5e55\u306e\u9593");
+  await h.shot("shade");
+  await page.evaluate(() => document.getElementById("phone-shade-hit")?.click());
+  await sleep(160);
 
   await page.setViewport({ width: 844, height: 390, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await sleep(300);
