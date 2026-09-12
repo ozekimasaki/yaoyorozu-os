@@ -274,7 +274,6 @@ class Kernel extends EventTarget {
       ["機械.gate", "sys"],
       ["無縁.gate", "muen"],
       ["音霊.gate", "oto"],
-      ["此岸.gate", "/konoyo"],
     ];
     for (const [name, app] of gates) {
       const path = `${desk}/${name}`;
@@ -290,13 +289,6 @@ class Kernel extends EventTarget {
       await this.vfs.write(
         initNote,
         "この匣の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
-        "text/plain"
-      );
-    }
-    if (!(await this.vfs.getFile("/konoyo/結び.txt"))) {
-      await this.vfs.write(
-        "/konoyo/結び.txt",
-        "此岸は、この機械の匣を縁fsへ結ぶ岸である。\n縁fs（彼岸）はブラウザの記憶。此岸は宜PCの匣。\n\n縁fsで「此岸を結ぶ」か、奉納で konoyo bind。\n許可が眠ったら「起こす」。解くと縁は切れる。\n受けるは現世の札を縁fsへ。出すは縁fsの札を現世へ。\n",
         "text/plain"
       );
     }
