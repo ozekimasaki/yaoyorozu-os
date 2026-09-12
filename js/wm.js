@@ -460,8 +460,8 @@ export function createWm(root, taskbar, kernel) {
         snapEdge(w.pid, "left");
       } else if (x > vw - edge) {
         snapEdge(w.pid, "right");
-      } else if (y > vh - 40) {
-        minimize(w.pid);
+      } else if (y >= vh - 48) {
+        snapEdge(w.pid, "bottom");
       }
       schedulePersist();
     });
