@@ -87,9 +87,11 @@ export default {
         <textarea class="editor" spellcheck="false"></textarea>
         <div class="boot-actions" style="margin-top:12px;justify-content:flex-start;flex-wrap:wrap">
           <button class="btn primary" type="button" id="save">書く</button>
-          <button class="btn" type="button" id="ed-box">匣を開く</button>
+          <button class="btn" type="button" id="ed-box">${String.fromCharCode(0x5323)}を開く</button>
           <input class="search" id="ed-find" placeholder="札の中を探る" style="margin:0;max-width:160px" />
-          <button class="btn" type="button" id="ed-find-go">探る</button>
+          <button class="btn" type="button" id="ed-find-go">次</button>
+          <button class="btn" type="button" id="ed-find-prev">前</button>
+          <span class="muted ed-hits" id="ed-hits" hidden></span>
           <input class="search" id="ed-repl" placeholder="換える文" style="margin:0;max-width:160px" />
           <button class="btn" type="button" id="ed-repl-go">換える</button>
           <button class="btn" type="button" id="ed-repl-all">すべて</button>
@@ -121,21 +123,57 @@ export default {
         ta.focus();
         ta.setSelectionRange(pos, end);
       }
-      function findNext() {
+      function paintHits(q, src, at) {
+        const hits = el.querySelector("#ed-hits");
+        if (!hits) return;
+        if (!q) {
+          if (!hits.hidden) {
+            hits.hidden = true;
+            hits.textContent = "";
+          }
+          return;
+        }
+        let n = 0;
+        let nth = 0;
+        let from = 0;
+        const step = Math.max(1, q.length);
+        while (from <= src.length) {
+          const i = src.indexOf(q, from);
+          if (i < 0) break;
+          n += 1;
+          if (i === at) nth = n;
+          from = i + step;
+        }
+        const next = n ? `${nth || "—"}/${n}` : "0";
+        if (hits.textContent === next && !hits.hidden) return;
+        hits.textContent = next;
+        hits.hidden = false;
+      }
+      function findNext(dir = 1) {
         const q = el.querySelector("#ed-find").value;
+        const src = ta.value;
+        body = src;
         if (!q) {
           el.querySelector("#ed-find").focus();
+          paintHits("", src, -1);
           return false;
         }
-        const from = ta.selectionEnd || 0;
-        let i = body.indexOf(q, from);
-        if (i < 0 || i === ta.selectionStart) i = body.indexOf(q, 0);
+        let i = -1;
+        if (dir >= 0) {
+          i = src.indexOf(q, ta.selectionEnd || 0);
+          if (i < 0 || i === ta.selectionStart) i = src.indexOf(q, 0);
+        } else {
+          const before = (ta.selectionStart || 0) > 0 ? src.lastIndexOf(q, ta.selectionStart - 1) : -1;
+          i = before >= 0 ? before : src.lastIndexOf(q);
+        }
         if (i < 0) {
+          paintHits(q, src, -1);
           kernel.log("探る: 見つからない", "kotodama");
           return false;
         }
         ta.focus();
         ta.setSelectionRange(i, i + q.length);
+        paintHits(q, src, i);
         return true;
       }
       function takeBody() {
@@ -179,6 +217,7 @@ export default {
         body = body.split(q).join(r);
         ta.value = body;
         takeBody();
+        paintHits(q, body, -1);
         kernel.log(`言霊を換えた ×${n}`, "kotodama");
       }
       ta.addEventListener("keydown", (e) => {
@@ -200,14 +239,15 @@ export default {
         }
         if (e.key === "F3") {
           e.preventDefault();
-          findNext();
+          findNext(e.shiftKey ? -1 : 1);
         }
         if ((e.ctrlKey || e.metaKey) && (e.key === "g" || e.key === "G")) {
           e.preventDefault();
           gotoLine();
         }
       });
-      el.querySelector("#ed-find-go").onclick = () => findNext();
+      el.querySelector("#ed-find-go").onclick = () => findNext(1);
+      el.querySelector("#ed-find-prev").onclick = () => findNext(-1);
       el.querySelector("#ed-repl-go").onclick = () => replaceOne();
       el.querySelector("#ed-repl-all").onclick = () => replaceAll();
       el.querySelector("#ed-repl").addEventListener("keydown", (e) => {
@@ -234,7 +274,7 @@ export default {
         }
         if (e.key === "Enter" || e.key === "F3") {
           e.preventDefault();
-          findNext();
+          findNext(e.shiftKey ? -1 : 1);
         }
       });
       el.querySelector("#save").onclick = async () => {
