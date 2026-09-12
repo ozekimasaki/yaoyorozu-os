@@ -1,7 +1,8 @@
+import { mkdirSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -46,11 +47,35 @@ export function makeNote() {
   return { fails, note };
 }
 
-export function attachPage(page, { fails, note }) {
+export function attachPage(page, { fails, note, shots } = {}) {
   page.on("pageerror", (err) => {
     console.log("PAGEERROR", err.message);
     fails.push(`pageerror ${err.message}`);
   });
+  let shotN = 0;
+  const shotRoot = shots || process.env.YAO_SHOTS || "";
+  if (shotRoot) mkdirSync(shotRoot, { recursive: true });
+
+  async function shot(name) {
+    if (!shotRoot) return "";
+    shotN += 1;
+    const file = `${String(shotN).padStart(2, "0")}-${name}.png`;
+    const dest = join(shotRoot, file);
+    await page.screenshot({ path: dest, type: "png" });
+    console.log(`SHOT ${file}`);
+    return dest;
+  }
+
+  async function tap(sel) {
+    const ok = await page.evaluate((s) => {
+      const el = document.querySelector(s);
+      if (!el) return false;
+      el.click();
+      return true;
+    }, sel);
+    await sleep(140);
+    return ok;
+  }
 
   async function desk() {
     await page.evaluate(() => document.getElementById("desktop")?.focus());
@@ -118,7 +143,7 @@ export function attachPage(page, { fails, note }) {
       await page.waitForSelector(`.window[data-app="${appId}"]`, { timeout: ms });
       return true;
     } catch (err) {
-      note(false, `\u7a93 ${appId} \u304c\u958b\u304b\u306a\u3044`);
+      note(false, `\\u7a93 ${appId} \\u304c\\u958b\\u304b\\u306a\\u3044`);
       return false;
     }
   }
@@ -146,7 +171,7 @@ export function attachPage(page, { fails, note }) {
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
       return true;
     }, cmd);
-    note(ok, `\u5949\u7d0d ${cmd}`);
+    note(ok, `\\u5949\\u7d0d ${cmd}`);
     await sleep(320);
   }
 
@@ -165,5 +190,5 @@ export function attachPage(page, { fails, note }) {
     await closeKashiwa();
   }
 
-  return { desk, key, boot, openTorii, closeWin, vis, term, closeKashiwa, clap, awaitApp };
+  return { desk, key, boot, openTorii, closeWin, vis, term, closeKashiwa, clap, awaitApp, shot, tap };
 }
