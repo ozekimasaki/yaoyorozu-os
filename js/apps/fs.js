@@ -31,6 +31,7 @@ export default {
     let cwdTimer = 0;
     let peekSig = "";
     let peekTok = 0;
+    let fsErr = "";
 
     function rememberCwd() {
       if (cwdTimer) clearTimeout(cwdTimer);
@@ -40,6 +41,12 @@ export default {
       }, 240);
     }
 
+    function bindAt(path) {
+      const k = kernel.konoyo;
+      if (!k || !path) return null;
+      return k.list().find((b) => path === b.path || path.startsWith(`${b.path}/`)) || null;
+    }
+
     function marks() {
       const home = `/home/${kernel.state.ujiko}`;
       return [
@@ -47,7 +54,9 @@ export default {
         { path: home, name: "氏子" },
         { path: `${home}/desktop`, name: "卓" },
         { path: "/etc", name: "式" },
+        { path: "/etc/oto", name: "音" },
         { path: "/var/muen", name: "無縁" },
+        { path: "/konoyo", name: "\u6b64\u5cb8" },
         { path: "/proc/kami", name: "神" },
       ];
     }
@@ -449,7 +458,8 @@ export default {
 
     async function render() {
       let entries = [];
-      let err = "";
+      let err = fsErr;
+      fsErr = "";
       try {
         entries = (await virtualListing(cwd)) || (await kernel.listPath(cwd));
       } catch (e) {
@@ -458,7 +468,8 @@ export default {
       const parent = kernel.vfs.parentOf(cwd);
       const locked = isVirtual(cwd);
       entries = sortEntries(entries);
-      const usageSig = `${cwd}\n${err}\n${locked}\n${sortKey}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
+      const shore = (kernel.konoyo ? kernel.konoyo.list() : []).map((b) => `${b.id}:${b.awake ? 1 : 0}`).join(",");
+      const usageSig = `${cwd}\n${err}\n${locked}\n${sortKey}\n${shore}\n${entries.map((f) => `${f.type}:${f.path}`).join("\n")}`;
       const listSig = usageSig;
       if (listSig === lastSig && el.querySelector(".fs-tree")) {
         paintSel();
@@ -496,7 +507,7 @@ export default {
           ${entries
             .map(
               (f) =>
-                `<button type="button" class="${selected.has(f.path) ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "�-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
+                `<button type="button" class="${selected.has(f.path) ? "is-on" : ""}" data-path="${f.path}" data-type="${f.type}">${f.type === "dir" ? "▸" : f.type === "link" ? "↦" : "·"} ${f.name || f.path}</button>`
             )
             .join("")}
         </div>
@@ -520,6 +531,11 @@ export default {
           <button class="btn" type="button" id="fs-muen" ${locked ? "disabled" : ""}>無縁へ</button>
           <button class="btn" type="button" id="fs-restore" ${cwd === "/var/muen" ? "" : "disabled"}>席へ戻す</button>
           <button class="btn" type="button" id="muen-scan">無縁スキャン</button>
+          <button class="btn" type="button" id="fs-konoyo-bind">\u6b64\u5cb8\u3092\u7d50\u3076</button>
+          <button class="btn" type="button" id="fs-konoyo-take">\u73fe\u4e16\u304b\u3089\u53d7\u3051\u308b</button>
+          <button class="btn" type="button" id="fs-konoyo-send">\u73fe\u4e16\u3078\u51fa\u3059</button>
+          <button class="btn" type="button" id="fs-konoyo-wake" ${bindAt(cwd) && !bindAt(cwd).awake ? "" : "disabled"}>\u8d77\u3053\u3059</button>
+          <button class="btn" type="button" id="fs-konoyo-unbind" ${bindAt(cwd) ? "" : "disabled"}>\u89e3\u304f</button>
         </div>
       `;
       el.querySelectorAll(".fs-crumbs [data-go]").forEach((btn) => {
@@ -689,6 +705,82 @@ export default {
         kernel.spawnMuen("スキャンで見つかった点");
         kernel.log("無縁スキャン: 提案だけする。強制友情はしない", "muen");
       };
+      const bindBtn = el.querySelector("#fs-konoyo-bind");
+      if (bindBtn) {
+        bindBtn.onclick = async () => {
+          try {
+            const rec = await kernel.konoyo.bindDir();
+            goPath(rec.path);
+          } catch (e) {
+            fsErr = e.message;
+            kernel.log(`konoyo bind: ${e.message}`, "fs");
+            lastSig = "";
+            render();
+          }
+        };
+      }
+      const takeBtn = el.querySelector("#fs-konoyo-take");
+      if (takeBtn) {
+        takeBtn.onclick = async () => {
+          try {
+            const dest = cwd.startsWith("/konoyo") ? `/home/${kernel.state.ujiko}` : cwd;
+            const paths = await kernel.konoyo.takeIn(dest);
+            if (paths[0]) goPath(kernel.vfs.parentOf(paths[0]));
+          } catch (e) {
+            fsErr = e.message;
+            kernel.log(`konoyo take: ${e.message}`, "fs");
+            lastSig = "";
+            render();
+          }
+        };
+      }
+      const sendBtn = el.querySelector("#fs-konoyo-send");
+      if (sendBtn) {
+        sendBtn.onclick = async () => {
+          const p = lastFsPick || selectedPaths()[0];
+          if (!p) return;
+          try {
+            await kernel.konoyo.sendOut(p);
+          } catch (e) {
+            fsErr = e.message;
+            kernel.log(`konoyo send: ${e.message}`, "fs");
+            lastSig = "";
+            render();
+          }
+        };
+      }
+      const wakeBtn = el.querySelector("#fs-konoyo-wake");
+      if (wakeBtn) {
+        wakeBtn.onclick = async () => {
+          const rec = bindAt(cwd);
+          if (!rec) return;
+          try {
+            await kernel.konoyo.wake(rec.id);
+            goPath(rec.path);
+          } catch (e) {
+            fsErr = e.message;
+            kernel.log(`konoyo wake: ${e.message}`, "fs");
+            lastSig = "";
+            render();
+          }
+        };
+      }
+      const unbindBtn = el.querySelector("#fs-konoyo-unbind");
+      if (unbindBtn) {
+        unbindBtn.onclick = async () => {
+          const rec = bindAt(cwd);
+          if (!rec) return;
+          try {
+            await kernel.konoyo.unbind(rec.id);
+            goPath("/konoyo");
+          } catch (e) {
+            fsErr = e.message;
+            kernel.log(`konoyo unbind: ${e.message}`, "fs");
+            lastSig = "";
+            render();
+          }
+        };
+      }
     }
 
     el.tabIndex = -1;
