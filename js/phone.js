@@ -1,4 +1,4 @@
-import { listHandlers } from "./runtime.js";
+import { listHandlers, sharePath } from "./runtime.js";
 
 const HAND_LABEL = {
   editor: "\u8a00\u970a",
@@ -32,7 +32,9 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
   const track = document.getElementById("phone-recents-track");
   const shade = document.getElementById("phone-shade");
   const shadeOshi = document.getElementById("phone-shade-oshi");
+  const shadeJournal = document.getElementById("phone-shade-journal");
   const shadeHit = document.getElementById("phone-shade-hit");
+  let splitPick = 0;
   const actions = document.getElementById("phone-actions");
   const actionsTrack = document.getElementById("phone-actions-track");
   const actionsKick = document.getElementById("phone-actions-kicker");
@@ -53,6 +55,7 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
     if (recents) recents.hidden = true;
     if (shade) shade.hidden = true;
     if (actions) actions.hidden = true;
+    splitPick = 0;
   }
 
   function paintDock() {
@@ -112,16 +115,87 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
         close.dataset.close = String(w.pid);
         close.setAttribute("aria-label", "close");
         close.textContent = "\u00d7";
-        chrome.append(title, close);
+        const splitBtn = document.createElement("button");
+        splitBtn.type = "button";
+        splitBtn.dataset.split = String(w.pid);
+        splitBtn.textContent = "\u4e26\u3076";
+        chrome.append(title, splitBtn, close);
         const body = document.createElement("div");
         body.className = "phone-card-body";
         const proc = (kernel.state.appProcs || []).find((p) => p.pid === w.pid);
         body.textContent = `${w.appId} \u00b7 ${w.pid} \u00b7 ${proc?.status || "running"}`;
         card.append(chrome, body);
+        bindCardSwipe(card, w.pid);
         track.appendChild(card);
       }
     }
     recents.hidden = false;
+  }
+
+  function bindCardSwipe(card, pid) {
+    let y0 = 0;
+    let x0 = 0;
+    let dragging = false;
+    card.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      dragging = true;
+      y0 = e.clientY;
+      x0 = e.clientX;
+      try {
+        card.setPointerCapture(e.pointerId);
+      } catch (err) {
+        /* capture */
+      }
+    });
+    card.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dy = e.clientY - y0;
+      card.style.transform = dy < 0 ? `translateY(${dy}px)` : "";
+    });
+    card.addEventListener("pointerup", (e) => {
+      if (!dragging) return;
+      dragging = false;
+      const dy = e.clientY - y0;
+      const dx = Math.abs(e.clientX - x0);
+      card.style.transform = "";
+      if (dy < -72 && dx < 90 && wm) {
+        wm.close(pid);
+        openRecents();
+        paintDock();
+      }
+    });
+    card.addEventListener("pointercancel", () => {
+      dragging = false;
+      card.style.transform = "";
+    });
+  }
+
+  function paintShadeHit() {
+    if (!shadeHit) return;
+    const n = kernel.state.oshiUnread || 0;
+    shadeHit.classList.toggle("has-note", n > 0);
+    shadeHit.textContent = n > 0 ? `\u544a\u3052 ${n}` : "\u544a\u3052";
+  }
+
+  function paintShadeJournal() {
+    if (!shadeJournal) return;
+    shadeJournal.replaceChildren();
+    const rows = kernel.state.journal || [];
+    if (!rows.length) {
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = "\uff08\u65e5\u8a8c\u306f\u307e\u3060\u7a7a\uff09";
+      shadeJournal.appendChild(p);
+      return;
+    }
+    for (const r of rows.slice(0, 12)) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "phone-journal";
+      if (r.path) b.dataset.path = r.path;
+      b.textContent = `${r.tag}  ${r.t}`;
+      shadeJournal.appendChild(b);
+    }
   }
 
   function openShade() {
@@ -134,8 +208,10 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
     }
     const silentBtn = shade.querySelector("[data-shade=silent]");
     if (silentBtn) silentBtn.classList.toggle("is-on", !!(kernel.state.settings && kernel.state.settings.silent));
+    paintShadeJournal();
     shade.hidden = false;
     kernel.readOshi();
+    paintShadeHit();
   }
 
   async function openActions(path) {
@@ -163,6 +239,8 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
     mk("\u5c5e\u6027", { act: "stat", path });
     mk("\u9053\u3092\u5199\u3059", { act: "copy", path });
     mk("\u7121\u7e01\u3078", { act: "muen", path });
+    mk(`${HAND_LABEL.clip}\u3078\u6e21\u3059`, { share: "clip", path });
+    mk(`${HAND_LABEL.term}\u3078\u6e21\u3059`, { share: "term", path });
     actions.hidden = false;
   }
 
@@ -237,6 +315,22 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
         paintDock();
         return;
       }
+      const splitter = e.target.closest("[data-split]");
+      if (splitter && wm) {
+        const pid = Number(splitter.dataset.split);
+        if (splitPick && splitPick !== pid) {
+          wm.split(splitPick, pid);
+          splitPick = 0;
+          closeSheets();
+          paintDock();
+          return;
+        }
+        splitPick = pid;
+        track.querySelectorAll(".phone-card").forEach((c) => {
+          c.classList.toggle("is-pick", Number(c.dataset.pid) === pid);
+        });
+        return;
+      }
       const card = e.target.closest(".phone-card[data-pid]");
       if (card && wm) {
         const pid = Number(card.dataset.pid);
@@ -251,6 +345,12 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
   if (shade) {
     shade.addEventListener("click", (e) => {
       e.stopPropagation();
+      const row = e.target.closest(".phone-journal");
+      if (row && row.dataset.path && openPath) {
+        closeSheets();
+        openPath(row.dataset.path);
+        return;
+      }
       const btn = e.target.closest("[data-shade]");
       if (!btn) return;
       const act = btn.dataset.shade;
@@ -304,6 +404,12 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
       const path = btn.dataset.path;
       const withId = btn.dataset.with;
       const act = btn.dataset.act;
+      const shareTo = btn.dataset.share;
+      if (shareTo && path) {
+        closeSheets();
+        sharePath(path, { to: shareTo });
+        return;
+      }
       if (withId && path && openPath) {
         closeSheets();
         openPath(path, { with: withId });
@@ -357,9 +463,15 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa
   });
 
   paintSpace();
+  paintShadeHit();
   kernel.addEventListener("ps", paintDock);
   kernel.addEventListener("oshi", () => {
+    paintShadeHit();
     if (shade && !shade.hidden) openShade();
+  });
+  kernel.addEventListener("oshi-read", paintShadeHit);
+  kernel.addEventListener("journal", () => {
+    if (shade && !shade.hidden) paintShadeJournal();
   });
   kernel.addEventListener("space", () => {
     paintDock();
