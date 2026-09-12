@@ -4,4 +4,8 @@ e2e/
 js/oracle.js
 .git/
 node_modules/
+.wrangler/
+.github/
 *.log
+package.json
+package-lock.json
