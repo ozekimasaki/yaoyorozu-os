@@ -1,1 +1,2 @@
-PLACEHOLDER_DO_NOT_USE
+import { kernel } from "./kernel.js";
+import { register, bindWm, launch, openPath, getWm } from "./runtime.js";
