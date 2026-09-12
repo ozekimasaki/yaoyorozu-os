@@ -45,6 +45,46 @@
   opacity: 0.42;
 }
 
+#wm-snap-ghost {
+  position: fixed;
+  z-index: 3;
+  pointer-events: none;
+  border: 1px solid var(--gold);
+  background: rgba(201, 168, 76, 0.1);
+}
+
+#wm-snap-ghost[hidden] {
+  display: none;
+}
+
+#wm-snap-ghost[data-side="left"] {
+  top: 48px;
+  left: 8px;
+  width: calc(50% - 14px);
+  height: calc(100% - 96px);
+}
+
+#wm-snap-ghost[data-side="right"] {
+  top: 48px;
+  right: 8px;
+  width: calc(50% - 14px);
+  height: calc(100% - 96px);
+}
+
+#wm-snap-ghost[data-side="bottom"] {
+  left: 8px;
+  right: 8px;
+  bottom: 48px;
+  height: calc(50% - 56px);
+}
+
+#wm-snap-ghost[data-side="max"] {
+  top: 48px;
+  left: 8px;
+  right: 8px;
+  bottom: 48px;
+}
+
 #desk-marquee {
   position: fixed;
   z-index: 6;
