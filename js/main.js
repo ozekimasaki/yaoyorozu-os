@@ -43,3 +43,45 @@ function landColor(cpu) {
   if (cpu >= 35) return "#8a4a1c";
   return "#7a241c";
 }
+
+function applyJob(job) {
+  if (!job) return;
+  if (job.prefId) {
+    kernel.emit("spotlight", job.prefId);
+  }
+  if (job.kind === "attach" || job.kind === "route" || job.kind === "migrate") launch("map");
+  if (job.kind === "hold" && job.article) openPath("/etc/ofuda/constitution.20");
+}
+
+let lastDeskSig = "";
+let lastDeskPick = "";
+let deskPos = null;
+let deskSelected = new Set();
+let deskClipboard = { mode: "copy", paths: [] };
+let switcherIndex = 0;
+let muenUndo = [];
+let deskTypeQ = "";
+let deskTypeT = 0;
+let marquee = null;
+
+function endMarquee() {
+  if (!marquee) return;
+  marquee = null;
+  const band = document.getElementById("desk-marquee");
+  if (band) band.hidden = true;
+}
+
+async function loadDeskPos() {
+  if (deskPos) return deskPos;
+  try {
+    deskPos = (await kernel.vfs.metaGet("deskPos")) || {};
+  } catch (err) {
+    deskPos = {};
+  }
+  return deskPos;
+}
+
+function saveDeskPos() {
+  if (!deskPos) return;
+  kernel.vfs.metaSet("deskPos", deskPos);
+}
