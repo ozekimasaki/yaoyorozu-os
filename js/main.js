@@ -901,4 +901,70 @@ async function startDesktop() {
         activateSwitcher();
         return;
       }
-    
+    }
+    if (e.key === "/") {
+      e.preventDefault();
+      torii.open();
+    }
+    if (e.shiftKey && (e.code === "BracketLeft" || e.code === "BracketRight") && !overlaysOpen()) {
+      const w = focusedWin();
+      const wm = getWm();
+      if (w && wm && wm.sendSpace) {
+        e.preventDefault();
+        const next = wm.neighborSpace(e.code === "BracketLeft" ? -1 : 1);
+        if (next) wm.sendSpace(w.pid, next.id);
+        return;
+      }
+    }
+    if (e.key === "[") {
+      const i = kernel.state.prefs.findIndex((p) => p.id === kernel.state.currentSpace);
+      const p = kernel.state.prefs[(i - 1 + kernel.state.prefs.length) % kernel.state.prefs.length];
+      kernel.setSpace(p.id);
+    }
+    if (e.key === "]") {
+      const i = kernel.state.prefs.findIndex((p) => p.id === kernel.state.currentSpace);
+      const p = kernel.state.prefs[(i + 1) % kernel.state.prefs.length];
+      kernel.setSpace(p.id);
+    }
+    if (e.key === "\\") {
+      const wm = getWm();
+      if (wm) wm.cycle();
+    }
+    if (e.key === ";" || e.key === "；") {
+      e.preventDefault();
+      toggleSwitcher();
+    }
+    if (e.key === "k") kashiwa.open();
+    if (e.key === "m") {
+      e.preventDefault();
+      kernel.maSleep();
+    }
+    if (e.key === "'" || e.key === "’") {
+      e.preventDefault();
+      toggleSpaces();
+    }
+    if (e.key === "?" || e.key === "？") {
+      e.preventDefault();
+      const km = document.getElementById("keymap");
+      if (km) km.hidden = !km.hidden;
+      return;
+    }
+    if (e.key === "n") {
+      e.preventDefault();
+      toggleOshi();
+    }
+    if (e.key === "r") {
+      e.preventDefault();
+      toggleRecent();
+    }
+    if (e.key === "," || e.key === "、") {
+      e.preventDefault();
+      const wm = getWm();
+      if (wm) wm.hideAll();
+    }
+    if (e.shiftKey && (e.key === "." || e.key === ">" || e.key === "。")) {
+      e.preventDefault();
+      const w = focusedWin();
+      const wm = getWm();
+      if (w && wm && wm.center) wm.center(w.pid);
+      ret
