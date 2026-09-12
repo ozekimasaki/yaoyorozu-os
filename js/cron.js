@@ -35,7 +35,7 @@ export async function attachCron(kernel) {
     await kernel.vfs.write(
       TOKIHO,
       [
-        "tokiho \\u6642\\u5831",
+        "tokiho \u6642\u5831",
         "cron                 list",
         "cron every <sec>     oshi text",
         "cron every <sec> log text",
@@ -71,7 +71,7 @@ export async function attachCron(kernel) {
     };
     jobs = [...jobs, rec];
     save();
-    kernel.log(`\\u6642\\u5831 ${rec.id}`, "cron");
+    kernel.log(`\u6642\u5831 ${rec.id}`, "cron");
     kernel.emit("cron");
     return rec;
   }
