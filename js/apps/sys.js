@@ -40,12 +40,17 @@ export default {
       return kernel.okoshi && kernel.okoshi.snapshot ? kernel.okoshi.snapshot() : { ids: [] };
     }
 
+    function kagiSnap() {
+      return kernel.kagi && kernel.kagi.snapshot ? kernel.kagi.snapshot() : { locked: false, idleMin: 0 };
+    }
+
     function paintBoard() {
       const s = kernel.state.settings || {};
       const k = keshikiSnap();
       const u = utsushiSnap();
       const w = utsuwaSnap();
       const o = okoshiSnap();
+      const g = kagiSnap();
       const fmt = kernel.utsuwa && kernel.utsuwa.fmtBytes ? kernel.utsuwa.fmtBytes : (n) => `${n}B`;
       setText("[data-k=keshiki] h3", k.path ? k.path.split("/").pop() : "未敷");
       setText("[data-k=keshiki] .muted", k.path || "写しを卓の背に敷く");
@@ -58,6 +63,8 @@ export default {
       if (bar) bar.style.width = `${Math.min(100, w.quota ? (100 * (w.bytes || 0)) / w.quota : 0)}%`;
       setText("[data-k=okoshi] h3", o.ids && o.ids.length ? o.ids.join(" · ") : "空");
       setText("[data-k=okoshi] .muted", "卓が点いたとき立つ札。窓の復元が先。");
+      setText("[data-k=kagi] h3", g.locked ? "閉" : "開");
+      setText("[data-k=kagi] .muted", g.idleMin ? `${g.idleMin}分の間でかかる` : "手でかける。遷宮ではない。");
       el.querySelectorAll("[data-okoshi]").forEach((b) => {
         b.classList.toggle("is-on", !!(o.ids && o.ids.includes(b.dataset.okoshi)));
       });
@@ -157,6 +164,12 @@ export default {
           op.catch((err) => kernel.log(`okoshi: ${err.message}`, "okoshi"));
         };
       });
+      const lock = el.querySelector("#sys-kagi-lock");
+      if (lock) {
+        lock.onclick = () => {
+          if (kernel.kagi) kernel.kagi.lock();
+        };
+      }
     }
 
     const render = () => {
@@ -166,8 +179,9 @@ export default {
       const u = utsushiSnap();
       const w = utsuwaSnap();
       const o = okoshiSnap();
+      const g = kagiSnap();
       const set = s.settings || {};
-      const sig = `${s.ujiko}|${s.authenticated}|${s.currentSpace}|${kami}|${Math.floor(s.gep)}|${s.muen.toFixed(1)}|${s.officialStatus || ""}|${k.path}|${k.scale}|${u.count}|${set.silent}|${set.sound}|${w.bytes}|${w.quota}|${(o.ids || []).join(",")}`;
+      const sig = `${s.ujiko}|${s.authenticated}|${s.currentSpace}|${kami}|${Math.floor(s.gep)}|${s.muen.toFixed(1)}|${s.officialStatus || ""}|${k.path}|${k.scale}|${u.count}|${set.silent}|${set.sound}|${w.bytes}|${w.quota}|${(o.ids || []).join(",")}|${g.locked}|${g.idleMin}`;
       if (el.querySelector(".grid-2")) {
         if (sig === lastSig) {
           setText("[data-k=up] h3", fmtUp());
@@ -244,6 +258,14 @@ export default {
               <button class="btn" type="button" data-okoshi="fs">縁fs</button>
             </div>
           </div>
+          <div class="card" data-k="kagi">
+            <div class="tag">KAGI</div>
+            <h3></h3>
+            <p class="muted"></p>
+            <div class="boot-actions">
+              <button class="btn" type="button" id="sys-kagi-lock">かける</button>
+            </div>
+          </div>
         </div>
       `;
       bindBoard();
@@ -264,6 +286,7 @@ export default {
     kernel.addEventListener("utsushi", on);
     kernel.addEventListener("utsuwa", on);
     kernel.addEventListener("okoshi", on);
+    kernel.addEventListener("kagi", on);
     return {
       el,
       title: "machine.info",
@@ -277,6 +300,7 @@ export default {
         kernel.removeEventListener("utsushi", on);
         kernel.removeEventListener("utsuwa", on);
         kernel.removeEventListener("okoshi", on);
+        kernel.removeEventListener("kagi", on);
       },
     };
   },
