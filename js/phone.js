@@ -1,3 +1,15 @@
+import { listHandlers } from "./runtime.js";
+
+const HAND_LABEL = {
+  editor: "\u8a00\u970a",
+  fs: "\u7e01fs",
+  term: "\u5949\u7d0d",
+  clip: "\u63a7\u3048",
+  cal: "\u796d\u66a6",
+  muen: "\u7121\u7e01",
+  oncall: "\u5f53\u76f4",
+};
+
 export function isPhone() {
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -10,22 +22,20 @@ function applyClass(on) {
   document.getElementById("desktop")?.classList.toggle("is-phone", on);
 }
 
-export function bindPhone({ kernel, wm, launch, openPath, openTorii, openOshi, openRecents, openSpaces }) {
+export function bindPhone({ kernel, wm, launch, openPath, openTorii, openKashiwa, openSpaces }) {
   applyClass(isPhone());
   if (wm && wm.setPhone) wm.setPhone(isPhone());
 
-  function sync() {
-    const on = isPhone();
-    applyClass(on);
-    if (wm && wm.setPhone) wm.setPhone(on);
-    paintDock();
-  }
-
-  window.addEventListener("resize", sync);
-  window.addEventListener("orientationchange", () => setTimeout(sync, 200));
-
   const dock = document.getElementById("phone-dock");
   const bar = document.getElementById("phone-homebar");
+  const recents = document.getElementById("phone-recents");
+  const track = document.getElementById("phone-recents-track");
+  const shade = document.getElementById("phone-shade");
+  const shadeOshi = document.getElementById("phone-shade-oshi");
+  const shadeHit = document.getElementById("phone-shade-hit");
+  const actions = document.getElementById("phone-actions");
+  const actionsTrack = document.getElementById("phone-actions-track");
+  const actionsKick = document.getElementById("phone-actions-kicker");
 
   function frontApp() {
     if (!wm) return null;
@@ -35,11 +45,14 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openOshi, o
     );
   }
 
-  function goHome() {
-    if (!wm) return;
-    wm.hideAll();
-    document.getElementById("desktop")?.classList.remove("is-app");
-    paintDock();
+  function sheetsOpen() {
+    return (recents && !recents.hidden) || (shade && !shade.hidden) || (actions && !actions.hidden);
+  }
+
+  function closeSheets() {
+    if (recents) recents.hidden = true;
+    if (shade) shade.hidden = true;
+    if (actions) actions.hidden = true;
   }
 
   function paintDock() {
@@ -52,6 +65,134 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openOshi, o
     document.getElementById("desktop")?.classList.toggle("is-app", !!front);
   }
 
+  function paintSpace() {
+    const el = document.getElementById("phone-space");
+    if (el) el.textContent = kernel.spacePref().name;
+  }
+
+  function goHome() {
+    closeSheets();
+    if (!wm) return;
+    wm.hideAll();
+    document.getElementById("desktop")?.classList.remove("is-app");
+    paintDock();
+  }
+
+  function recentWins() {
+    if (!wm) return [];
+    return wm
+      .list()
+      .filter((w) => !w.el.classList.contains("is-away"))
+      .slice()
+      .sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0));
+  }
+
+  function openRecents() {
+    if (!recents || !track || !wm) return;
+    if (shade) shade.hidden = true;
+    if (actions) actions.hidden = true;
+    const rows = recentWins();
+    track.replaceChildren();
+    if (!rows.length) {
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = "\u8d70\u3063\u3066\u3044\u308b\u5834\u9762\u306f\u306a\u3044";
+      track.appendChild(p);
+    } else {
+      for (const w of rows) {
+        const card = document.createElement("div");
+        card.className = "phone-card";
+        card.dataset.pid = String(w.pid);
+        const chrome = document.createElement("div");
+        chrome.className = "phone-card-chrome";
+        const title = document.createElement("strong");
+        title.textContent = w.title || w.appId;
+        const close = document.createElement("button");
+        close.type = "button";
+        close.dataset.close = String(w.pid);
+        close.setAttribute("aria-label", "close");
+        close.textContent = "\u00d7";
+        chrome.append(title, close);
+        const body = document.createElement("div");
+        body.className = "phone-card-body";
+        const proc = (kernel.state.appProcs || []).find((p) => p.pid === w.pid);
+        body.textContent = `${w.appId} \u00b7 ${w.pid} \u00b7 ${proc?.status || "running"}`;
+        card.append(chrome, body);
+        track.appendChild(card);
+      }
+    }
+    recents.hidden = false;
+  }
+
+  function openShade() {
+    if (!shade) return;
+    if (recents) recents.hidden = true;
+    if (actions) actions.hidden = true;
+    const rows = kernel.state.oshi || [];
+    if (shadeOshi) {
+      shadeOshi.textContent = rows.map((r) => `${r.tag}  ${r.t}`).join("\n") || "\uff08\u672d\u306f\u5c4a\u3044\u3066\u3044\u306a\u3044\uff09";
+    }
+    const silentBtn = shade.querySelector("[data-shade=silent]");
+    if (silentBtn) silentBtn.classList.toggle("is-on", !!(kernel.state.settings && kernel.state.settings.silent));
+    shade.hidden = false;
+    kernel.readOshi();
+  }
+
+  async function openActions(path) {
+    if (!actions || !actionsTrack || !path) return;
+    if (recents) recents.hidden = true;
+    if (shade) shade.hidden = true;
+    if (actionsKick) actionsKick.textContent = path.split("/").pop() || path;
+    actionsTrack.replaceChildren();
+    const mk = (label, attrs) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      for (const [k, v] of Object.entries(attrs)) b.dataset[k] = v;
+      actionsTrack.appendChild(b);
+    };
+    mk("\u304f\u3050\u308b", { act: "open", path });
+    try {
+      const rows = await listHandlers(path);
+      for (const row of rows) {
+        mk(`${HAND_LABEL[row.id] || row.id}\u3067\u958b\u304f`, { with: row.id, path });
+      }
+    } catch (err) {
+      /* assoc */
+    }
+    mk("\u5c5e\u6027", { act: "stat", path });
+    mk("\u9053\u3092\u5199\u3059", { act: "copy", path });
+    mk("\u7121\u7e01\u3078", { act: "muen", path });
+    actions.hidden = false;
+  }
+
+  function resumeOrLaunch(id) {
+    closeSheets();
+    if (!wm) return launch(id);
+    const hit = wm.list().find((w) => w.appId === id && !w.el.classList.contains("is-away"));
+    if (hit) {
+      wm.restore(hit.pid);
+      wm.focus(hit.pid);
+      paintDock();
+      return hit;
+    }
+    const win = launch(id);
+    paintDock();
+    return win;
+  }
+
+  function sync() {
+    const on = isPhone();
+    applyClass(on);
+    if (wm && wm.setPhone) wm.setPhone(on);
+    if (!on) closeSheets();
+    paintDock();
+    paintSpace();
+  }
+
+  window.addEventListener("resize", sync);
+  window.addEventListener("orientationchange", () => setTimeout(sync, 200));
+
   if (dock) {
     dock.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-phone]");
@@ -60,22 +201,22 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openOshi, o
       e.stopPropagation();
       const id = btn.dataset.phone;
       if (id === "home") {
-        if (!frontApp()) {
-          if (openRecents) openRecents();
-        } else goHome();
+        if (sheetsOpen()) {
+          closeSheets();
+          paintDock();
+          return;
+        }
+        if (!frontApp()) openRecents();
+        else goHome();
         paintDock();
         return;
       }
       if (id === "torii") {
+        closeSheets();
         if (openTorii) openTorii();
         return;
       }
-      if (id === "spaces") {
-        if (openSpaces) openSpaces();
-        return;
-      }
-      launch(id);
-      paintDock();
+      resumeOrLaunch(id);
     });
   }
 
@@ -86,22 +227,140 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openOshi, o
     });
   }
 
-  const clock = document.getElementById("clock");
-  if (clock) {
-    clock.addEventListener("click", () => {
-      if (!isPhone()) return;
+  if (recents) {
+    recents.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const closer = e.target.closest("[data-close]");
+      if (closer && wm) {
+        wm.close(Number(closer.dataset.close));
+        openRecents();
+        paintDock();
+        return;
+      }
+      const card = e.target.closest(".phone-card[data-pid]");
+      if (card && wm) {
+        const pid = Number(card.dataset.pid);
+        closeSheets();
+        wm.restore(pid);
+        wm.focus(pid);
+        paintDock();
+      }
     });
   }
 
-  bindHomeIcons(openPath);
-  bindGestures({ openTorii, openOshi, openRecents, goHome, frontApp, paintDock });
-
-  function paintSpace() {
-    const el = document.getElementById("phone-space");
-    if (el) el.textContent = kernel.spacePref().name;
+  if (shade) {
+    shade.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const btn = e.target.closest("[data-shade]");
+      if (!btn) return;
+      const act = btn.dataset.shade;
+      if (act === "ma") {
+        closeSheets();
+        kernel.maSleep();
+        return;
+      }
+      if (act === "spaces") {
+        closeSheets();
+        if (openSpaces) openSpaces();
+        return;
+      }
+      if (act === "kashiwa") {
+        closeSheets();
+        if (openKashiwa) openKashiwa();
+        return;
+      }
+      if (act === "silent") {
+        const on = !(kernel.state.settings && kernel.state.settings.silent);
+        kernel.sysctl("ma.silent", on ? "1" : "0");
+        btn.classList.toggle("is-on", on);
+      }
+    });
   }
+
+  if (shadeHit) {
+    shadeHit.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!isPhone()) return;
+      if (shade && !shade.hidden) closeSheets();
+      else openShade();
+    });
+  }
+
+  const spaceEl = document.getElementById("phone-space");
+  if (spaceEl) {
+    spaceEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!isPhone()) return;
+      closeSheets();
+      if (openSpaces) openSpaces();
+    });
+  }
+
+  if (actions) {
+    actions.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const path = btn.dataset.path;
+      const withId = btn.dataset.with;
+      const act = btn.dataset.act;
+      if (withId && path && openPath) {
+        closeSheets();
+        openPath(path, { with: withId });
+        return;
+      }
+      if (act === "open" && path && openPath) {
+        closeSheets();
+        openPath(path);
+        return;
+      }
+      if (act === "stat" && path) {
+        closeSheets();
+        kernel.emit("stat", path);
+        return;
+      }
+      if (act === "copy" && path) {
+        kernel.clipPush(path);
+        return;
+      }
+      if (act === "muen" && path) {
+        try {
+          await kernel.vfs.moveToMuen(path);
+          kernel.emit("vfs");
+        } catch (err) {
+          kernel.log(`muen: ${err.message}`, "fs");
+        }
+        closeSheets();
+      }
+    });
+  }
+
+  bindHomeIcons(
+    (path) => {
+      closeSheets();
+      if (openPath) openPath(path);
+    },
+    openActions
+  );
+  bindGestures({
+    openTorii: () => {
+      closeSheets();
+      if (openTorii) openTorii();
+    },
+    openShade,
+    openRecents,
+    goHome,
+    frontApp,
+    paintDock,
+    sheetsOpen,
+    closeSheets,
+  });
+
   paintSpace();
   kernel.addEventListener("ps", paintDock);
+  kernel.addEventListener("oshi", () => {
+    if (shade && !shade.hidden) openShade();
+  });
   kernel.addEventListener("space", () => {
     paintDock();
     paintSpace();
@@ -114,10 +373,10 @@ export function bindPhone({ kernel, wm, launch, openPath, openTorii, openOshi, o
     });
   }
 
-  return { isPhone, goHome, paintDock };
+  return { isPhone, goHome, paintDock, openRecents, openShade, openActions, resumeOrLaunch };
 }
 
-function bindHomeIcons(openPath) {
+function bindHomeIcons(openPath, openActions) {
   const icons = document.getElementById("desktop-icons");
   if (!icons) return;
   let hold = 0;
@@ -135,9 +394,7 @@ function bindHomeIcons(openPath) {
       hold = setTimeout(() => {
         hold = 0;
         held = true;
-        btn.dispatchEvent(
-          new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY })
-        );
+        if (openActions) openActions(btn.dataset.path);
       }, 480);
     },
     true
@@ -146,6 +403,7 @@ function bindHomeIcons(openPath) {
   const endHold = () => {
     if (hold) clearTimeout(hold);
     hold = 0;
+    if (held) setTimeout(() => { held = false; }, 280);
   };
   icons.addEventListener("pointerup", endHold, true);
   icons.addEventListener("pointercancel", endHold, true);
@@ -169,7 +427,7 @@ function bindHomeIcons(openPath) {
   );
 }
 
-function bindGestures({ openTorii, openOshi, openRecents, goHome, frontApp, paintDock }) {
+function bindGestures({ openTorii, openShade, openRecents, goHome, frontApp, paintDock, sheetsOpen, closeSheets }) {
   let mode = 0;
   let y0 = 0;
   let x0 = 0;
@@ -207,17 +465,14 @@ function bindGestures({ openTorii, openOshi, openRecents, goHome, frontApp, pain
       const dx = Math.abs(t.clientX - x0);
       const held = Date.now() - t0 > 260;
       if (mode === 1 && dy > 44 && dx < 90) {
-        if (held || dy > 130) {
-          if (openRecents) openRecents();
-        } else {
-          goHome();
-        }
+        if (sheetsOpen && sheetsOpen()) closeSheets();
+        else if (held || dy > 130) openRecents();
+        else goHome();
         paintDock();
       }
       if (mode === 2 && t.clientY - y0 > 44 && dx < 90) {
-        if (frontApp()) {
-          if (openOshi) openOshi();
-        } else if (openTorii) openTorii();
+        if (frontApp()) openShade();
+        else openTorii();
       }
       mode = 0;
     },
