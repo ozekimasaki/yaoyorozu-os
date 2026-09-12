@@ -257,7 +257,7 @@ class Kernel extends EventTarget {
     if (!(await this.vfs.getFile(initNote))) {
       await this.vfs.write(
         initNote,
-        "この匡の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
+        "この匣の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
         "text/plain"
       );
     }
