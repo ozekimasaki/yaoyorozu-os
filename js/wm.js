@@ -761,11 +761,48 @@ export function createWm(root, taskbar, kernel) {
     return true;
   }
 
+  function snapHintOf(x, y) {
+    const edge = 28;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (y < 50) return "max";
+    if (x < edge) return "left";
+    if (x > vw - edge) return "right";
+    if (y >= vh - 48) return "bottom";
+    return "";
+  }
+
+  function snapGhostEl() {
+    let el = document.getElementById("wm-snap-ghost");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "wm-snap-ghost";
+      el.hidden = true;
+      const host = document.getElementById("window-layer") || document.getElementById("desktop") || document.body;
+      host.appendChild(el);
+    }
+    return el;
+  }
+
+  function paintSnapGhost(side) {
+    const el = snapGhostEl();
+    if (!side || phoneMode) {
+      el.hidden = true;
+      el.dataset.side = "";
+      return;
+    }
+    el.hidden = false;
+    el.dataset.side = side;
+  }
+
   function bindDrag(w) {
     const bar = w.el.querySelector(".titlebar");
     let dragging = false;
+    let dragged = false;
     let ox = 0;
     let oy = 0;
+    let sx = 0;
+    let sy = 0;
     bar.addEventListener("pointerdown", (e) => {
       if (e.target.closest("button")) return;
       if (phoneMode) {
@@ -779,15 +816,20 @@ export function createWm(root, taskbar, kernel) {
         return;
       }
       dragging = true;
+      dragged = false;
       focus(w.pid);
+      sx = e.clientX;
+      sy = e.clientY;
       ox = e.clientX - w.el.offsetLeft;
       oy = e.clientY - w.el.offsetTop;
       bar.setPointerCapture(e.pointerId);
     });
     bar.addEventListener("pointermove", (e) => {
       if (!dragging || w.maximized) return;
+      if (Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 6) dragged = true;
       w.el.style.left = `${Math.max(0, e.clientX - ox)}px`;
       w.el.style.top = `${Math.max(42, e.clientY - oy)}px`;
+      if (dragged) paintSnapGhost(snapHintOf(e.clientX, e.clientY));
     });
     bar.addEventListener("dblclick", (e) => {
       if (e.target.closest("button")) return;
@@ -799,23 +841,18 @@ export function createWm(root, taskbar, kernel) {
       showTaskMenu(e.clientX, e.clientY, w.pid);
     });
     bar.addEventListener("pointerup", (e) => {
+      const did = dragged;
       dragging = false;
-      if (w.maximized) return;
-      const edge = 28;
-      const x = e.clientX;
-      const y = e.clientY;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      if (y < 50) {
+      dragged = false;
+      const hint = did ? snapHintOf(e.clientX, e.clientY) : "";
+      paintSnapGhost("");
+      if (w.maximized || !did) return;
+      if (hint === "max") {
         maximize(w.pid);
         return;
       }
-      if (x < edge) {
-        snapEdge(w.pid, "left");
-      } else if (x > vw - edge) {
-        snapEdge(w.pid, "right");
-      } else if (y >= vh - 48) {
-        snapEdge(w.pid, "bottom");
+      if (hint === "left" || hint === "right" || hint === "bottom") {
+        snapEdge(w.pid, hint);
       }
       schedulePersist();
     });
