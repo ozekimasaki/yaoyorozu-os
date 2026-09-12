@@ -91,7 +91,7 @@ export async function openPath(path, opts = {}) {
 }
 
 export function shareTargets() {
-  return ["clip", "editor", "fs", "term"].filter((id) => registry.has(id));
+  return ["clip", "editor", "fs", "term", "oto"].filter((id) => registry.has(id));
 }
 
 function deliverOffer(appId, offer) {
