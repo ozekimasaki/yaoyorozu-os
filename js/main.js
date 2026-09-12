@@ -676,4 +676,61 @@ function clock() {
   if (key === lastClock) return;
   lastClock = key;
   const w = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
-  el.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}（${w}） ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}  
+  el.textContent = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}（${w}） ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}  ${pref.season}`;
+}
+
+function fillNorito() {
+  const veil = document.getElementById("norito-veil");
+  if (!veil) return;
+  const lines = [
+    "高天原に神留り坐す",
+    "祓い給え清めたまえ",
+    "この端末は器である",
+    "柏手は、認証である",
+    "神はマイクロサービスである",
+    "ログアウトは遷宮まで無効",
+  ];
+  veil.textContent = Array.from({ length: 20 }, (_, i) => lines[i % lines.length]).join("　");
+}
+
+let started = false;
+
+async function startDesktop() {
+  if (started) return;
+  started = true;
+  const desktop = document.getElementById("desktop");
+  const boot = document.getElementById("boot");
+  boot.classList.add("hidden");
+  desktop.classList.add("on");
+
+  bindWm(document.getElementById("window-layer"), document.getElementById("taskbar"));
+  const torii = bindTorii(document.getElementById("torii-gate"), kernel);
+  const kashiwa = bindKashiwa(document.getElementById("kashiwa-stage"), kernel, applyJob);
+  const field = startField(document.getElementById("kami-field"), kernel);
+  startIrq(document.getElementById("irq-layer"), kernel, field, launch);
+
+  document.querySelector(".brand").addEventListener("click", () => torii.open());
+  document.getElementById("space-pill").addEventListener("click", () => toggleSpaces());
+  document.getElementById("kami-pill").addEventListener("click", () => launch("proc"));
+  document.getElementById("logout-pill").addEventListener("click", () => {
+    try {
+      kernel.logout();
+    } catch (err) {
+      kernel.log("logout=EPERM", "auth");
+    }
+  });
+  document.getElementById("ma-pill").addEventListener("click", () => kernel.maSleep());
+  document.getElementById("clock").addEventListener("click", () => launch("cal"));
+  const diskPill = document.getElementById("disk-pill");
+  if (diskPill) {
+    diskPill.addEventListener("click", () => launch("fs", { path: `/home/${kernel.state.ujiko}` }));
+  }
+  const netPill = document.getElementById("net-pill");
+  if (netPill) {
+    netPill.addEventListener("click", () => launch("net"));
+  }
+
+  fillNorito();
+  clock();
+  setInterval(clock, 1000);
+  awa
