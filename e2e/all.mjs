@@ -362,6 +362,68 @@ try {
   await h.closeWin("oto");
   await h.closeWin("term");
 
+  await section("konoyo", async () => {
+    note(await page.evaluate(() => document.documentElement.dataset.konoyo === "1" || document.documentElement.dataset.konoyo === "0"), "\u6b64\u5cb8 dataset");
+    await h.openTorii("\u7e01fs", "fs");
+    note(!!(await page.$(".window[data-app=fs] [data-mark='/konoyo']")), "\u7e01fs \u6b64\u5cb8\u30de\u30fc\u30af");
+    note(!!(await page.$(".window[data-app=fs] #fs-konoyo-bind")), "\u6b64\u5cb8\u3092\u7d50\u3076");
+    note(!!(await page.$(".window[data-app=fs] #fs-konoyo-take")), "\u73fe\u4e16\u304b\u3089\u53d7\u3051\u308b");
+    note(!!(await page.$(".window[data-app=fs] #fs-konoyo-send")), "\u73fe\u4e16\u3078\u51fa\u3059");
+    await page.evaluate(() => document.querySelector(".window[data-app=fs] [data-mark='/konoyo']")?.click());
+    await sleep(280);
+    const shoreList = await page.$$eval(".window[data-app=fs] .fs-tree [data-path]", (els) =>
+      els.map((b) => b.dataset.path || "")
+    );
+    note(shoreList.some((p) => p === "/konoyo" || p.includes("/konoyo") || p.includes("\u7d50\u3073")), `\u6b64\u5cb8\u306e\u5323 ${shoreList.slice(0, 4).join(" ")}`);
+    await h.closeWin("fs");
+    await h.openTorii("\u5949\u7d0d", "term");
+    await h.term("ls /konoyo");
+    await h.term("cat /proc/konoyo");
+    const procK = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+    note(/supported=/.test(procK), `proc konoyo ${procK.slice(-80)}`);
+    const bound = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      await kernel.konoyo.bindMemory("e2e", {
+        "hello.ofuda": "from-shore",
+        "box/n.txt": "nest",
+      });
+      const a = await kernel.vfs.read("/konoyo/e2e/hello.ofuda");
+      await kernel.vfs.write("/konoyo/e2e/wrote.ofuda", "back-to-shore");
+      const home = `/home/${kernel.state.ujiko}/from-shore.ofuda`;
+      await kernel.vfs.copy("/konoyo/e2e/hello.ofuda", home);
+      const copied = await kernel.vfs.read(home);
+      const wrote = await kernel.vfs.read("/konoyo/e2e/wrote.ofuda");
+      const kids = await kernel.vfs.ls("/konoyo/e2e");
+      const hits = await kernel.vfs.find("/konoyo/e2e", "hello");
+      const greps = await kernel.vfs.grep("/konoyo/e2e", "nest");
+      return {
+        body: a.body,
+        copied: copied.body,
+        wrote: wrote.body,
+        names: kids.map((k) => k.name).join(","),
+        found: hits.some((f) => (f.path || "").includes("hello")),
+        grep: greps.some((l) => String(l).includes("nest")),
+        supported: document.documentElement.dataset.konoyo,
+      };
+    });
+    note(bound.body === "from-shore", `\u6b64\u5cb8 cat ${bound.body}`);
+    note(bound.copied === "from-shore", "\u6b64\u5cb8\u304b\u3089\u7e01fs\u3078\u5199\u3059");
+    note(bound.wrote === "back-to-shore", "\u6b64\u5cb8\u3078\u66f8\u304f");
+    note(/hello\.ofuda/.test(bound.names) && /wrote\.ofuda/.test(bound.names), `\u6b64\u5cb8 ls ${bound.names}`);
+    note(bound.found, "\u6b64\u5cb8 find");
+    note(bound.grep, "\u6b64\u5cb8 grep");
+    await h.term("ls /konoyo/e2e");
+    await h.term("cat /konoyo/e2e/hello.ofuda");
+    await h.term("konoyo");
+    const lsOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+    note(/hello\.ofuda/.test(lsOut) && /from-shore/.test(lsOut), "\u5949\u7d0d\u304b\u3089\u6b64\u5cb8\u3092\u8aad\u3080");
+    note(/bind\te2e/.test(lsOut) && /awake/.test(lsOut), "\u5949\u7d0d konoyo \u8868");
+    await h.closeWin("term");
+    note(await page.evaluate(() =>
+      [...document.querySelectorAll(".desk-icon .fuda-mark")].some((el) => el.dataset.icon === "konoyo")
+    ), "\u5353\u306b\u6b64\u5cb8\u306e\u5370");
+  });
+
   await h.openTorii("1000\u65e5", "sim");
   note(!!(await h.vis("sim")), "1000\u65e5");
   const day0 = await page.evaluate(() => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || "");
