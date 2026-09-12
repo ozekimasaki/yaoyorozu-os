@@ -54,6 +54,7 @@ const HELP = `八百万OS 奉納シェル
   purge                無縁を清める
   sync                 縁fsを確定する
   cmd | grep|sort|tee  管で繋ぐ
+  cron / at / atq / atrm  \u6642\u5831
   logout               EPERM
   reboot               遷宮
   ↑↓ 履歴  Ctrl+R 探る  Ctrl+L 清める  Tab 補完
@@ -126,6 +127,10 @@ const COMMANDS = [
   "logout",
   "reboot",
   "clear",
+  "cron",
+  "at",
+  "atq",
+  "atrm",
 ];
 
 export default {
@@ -751,6 +756,59 @@ export default {
             else out("not found");
             break;
           }
+          case "cron": {
+            const sub = rest[0] || "";
+            if (!sub || sub === "list") {
+              const rows = (kernel.cronList && kernel.cronList()) || [];
+              out(
+                rows
+                  .map((j) =>
+                    j.every
+                      ? `${j.id}  every ${j.every}s  ${j.kind}  ${j.payload}`
+                      : `${j.id}  at ${j.at}  ${j.kind}  ${j.payload}`
+                  )
+                  .join("\n") || "empty"
+              );
+              break;
+            }
+            if (sub === "rm") {
+              out(`rm ${kernel.cronRm(rest[1])}`);
+              break;
+            }
+            if (sub === "every") {
+              const sec = Number(rest[1]);
+              if (!sec) throw new Error("EINVAL");
+              const spec = kernel.cronParseKind(rest.slice(2));
+              const rec = kernel.cronAdd({ every: sec, ...spec });
+              out(`ok ${rec.id} every ${rec.every}s`);
+              break;
+            }
+            if (sub === "at") {
+              const wait = kernel.cronParseWait(rest[1]);
+              if (!wait) throw new Error("EINVAL");
+              const spec = kernel.cronParseKind(rest.slice(2));
+              const rec = kernel.cronAdd({ wait, ...spec });
+              out(`ok ${rec.id} at +${wait}s`);
+              break;
+            }
+            throw new Error("EINVAL");
+          }
+          case "at": {
+            const wait = kernel.cronParseWait(rest[0]);
+            if (!wait) throw new Error("EINVAL");
+            const spec = kernel.cronParseKind(rest.slice(1));
+            const rec = kernel.cronAdd({ wait, ...spec });
+            out(`ok ${rec.id} at +${wait}s`);
+            break;
+          }
+          case "atq": {
+            const rows = ((kernel.cronList && kernel.cronList()) || []).filter((j) => !j.every);
+            out(rows.map((j) => `${j.id}  ${j.payload}`).join("\n") || "empty");
+            break;
+          }
+          case "atrm":
+            out(`rm ${kernel.cronRm(rest[0])}`);
+            break;
           case "alias": {
             if (!rest[0]) {
               out(
