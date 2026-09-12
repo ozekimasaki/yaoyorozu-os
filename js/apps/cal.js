@@ -68,6 +68,21 @@ export default {
       el.querySelector("#cal-next").onclick = () => shift(1);
     }
 
+    el.tabIndex = -1;
+    el.addEventListener("keydown", (e) => {
+      if (e.target && e.target.tagName === "INPUT") return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        shift(-1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        shift(1);
+      } else if (e.key === "Home" || e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        today();
+      }
+    });
+
     render();
     const on = () => render();
     kernel.addEventListener("space", on);
