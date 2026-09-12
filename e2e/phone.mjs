@@ -1,0 +1,133 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import puppeteer from "/tmp/node_modules/puppeteer-core/lib/esm/puppeteer/puppeteer-core.js";
+import { sleep, freePort, startStatic, waitHttp, makeNote, attachPage } from "./harness.mjs";
+
+const CHROME = process.env.CHROME || "/usr/bin/google-chrome-stable";
+const { fails, note } = makeNote();
+const port = Number(process.env.YAO_PORT) || (await freePort());
+const base = `http://127.0.0.1:${port}/index.html`;
+const server = startStatic(port);
+await waitHttp(base);
+
+const profile = mkdtempSync(join(tmpdir(), "yao-phone-"));
+const browser = await puppeteer.launch({
+  executablePath: CHROME,
+  headless: "new",
+  userDataDir: profile,
+  args: ["--no-sandbox", "--disable-gpu", "--window-size=390,844"],
+});
+const page = await browser.newPage();
+page._yaoUrl = base;
+page.setDefaultTimeout(20000);
+await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+const shots = process.env.YAO_SHOTS || "/opt/cursor/artifacts/e2e-phone";
+const h = attachPage(page, { fails, note, shots });
+
+function front(appId) {
+  return page.$(`.window[data-app="${appId}"]:not(.is-min):not(.is-away):not(.is-phone-back)`);
+}
+
+try {
+  await h.boot();
+  const phone = await page.evaluate(() => document.documentElement.classList.contains("is-phone"));
+  note(phone, "html.is-phone");
+  note(!!(await page.$("#desktop.on")), "\u5353\u304c\u70b9\u304f");
+  const chrome = await page.evaluate(() => {
+    const dock = document.getElementById("phone-dock");
+    const bar = document.getElementById("phone-homebar");
+    const task = document.querySelector(".taskbar");
+    const hint = document.querySelector(".hint");
+    const icons = document.getElementById("desktop-icons");
+    const cs = (el) => (el ? getComputedStyle(el) : null);
+    return {
+      dock: cs(dock)?.display,
+      bar: cs(bar)?.display,
+      task: cs(task)?.display,
+      hint: cs(hint)?.display,
+      grid: cs(icons)?.display,
+      iconPos: cs(icons?.querySelector(".desk-icon"))?.position,
+      space: document.getElementById("phone-space")?.textContent || "",
+    };
+  });
+  note(chrome.dock === "flex", `\u30c9\u30c3\u30af ${chrome.dock}`);
+  note(chrome.bar === "block", `\u30db\u30fc\u30e0\u30d0\u30fc ${chrome.bar}`);
+  note(chrome.task === "none", `\u30bf\u30b9\u30af\u30d0\u30fc\u975e\u8868\u793a ${chrome.task}`);
+  note(chrome.hint === "none", `\u30d2\u30f3\u30c8\u975e\u8868\u793a ${chrome.hint}`);
+  note(chrome.grid === "grid", `\u30db\u30fc\u30e0\u30b0\u30ea\u30c3\u30c9 ${chrome.grid}`);
+  note(chrome.iconPos === "static", `\u672d\u306f\u9759\u7684 ${chrome.iconPos}`);
+  note(!!chrome.space, `\u72b6\u6cc1\u306e\u7a7a\u9593 ${chrome.space}`);
+  await h.shot("home");
+
+  await h.clap();
+
+  const opened = await page.evaluate(() => {
+    const btn = [...document.querySelectorAll(".desk-icon")].find((b) => (b.textContent || "").includes("\u5f53\u76f4"));
+    if (!btn) return false;
+    btn.click();
+    return true;
+  });
+  note(opened, "\u672d\u3092\u305f\u305f\u304f");
+  await sleep(500);
+  note(!!(await front("oncall")), "\u5f53\u76f4\u304c\u30d5\u30eb\u30b9\u30af\u30ea\u30fc\u30f3");
+  const scene = await page.evaluate(() => {
+    const w = document.querySelector(".window[data-app=oncall]:not(.is-min)");
+    if (!w) return null;
+    const r = w.getBoundingClientRect();
+    const desk = document.getElementById("desktop");
+    return {
+      w: Math.round(r.width),
+      left: Math.round(r.left),
+      app: desk?.classList.contains("is-app"),
+      pin: getComputedStyle(w.querySelector(".win-pin") || document.body).display,
+      rz: getComputedStyle(w.querySelector(".rz") || document.body).display,
+    };
+  });
+  note(!!scene && scene.w >= 300 && scene.left <= 8, `\u753b\u9762\u5e45 ${scene && scene.w}`);
+  note(!!scene && scene.app, "is-app");
+  note(!!scene && scene.pin === "none", `\u30d4\u30f3\u975e\u8868\u793a ${scene && scene.pin}`);
+  note(!!scene && scene.rz === "none", `\u30ea\u30b5\u30a4\u30ba\u975e\u8868\u793a ${scene && scene.rz}`);
+  await h.shot("oncall");
+
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(280);
+  note(!(await front("oncall")), "\u30db\u30fc\u30e0\u3067\u623b\u308b");
+  note(await page.evaluate(() => !document.getElementById("desktop")?.classList.contains("is-app")), "\u30db\u30fc\u30e0\u306b\u672d");
+  await h.shot("home-back");
+
+  await page.evaluate(() => document.querySelector('#phone-dock [data-phone=torii]')?.click());
+  await sleep(240);
+  note(await page.evaluate(() => document.getElementById("torii-gate")?.classList.contains("open")), "\u30c9\u30c3\u30af\u3067\u9ce5\u5c45");
+  await h.shot("torii");
+  await page.evaluate(() => document.getElementById("torii-gate")?.classList.remove("open"));
+
+  await page.evaluate(() => document.querySelector('#phone-dock [data-phone=term]')?.click());
+  await sleep(500);
+  note(!!(await front("term")), "\u30c9\u30c3\u30af\u3067\u5949\u7d0d");
+  await h.shot("term");
+  await page.evaluate(() => document.getElementById("phone-home")?.click());
+  await sleep(200);
+
+  await page.setViewport({ width: 844, height: 390, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await sleep(300);
+  note(await page.evaluate(() => document.documentElement.classList.contains("is-phone")), "\u6a2a\u3067\u3082\u30b9\u30de\u30dbOS");
+  await h.shot("landscape");
+
+  await page.setViewport({ width: 1400, height: 900, isMobile: false, hasTouch: false, deviceScaleFactor: 1 });
+  await sleep(400);
+  note(!(await page.evaluate(() => document.documentElement.classList.contains("is-phone"))), "\u684c\u306b\u623b\u3059\u3068\u30c7\u30b9\u30af\u30c8\u30c3\u30d7");
+
+  const err = await page.evaluate(() => window.__yaoPageError || "");
+  note(!err, `pageerror ${err || "none"}`);
+} catch (err) {
+  note(false, err.message);
+}
+
+await browser.close();
+server.kill();
+if (fails.length) {
+  console.log(`FAIL phone\n${fails.join("\n")}`);
+  process.exit(1);
+}
+console.log(`PASS phone ${shots}`);
