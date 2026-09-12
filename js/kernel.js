@@ -1,6 +1,7 @@
 import { bits16, hash32, hexFromHash, jstDateKey, mulberry32, pick } from "./rng.js";
 import { createBus, tabId } from "./bus.js";
 import { createVfs } from "./vfs.js";
+import { attachCron } from "./cron.js";
 
 const KAMI_TEMPLATES = [
   { role: "路地", note: "狭い道ほど、縁は濃い。" },
@@ -26,7 +27,7 @@ const LOCKED_FW = [
   { id: "child", name: "子ども", action: "deny", locked: true, note: "保護ネットワーク。外せない。" },
   { id: "dead", name: "死者", action: "deny", locked: true, note: "死者の席は公開要求できない。" },
   { id: "illness", name: "病", action: "deny", locked: true, note: "病の記録は既定deny。" },
-  { id: "fail", name: "失敗の記録", action: "deny", locked: true, note: "失敗を晒すな。" },
+  { id: "fail", name: "失敗の記録", action: "deny", locked: true, note: "失敗を曝すな。" },
   { id: "pray", name: "祈り", action: "deny", locked: true, note: "祈りはログに残し、公開しない。" },
 ];
 
@@ -252,7 +253,7 @@ class Kernel extends EventTarget {
     if (!(await this.vfs.getFile(initNote))) {
       await this.vfs.write(
         initNote,
-        "この匣の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
+        "この匡の .gate は、保存された窓が無い起動のとき最大4つまでくぐる。\n例: 奉納.gate に term と書け。\n",
         "text/plain"
       );
     }
@@ -650,6 +651,8 @@ class Kernel extends EventTarget {
     this.state.oncall = this.computeOncall();
     await this.seedFs();
     await this.vfs.ensureIndex();
+    this.vfs.watch((path, op) => this.emit("vfs", { path, op }));
+    await attachCron(this);
     this.bus = createBus((msg) => this.applyRemote(msg));
     try {
       this.worker = new Worker(new URL("./kernel-worker.js", import.meta.url), { type: "module" });
