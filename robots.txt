@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /e2e/
+Disallow: /scripts/
+
+Sitemap: https://ozekimasaki.github.io/yaoyorozu-os/sitemap.xml
