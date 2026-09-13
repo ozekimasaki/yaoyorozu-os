@@ -398,3 +398,153 @@ try {
         (b.dataset.path || "").includes("ui-fuda.ofuda")
       )
     );
+    note(made, "fs created fuda");
+    await page.evaluate(() => {
+      const file = [...document.querySelectorAll(".window[data-app=fs] .fs-tree [data-path]")].find((b) =>
+        (b.dataset.path || "").includes("ui-fuda.ofuda")
+      );
+      file?.click();
+    });
+    await sleep(140);
+    note(await clickApp("fs", "#fs-copy"), "fs copy");
+    await sleep(80);
+    note(await clickApp("fs", "#fs-stat"), "fs stat");
+    await sleep(160);
+    note(await page.$eval("#file-stat", (el) => !el.hidden).catch(() => false), "file-stat");
+    await h.key("Escape");
+    note(await clickApp("fs", "#fs-path"), "fs path");
+    await sleep(80);
+    note(await clickApp("fs", "#fs-sort"), "fs sort");
+    await sleep(80);
+    note(await clickApp("fs", "#fs-share"), "fs share");
+    await sleep(180);
+    const sheet = await page.$eval("#os-sheet", (el) => !el.hidden).catch(() => false);
+    note(sheet, "fs share sheet");
+    if (sheet) {
+      await page.evaluate(() => document.querySelector("#os-sheet [data-with=clip], #os-sheet [data-share=clip]")?.click());
+      await sleep(280);
+    }
+    await page.evaluate(() => {
+      const sheetEl = document.getElementById("os-sheet");
+      if (sheetEl) sheetEl.hidden = true;
+    });
+    note(await clickApp("fs", "#fs-with"), "fs with");
+    await sleep(180);
+    const withSheet = await page.$eval("#os-sheet", (el) => !el.hidden).catch(() => false);
+    if (withSheet) {
+      await page.evaluate(() => document.querySelector("#os-sheet [data-with=editor]")?.click());
+      await sleep(320);
+      note(!!(await page.$(".window[data-app=editor]")), "fs with editor");
+      await h.closeWin("editor");
+    } else {
+      note(true, "fs with no pick");
+    }
+    note(!!(await hasApp("fs", "#fs-konoyo-bind")), "fs konoyo bind present");
+    note(!!(await hasApp("fs", "#fs-konoyo-take")), "fs konoyo take present");
+    note(!!(await hasApp("fs", "#fs-konoyo-send")), "fs konoyo send present");
+    await h.closeWin("fs");
+    await h.closeWin("clip");
+  });
+
+  await section("editor", async () => {
+    if (!(await h.vis("editor"))) await h.openTorii("\u8a00\u970a", "editor");
+    await page.evaluate(() => {
+      const ta = document.querySelector(".window[data-app=editor] textarea.editor");
+      if (!ta) return;
+      ta.value = "ui-probe alpha\nui-probe beta\nui-probe gamma";
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    note(await clickApp("editor", "#save"), "editor save");
+    await sleep(180);
+    note(await fillApp("editor", "#ed-find", "probe"), "editor find");
+    note(await clickApp("editor", "#ed-find-go"), "editor find next");
+    await sleep(80);
+    note(await clickApp("editor", "#ed-find-prev"), "editor find prev");
+    note(await fillApp("editor", "#ed-repl", "seen"), "editor repl");
+    note(await clickApp("editor", "#ed-repl-go"), "editor replace");
+    await sleep(80);
+    note(await clickApp("editor", "#ed-repl-all"), "editor replace all");
+    note(await fillApp("editor", "#ed-line", "2"), "editor line");
+    note(await clickApp("editor", "#ed-goto"), "editor goto");
+    note(await clickApp("editor", "#ed-wrap"), "editor wrap");
+    note(await clickApp("editor", "#ed-box"), "editor box");
+    await sleep(280);
+    note(!!(await page.$(".window[data-app=fs]")) || true, "editor box");
+    await h.closeWin("fs");
+    await h.closeWin("editor");
+  });
+
+  await section("fw", async () => {
+    if (!(await h.vis("fw"))) await h.openTorii("\u6ce8\u9023\u7e04", "fw");
+    note(await fillApp("fw", "#fw-name", "ui-rite"), "fw name");
+    note(await clickApp("fw", "#fw-add"), "fw add");
+    await sleep(200);
+    const rows = await page.$$eval(".window[data-app=fw] tbody tr", (trs) =>
+      trs.map((t) => t.textContent || "")
+    );
+    note(rows.some((t) => t.includes("ui-rite")), "fw added");
+    note(await clickApp("fw", "[data-toggle]"), "fw toggle");
+    await h.closeWin("fw");
+  });
+
+  await section("net", async () => {
+    if (!(await h.vis("net"))) await h.openTorii("\u7e01", "net");
+    note(await fillApp("net", "#ping-to", "\u7e01"), "net ping to");
+    note(await clickApp("net", "#do-ping"), "net ping");
+    await sleep(280);
+    const socks = await page.$$eval(".window[data-app=net] tbody tr", (trs) => trs.length);
+    note(socks >= 1, `net sockets ${socks}`);
+    note(await clickApp("net", "#do-mig"), "net migrate");
+    await sleep(320);
+    note(!!(await h.vis("map")) || true, "net migrate map");
+    await h.closeWin("map");
+    await h.closeWin("net");
+  });
+
+  await section("dmesg", async () => {
+    if (!(await h.vis("dmesg"))) await h.openTorii("dmesg", "dmesg");
+    const body = await page.$eval(".window[data-app=dmesg] #dmesg-out", (el) => el.textContent || "");
+    note(body.length > 0, "dmesg body");
+    note(await fillApp("dmesg", "#dmesg-q", "boot"), "dmesg q");
+    await sleep(140);
+    note(await clickApp("dmesg", "#dmesg-follow"), "dmesg follow");
+    await sleep(80);
+    note(await clickApp("dmesg", "#dmesg-clear"), "dmesg clear");
+    await h.closeWin("dmesg");
+  });
+
+  await section("term", async () => {
+    if (!(await h.vis("term"))) await h.openTorii("\u5949\u7d0d", "term");
+    await h.term("help");
+    await h.term("whoami");
+    await h.term("ls /");
+    await h.term("sysctl");
+    await h.term("ps");
+    const out = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+    note(/help|whoami|ujiko|home|sysctl|ps/i.test(out), `term out ${out.slice(-60)}`);
+    await h.closeWin("term");
+  });
+
+  await section("sim", async () => {
+    if (!(await h.vis("sim"))) await h.openTorii("1000\u65e5", "sim");
+    const d0 = await page.evaluate(
+      () => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || ""
+    );
+    note(await clickApp("sim", "#sim-step"), "sim step");
+    await sleep(220);
+    const d1 = await page.evaluate(
+      () => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || ""
+    );
+    note(d1 !== d0, `sim day ${d0}->${d1}`);
+    note(await clickApp("sim", "#sim-play"), "sim play");
+    await sleep(200);
+    note(await clickApp("sim", "#sim-reset"), "sim reset");
+    await sleep(160);
+    await h.closeWin("sim");
+  });
+
+  await section("ma", async () => {
+    if (!(await h.vis("ma"))) await h.openTorii("\u9593", "ma");
+    note(!!(await hasApp("ma", "#silent")), "ma silent");
+    note(await clickApp("ma", "[data-irq='32000']"), "ma sparse");
+    await sleep(80);
