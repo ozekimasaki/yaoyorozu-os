@@ -1,0 +1,53 @@
+name: assemble-prefecture-svg
+on:
+  push:
+    paths:
+      - ".github/workflows/assemble-prefecture-svg.yml"
+      - "svg/_parts/**"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assemble exact 47-pref SVG
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import subprocess
+          head = subprocess.check_output(
+              [
+                  "git",
+                  "show",
+                  "f616b3382e20967ac1c76d0532fd2dabb3c0cb8b:svg/japan-prefectures.svg",
+              ]
+          )
+          parts = [Path(f"svg/_parts/{i}.txt").read_bytes() for i in range(25, 63)]
+          data = head + b"".join(parts)
+          blob = hashlib.sha1(b"blob %d\x00" % len(data) + data).hexdigest()
+          prefs = data.count(b"data-pref=")
+          print("bytes", len(data), "blob", blob, "prefs", prefs)
+          if (
+              len(data) != 68496
+              or blob != "d7472aa5a644dbe4f4e5bf4da068684a8db0a3dc"
+              or prefs != 47
+          ):
+              raise SystemExit(f"TRUNCATED {blob} {len(data)} {prefs}")
+          Path("svg/japan-prefectures.svg").write_bytes(data)
+          PY
+      - name: Commit assembled SVG
+        run: |
+          git config user.email "ozekimasaki@users.noreply.github.com"
+          git config user.name "MasakiOzeki"
+          git add svg/japan-prefectures.svg
+          if git diff --cached --quiet; then
+            echo "no change"
+            exit 0
+          fi
+          git commit -m "feat(map): 列島SVGを47県の本体にする"
+          git push
