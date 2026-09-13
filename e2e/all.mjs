@@ -55,3 +55,18 @@ page._yaoUrl = base;
 page.setDefaultTimeout(20000);
 await page.setViewport({ width: 1400, height: 900 });
 const h = attachPage(page, { fails, note });
+
+async function section(name, fn) {
+  try {
+    await h.closeKashiwa();
+    await fn();
+  } catch (err) {
+    note(false, `${name}: ${err.message}`);
+    await h.closeKashiwa();
+    await page.evaluate(() => {
+      document.getElementById("torii-gate")?.classList.remove("open");
+      document.getElementById("win-switcher")?.classList.remove("open");
+      document.getElementById("space-switcher")?.classList.remove("open");
+    });
+  }
+}
