@@ -348,3 +348,53 @@ try {
     note(await clickApp("fs", "[data-mark='/etc']"), "fs mark etc");
     await sleep(220);
     note(await clickApp("fs", "[data-mark='/var/muen']"), "fs mark muen");
+    await sleep(180);
+    note(await clickApp("fs", "[data-mark='/var/watari']"), "fs mark watari");
+    await sleep(180);
+    note(await clickApp("fs", "[data-mark='/var/utsushi']"), "fs mark utsushi");
+    note(!!(await hasApp("fs", "#fs-sweep")), "fs sweep");
+    note(!!(await hasApp("fs", "#fs-utsuwa-track")), "fs utsuwa");
+    note(await clickApp("fs", "#fs-sweep"), "fs sweep click");
+    await sleep(180);
+    note(await clickApp("fs", "[data-mark='/konoyo']"), "fs mark konoyo");
+    await sleep(180);
+    await page.evaluate(() => {
+      const go = document.querySelector(".window[data-app=fs] #fs-go");
+      if (!go) return;
+      go.value = `/home/${document.querySelector(".window[data-app=sys]") ? "" : ""}`;
+    });
+    const home = await page.evaluate(() => {
+      const go = document.querySelector(".window[data-app=fs] #fs-go");
+      const mark = document.querySelector(".window[data-app=fs] [data-mark*='/home/']");
+      if (mark) {
+        mark.click();
+        return mark.dataset.mark;
+      }
+      if (go) {
+        const ujiko = document.getElementById("menubar-meta")?.textContent || "";
+        void ujiko;
+      }
+      return "";
+    });
+    if (!home) {
+      await page.evaluate(() => document.querySelector(".window[data-app=fs] [data-mark]")?.click());
+    }
+    await sleep(200);
+    await page.evaluate(() => {
+      const mark = [...document.querySelectorAll(".window[data-app=fs] [data-mark]")].find((b) =>
+        (b.dataset.mark || "").startsWith("/home/")
+      );
+      mark?.click();
+    });
+    await sleep(240);
+    note(await fillApp("fs", "#fs-name", "ui-box"), "fs name box");
+    note(await clickApp("fs", "#fs-mkdir"), "fs mkdir");
+    await sleep(220);
+    note(await fillApp("fs", "#fs-name", "ui-fuda.ofuda"), "fs name fuda");
+    note(await clickApp("fs", "#fs-new"), "fs new");
+    await sleep(240);
+    const made = await page.evaluate(() =>
+      [...document.querySelectorAll(".window[data-app=fs] .fs-tree [data-path]")].some((b) =>
+        (b.dataset.path || "").includes("ui-fuda.ofuda")
+      )
+    );
