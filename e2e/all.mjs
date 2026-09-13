@@ -348,3 +348,153 @@ try {
   await sleep(200);
   await h.term("assoc");
   await h.term("cat /proc/apps");
+  const lifeOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+  note(/\.txt\s+editor|text\/plain\s+editor/.test(lifeOut), `assoc \u8868 ${lifeOut.slice(-80)}`);
+  note(/sleeping\s+oncall/.test(lifeOut), `\u7a93\u4f11\u6b62 ${lifeOut.slice(-120)}`);
+  await h.term("open /etc/assoc");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=editor]")), "assoc \u3067\u8a00\u970a");
+  await h.closeWin("editor");
+  await h.term("open -a fs /etc");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=fs]")), "open -a fs");
+  await h.closeWin("fs");
+  await h.term("journal");
+  await h.term("cat /proc/journal");
+  const journalOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+  note(/boot|exec/.test(journalOut), `\u65e5\u8a8c ${journalOut.slice(-80)}`);
+  await h.term("share -a clip /etc/assoc");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=clip]")), "share clip");
+  await h.closeWin("clip");
+  await h.closeWin("term");
+  await page.evaluate(() => document.querySelector(".window[data-app=oncall] .win-close")?.click());
+  await sleep(200);
+
+  const menu = await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    const icon = document.querySelector(".desk-icon[data-path]");
+    if (!icon) return false;
+    const r = icon.getBoundingClientRect();
+    icon.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: r.left + 10,
+        clientY: r.top + 10,
+      })
+    );
+    return true;
+  });
+  note(menu, "\u5353\u30e1\u30cb\u30e5\u30fc");
+  await sleep(180);
+  note(await page.$eval("#desk-icon-menu", (el) => !el.hidden).catch(() => false), "\u672d\u30e1\u30cb\u30e5\u30fc");
+  await page.click("#desk-icon-menu [data-act=with]");
+  await sleep(220);
+  note(await page.$eval("#os-sheet", (el) => !el.hidden).catch(() => false), "\u958b\u304f\u30b7\u30fc\u30c8");
+  note(!!(await page.$("#os-sheet [data-with=editor]")), "\u30b7\u30fc\u30c8\u8a00\u970a");
+  await page.click("#os-sheet [data-with=editor]");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=editor]")), "\u30b7\u30fc\u30c8\u3067\u8a00\u970a");
+  await h.closeWin("editor");
+
+  await h.openTorii("\u97f3\u970a", "oto");
+  note(!!(await h.vis("oto")), "\u97f3\u970a");
+  note(!!(await page.$(".window[data-app=oto] #oto-invite")), "\u62db\u304f");
+  note(!!(await page.$(".window[data-app=oto] [data-seat]")), "\u5ea7");
+  await page.evaluate(() => document.querySelector(".window[data-app=oto] #oto-invite")?.click());
+  await sleep(360);
+  note(await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "live").catch(() => false), "\u62db\u3044\u3066\u9cf4\u308b");
+  note(await page.evaluate(() => document.documentElement.dataset.oto === "live"), "\u6838\u306b\u9cf4\u308b");
+  note(await page.evaluate(() => {
+    const pill = document.getElementById("oto-pill");
+    return !!(pill && !pill.hidden);
+  }), "\u5353\u306b\u97f3\u970a");
+  await page.evaluate(() => document.querySelector(".window[data-app=oto] .win-min")?.click());
+  await sleep(220);
+  note(await page.evaluate(() => {
+    const app = document.querySelector(".window[data-app=oto] .oto-app");
+    return !!(app && app.dataset.state === "live" && document.documentElement.dataset.oto === "live");
+  }), "\u3057\u307e\u3063\u3066\u3082\u9cf4\u308b");
+  await page.evaluate(() => document.getElementById("oto-pill")?.click());
+  await sleep(280);
+  note(!!(await h.vis("oto")), "\u672d\u3067\u8d77\u3053\u3059");
+  await page.evaluate(() => document.querySelector(".window[data-app=oto] #oto-ma")?.click());
+  await sleep(200);
+  note(await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "ma").catch(() => false), "\u97f3\u3092\u9593\u3078");
+  await h.closeWin("oto");
+  await sleep(160);
+  note(await page.evaluate(() => document.documentElement.dataset.oto !== "live"), "\u9001\u3063\u3066\u9759");
+  await h.openTorii("\u5949\u7d0d", "term");
+  await h.term("open /etc/oto/\u67cf\u624b.oto");
+  await sleep(400);
+  note(!!(await page.$(".window[data-app=oto]")), "assoc .oto");
+  await h.term("oto");
+  await h.term("cat /proc/oto");
+  const otoOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+  note(/state=/.test(otoOut), `proc oto ${otoOut.slice(-70)}`);
+  await h.closeWin("oto");
+  await h.closeWin("term");
+
+  await runOsLayers({ page, h, browser, base, sleep, note, section, attachPage, fails });
+
+  await h.openTorii("1000\u65e5", "sim");
+  note(!!(await h.vis("sim")), "1000\u65e5");
+  const day0 = await page.evaluate(() => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || "");
+  await page.evaluate(() => document.querySelector(".window[data-app=sim] #sim-step")?.click());
+  await sleep(300);
+  const day1 = await page.evaluate(() => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || "");
+  note(day1 !== "" && day1 !== day0, `1000\u65e5 1\u65e5 ${day0}->${day1}`);
+  await h.closeWin("sim");
+
+  await h.openTorii("\u9593", "ma");
+  note(!!(await h.vis("ma")), "\u9593\u30a2\u30d7\u30ea");
+  note(!!(await page.$(".window[data-app=ma] #silent")), "\u9593\u306e\u6c88\u9ed9");
+  await page.evaluate(() => document.querySelector(".window[data-app=ma] [data-irq='8000']")?.click());
+  await sleep(150);
+  await h.closeWin("ma");
+
+  await page.click("#clock");
+  await h.awaitApp("cal");
+  note(!!(await h.vis("cal")), "\u796d\u66a6");
+  await page.waitForSelector(".window[data-app=cal] [data-d]");
+  const cal = await page.evaluate(async () => {
+    const win = document.querySelector(".window[data-app=cal]:not(.is-min)");
+    const today = new Date().getDate();
+    const target = today === 12 ? 13 : 12;
+    win.querySelector(`[data-d="${target}"]`)?.click();
+    await new Promise((r) => setTimeout(r, 800));
+    const eds = [...document.querySelectorAll(".window[data-app=editor] .ed-path")].map((p) => p.textContent || "");
+    return { target, ed: eds.find((t) => t.includes("/cal/")) || eds.join(" | ") };
+  });
+  note((cal.ed || "").includes("/cal/") && (cal.ed || "").includes(".ofuda"), `\u796d\u66a6\u306e\u65e5 ${cal.ed}`);
+  await h.closeWin("editor");
+  await h.closeWin("cal");
+
+  await h.openTorii("\u63a7\u3048", "clip");
+  note(!!(await h.vis("clip")), "\u63a7\u3048");
+  const clipN = await page.$$eval(".window[data-app=clip] .fs-tree [data-i], .window[data-app=clip] .fs-tree button", (els) => els.length);
+  note(clipN >= 1, `\u63a7\u3048\u306e\u672d ${clipN}`);
+  await h.closeWin("clip");
+
+  await h.openTorii("\u6a5f\u68b0", "sys");
+  note(!!(await h.vis("sys")), "\u6a5f\u68b0");
+  const sys = await page.evaluate(() => ({
+    lede: document.querySelector(".window[data-app=sys] .lede")?.textContent || "",
+    uid: document.querySelector(".window[data-app=sys] [data-k=uid] h3")?.textContent || "",
+    disk: document.querySelector(".window[data-app=sys] [data-k=disk]")?.textContent || "",
+    power: document.querySelector(".window[data-app=sys] [data-k=up] h3")?.textContent || "",
+  }));
+  note(sys.lede.includes("\u30d6\u30e9\u30a6\u30b6") || sys.lede.length > 0, `\u6a5f\u68b0\u30ea\u30fc\u30c9 ${sys.lede}`);
+  note(!!sys.uid, `\u6a5f\u68b0UID ${sys.uid}`);
+  note(/DISK|\u672d/.test(sys.disk), `\u6a5f\u68b0DISK ${sys.disk}`);
+  note(!!(await page.$(".window[data-app=sys] #sys-keshiki-last")), "\u6a5f\u68b0\u666f\u8272");
+  note(!!(await page.$(".window[data-app=sys] [data-scale]")), "\u6a5f\u68b0SCALE");
+  note(!!(await page.$(".window[data-app=sys] #sys-utsuwa-sweep")), "\u6a5f\u68b0\u5668");
+  note(!!(await page.$(".window[data-app=sys] [data-okoshi]")), "\u6a5f\u68b0\u8d77\u3053\u3057");
+  note(!!(await page.$(".window[data-app=sys] #sys-kagi-lock")), "\u6a5f\u68b0\u9375");
+  await h.closeWin("sys");
+
+  await page.evaluate(async () => {
+    const { kernel } = await import("/js/kernel.js");
+    const p = `/home/${kernel.state.ujiko}/muen-keep.ofuda`;
