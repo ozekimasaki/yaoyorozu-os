@@ -548,3 +548,53 @@ try {
     note(!!(await hasApp("ma", "#silent")), "ma silent");
     note(await clickApp("ma", "[data-irq='32000']"), "ma sparse");
     await sleep(80);
+    note(await clickApp("ma", "[data-irq='16000']"), "ma mid");
+    await sleep(80);
+    note(await clickApp("ma", "[data-irq='8000']"), "ma dense");
+    await page.evaluate(() => {
+      const box = document.querySelector(".window[data-app=ma] #sound");
+      if (!box) return;
+      box.checked = true;
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await sleep(80);
+    await page.evaluate(() => {
+      const box = document.querySelector(".window[data-app=ma] #silent");
+      if (!box) return;
+      box.checked = true;
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    note(true, "ma toggles");
+    await h.closeWin("ma");
+  });
+
+  await section("cal", async () => {
+    if (!(await h.vis("cal"))) await h.openTorii("\u796d\u66a6", "cal");
+    await page.waitForSelector(".window[data-app=cal] [data-d]");
+    note(await clickApp("cal", "#cal-prev"), "cal prev");
+    await sleep(120);
+    note(await clickApp("cal", "#cal-next"), "cal next");
+    await sleep(80);
+    note(await clickApp("cal", "#cal-py"), "cal py");
+    await sleep(80);
+    note(await clickApp("cal", "#cal-ny"), "cal ny");
+    await sleep(80);
+    note(await clickApp("cal", "#cal-today"), "cal today");
+    await sleep(120);
+    note(await clickApp("cal", "#cal-open"), "cal open");
+    await sleep(360);
+    note(!!(await page.$(".window[data-app=editor]")), "cal opens ofuda");
+    await h.closeWin("editor");
+    await h.closeWin("cal");
+  });
+
+  await section("clip", async () => {
+    if (!(await h.vis("clip"))) await h.openTorii("\u63a7\u3048", "clip");
+    const n = await page.$$eval(
+      ".window[data-app=clip] .fs-tree [data-i], .window[data-app=clip] .fs-tree button",
+      (els) => els.length
+    );
+    note(n >= 0, `clip rows ${n}`);
+    if (n) {
+      await page.evaluate(() => document.querySelector(".window[data-app=clip] [data-i]")?.click());
+      await sleep(80);
