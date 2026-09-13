@@ -1,0 +1,75 @@
+#keshiki-veil {
+  position: absolute;
+  inset: 0;
+  background-color: transparent;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+html[data-keshiki="1"] #keshiki-veil {
+  background-color: #0c0b09;
+}
+
+html[data-keshiki="1"] #keshiki-veil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 11, 9, 0.38);
+  pointer-events: none;
+}
+
+html[data-keshiki="1"] #kami-field {
+  visibility: hidden;
+}
+
+html[data-keshiki="1"] .desktop-veil {
+  opacity: 0.42;
+}
+
+.sys-board {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.sys-board .boot-actions {
+  margin: 8px 0 0;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.sys-board label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sys-board [data-scale].is-on,
+.sys-board [data-shade].is-on,
+.sys-board [data-okoshi].is-on {
+  outline: 1px solid var(--gold);
+}
+
+.utsuwa-track {
+  height: 6px;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.utsuwa-track span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+}
+
+.utsuwa-track.is-full span {
+  background: #c45a3a;
+}
+
+#fs-utsuwa-track {
+  margin: 0 0 8px;
+}
