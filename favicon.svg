@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Yaoyorozu OS">
+  <title>Yaoyorozu OS</title>
+  <rect width="32" height="32" fill="#0c0b09"/>
+  <rect x="2.2" y="5.2" width="27.6" height="3.2" fill="#c23a2b"/>
+  <rect x="4.4" y="8.7" width="23.2" height="2.4" fill="#a3221c"/>
+  <rect x="6.6" y="8.7" width="3.4" height="17.4" fill="#c23a2b"/>
+  <rect x="22" y="8.7" width="3.4" height="17.4" fill="#c23a2b"/>
+  <rect x="6.6" y="17.4" width="18.8" height="2.2" fill="#c9a227"/>
+  <rect x="10.2" y="11.4" width="2.3" height="5.4" fill="#e6c96a"/>
+  <rect x="19.5" y="11.4" width="2.3" height="5.4" fill="#e6c96a"/>
+</svg>

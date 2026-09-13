@@ -1,5 +1,5 @@
-const CACHE = "yaoyorozu-os-v1";
-const CORE = ["./", "index.html", "css/os.css", "css/map.css", "css/wm.css", "css/desktop.css", "css/irq.css", "js/main.js"];
+const CACHE = "yaoyorozu-os-v2";
+const CORE = ["./", "index.html", "favicon.svg", "css/os.css", "css/map.css", "css/wm.css", "css/desktop.css", "css/irq.css", "js/main.js"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
