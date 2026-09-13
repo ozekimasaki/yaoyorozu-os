@@ -648,3 +648,53 @@ try {
   await section("muen", async () => {
     await page.evaluate(async () => {
       const { kernel } = await import("/js/kernel.js");
+      const p = `/home/${kernel.state.ujiko}/ui-muen.ofuda`;
+      await kernel.vfs.write(p, "muen-probe");
+      await kernel.vfs.moveToMuen(p);
+    });
+    if (!(await h.vis("muen"))) await h.openTorii("\u7121\u7e01", "muen");
+    await sleep(220);
+    const n = await page.$$eval(".window[data-app=muen] .fs-tree [data-path]", (els) => els.length);
+    note(n >= 1, `muen rows ${n}`);
+    await page.evaluate(() => document.querySelector(".window[data-app=muen] [data-path]")?.click());
+    await sleep(80);
+    note(await clickApp("muen", "#muen-read"), "muen read");
+    await sleep(280);
+    if (await page.$(".window[data-app=editor]")) await h.closeWin("editor");
+    await page.evaluate(() => document.querySelector(".window[data-app=muen] [data-path]")?.click());
+    await sleep(80);
+    note(await clickApp("muen", "#muen-restore"), "muen restore");
+    await sleep(200);
+    await h.closeWin("muen");
+  });
+
+  await section("oto", async () => {
+    if (!(await h.vis("oto"))) await h.openTorii("\u97f3\u970a", "oto");
+    note(!!(await hasApp("oto", "#oto-invite")), "oto invite");
+    note(!!(await hasApp("oto", "[data-seat]")), "oto seats");
+    note(await clickApp("oto", "#oto-next"), "oto next");
+    await sleep(80);
+    note(await clickApp("oto", "#oto-prev"), "oto prev");
+    note(await clickApp("oto", "#oto-loop"), "oto loop");
+    note(await clickApp("oto", "#oto-invite"), "oto play");
+    await sleep(320);
+    note(
+      await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "live").catch(() => false),
+      "oto live"
+    );
+    note(await clickApp("oto", "#oto-ma"), "oto ma");
+    await sleep(160);
+    note(
+      await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "ma").catch(() => false),
+      "oto ma state"
+    );
+    note(await clickApp("oto", "#oto-send"), "oto send");
+    await sleep(160);
+    await h.closeWin("oto");
+  });
+
+  await section("watari", async () => {
+    if (!(await h.vis("watari"))) await h.openTorii("\u6e21\u308a", "watari");
+    note(!!(await hasApp("watari", "#watari-invite")), "watari invite");
+    note(await clickApp("watari", "#watari-via-shrine"), "watari shrine");
+    note(await fillApp("watari", "#watari-kotoba", "ui-watari"), "watari kotoba");
