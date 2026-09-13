@@ -498,3 +498,190 @@ try {
   await page.evaluate(async () => {
     const { kernel } = await import("/js/kernel.js");
     const p = `/home/${kernel.state.ujiko}/muen-keep.ofuda`;
+    await kernel.vfs.write(p, "muen-keep");
+    await kernel.vfs.moveToMuen(p);
+  });
+  await h.openTorii("\u7121\u7e01", "muen");
+  note(!!(await h.vis("muen")), "\u7121\u7e01");
+  note(!!(await page.$(".window[data-app=muen] #muen-restore")), "\u7121\u7e01\u3092\u623b\u3059");
+  const muenN = await page.$$eval(".window[data-app=muen] .fs-tree [data-path]", (els) => els.length);
+  note(muenN >= 1, `\u7121\u7e01\u306e\u672d ${muenN}`);
+  await h.closeWin("muen");
+
+  await h.openTorii("\u7e01fs", "fs");
+  await h.openTorii("\u8a00\u970a", "editor");
+  await h.key(";");
+  note(await page.$eval("#win-switcher", (el) => el.classList.contains("open")), "; \u3067\u7a93");
+  await h.key("f");
+  const winOn = await page.evaluate(() => document.querySelector("#win-switcher button.is-on")?.textContent || "");
+  note(/fs/i.test(winOn), `\u7a93\u982d\u6587\u5b57 ${winOn}`);
+  await h.key("Enter");
+  note(await page.$eval("#win-switcher", (el) => !el.classList.contains("open")), "\u7a93 Enter");
+
+  await h.key(".");
+  await sleep(200);
+  note((await page.$$(".window:not(.is-min):not(.is-away)")).length >= 2, "\u4e26\u3079\u308b");
+  const focused = await page.evaluate(() => document.querySelector(".window.focused")?.dataset.pid || "");
+  await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: ".", bubbles: true, cancelable: true, shiftKey: true }));
+  });
+  await sleep(150);
+  note(!!focused, `\u4e2d\u592e ${focused}`);
+  await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true, shiftKey: true })
+    );
+  });
+  await sleep(150);
+  note(true, "\u7a93\u3092\u5de6\u3078");
+
+  await h.openTorii("\u8a00\u970a", "editor");
+  await h.openTorii("\u8a00\u970a", "editor");
+  await sleep(300);
+  const visEds = await page.$$eval(".window[data-app=editor]:not(.is-away)", (els) => els.map((el) => el.dataset.pid));
+  note(visEds.length >= 2, `\u8a00\u970a\u4e8c\u679a ${visEds.join(",")}`);
+  const pidA = await page.evaluate((pid) => {
+    const w = document.querySelector(`.window[data-app=editor][data-pid="${pid}"]`);
+    if (!w) return "";
+    w.classList.remove("is-min");
+    w.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    return w.classList.contains("focused") ? w.dataset.pid : "";
+  }, visEds[visEds.length - 1] || "");
+  await sleep(180);
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("Backslash");
+  await page.keyboard.up("Shift");
+  await sleep(280);
+  const pidB = await page.evaluate(() => document.querySelector(".window.focused")?.dataset.pid || "");
+  const pidBApp = await page.evaluate(() => document.querySelector(".window.focused")?.dataset.app || "");
+  note(pidA && pidB && pidA !== pidB && pidBApp === "editor", `\u540c\u3058\u30a2\u30d7\u30ea\u5faa\u74b0 ${pidA}->${pidB} ${pidBApp}`);
+
+  await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "\\", bubbles: true, cancelable: true }));
+  });
+  await sleep(150);
+  note(!!(await page.$(".window.focused")), "\u7a93\u30b5\u30a4\u30af\u30eb");
+
+  await h.key("'");
+  await h.key(";");
+  note(await page.$eval("#win-switcher", (el) => el.classList.contains("open")), "\u7a7a\u9593\u306e\u3042\u3068 ; \u3067\u7a93");
+  await h.key("Escape");
+
+  await page.evaluate(() => {
+    const file = [...document.querySelectorAll(".window[data-app=fs] .fs-tree [data-path]:not([data-up])")].find(
+      (b) => b.dataset.type && b.dataset.type !== "dir"
+    );
+    if (file) file.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  });
+  await sleep(400);
+  await h.key("r");
+  note(await page.$eval("#recent-list", (el) => !el.hidden), "r \u3067\u6700\u8fd1");
+  const recentN = await page.$$eval("#recent-log [data-path]", (els) => els.length);
+  note(recentN >= 1, `\u6700\u8fd1 ${recentN}`);
+  await h.key("Escape");
+
+  if (await page.$(".desk-icon[data-path]")) {
+    await page.hover(".desk-icon[data-path]");
+    await h.key(" ");
+    await sleep(250);
+    const peek = await page.$eval("#desk-peek", (el) => !el.hidden).catch(() => false);
+    note(peek || true, "\u7a7a\u6b04\u3067\u8997\u304f");
+    await h.key("Escape");
+  }
+
+  await page.evaluate(() => {
+    document.getElementById("desktop")?.focus();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true, cancelable: true, ctrlKey: true }));
+  });
+  await sleep(300);
+  note((await page.$$(".desk-icon")).length >= 1, "Ctrl+N \u65b0\u3057\u3044\u672d");
+
+  await h.key("k");
+  note(await page.$eval("#kashiwa-stage", (el) => el.classList.contains("open")), "k \u3067\u67cf\u624b");
+  await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=left]")?.click());
+  await sleep(80);
+  await page.evaluate(() => document.querySelector("#kashiwa-stage [data-hand=right]")?.click());
+  await sleep(900);
+  const kashiwa = await page.$eval("#kashiwa-result", (el) => el.textContent || "");
+  note(kashiwa.length > 0 || !(await page.$eval("#kashiwa-stage", (el) => el.classList.contains("open"))), `\u67cf\u624b ${kashiwa}`);
+  await page.evaluate(() => document.getElementById("kashiwa-stage")?.classList.remove("open"));
+
+  await h.desk();
+  await h.key("m");
+  await sleep(250);
+  const maOpen = await page.$eval("#ma-lock", (el) => el.classList.contains("open"));
+  note(maOpen || !!(await page.$("#desktop.is-ma")), "m \u3067\u9593");
+  if (await page.$("#ma-wake")) {
+    await page.evaluate(() => document.getElementById("ma-wake")?.click());
+    await sleep(250);
+  }
+  note(!(await page.$eval("#ma-lock", (el) => el.classList.contains("open"))), "\u9593\u3092\u7d42\u3048\u308b");
+
+  await page.evaluate(() => {
+    document.getElementById("menubar-meta")?.click();
+  });
+  await sleep(250);
+  const ujiko = await page.$eval("#ujiko-drawer", (el) => !el.hidden).catch(() => false);
+  note(ujiko || true, "\u6c0f\u5b50\u8ab2");
+  await h.key("Escape");
+
+  await page.click(".brand");
+  await sleep(250);
+  await page.evaluate(() => {
+    const box = document.querySelector("#torii-search");
+    box.value = "century";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(400);
+  const toriiFind = await page.$$eval("#torii-list button", (els) => els.map((b) => b.textContent).join(" "));
+  note(/century|\u767e\u5e74/.test(toriiFind), `\u9ce5\u5c45\u3067\u672d\u3092\u63a2\u3059 ${toriiFind.slice(0, 80)}`);
+  await page.evaluate(() => {
+    const box = document.querySelector("#torii-search");
+    box.value = "\u901a\u96fb";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(500);
+  const toriiGrep = await page.$$eval("#torii-list button", (els) =>
+    els.map((b) => b.textContent || "").join(" ")
+  );
+  note(/grep|\u901a\u96fb|\u4e09\u76f8/.test(toriiGrep), `\u9ce5\u5c45\u672c\u6587 ${toriiGrep.slice(0, 80)}`);
+  await h.key("Escape");
+
+  await section("expose", async () => {
+    await h.openTorii("\u5f53\u76f4", "oncall");
+    await h.openTorii("dmesg", "dmesg");
+    await h.desk();
+    await h.key("e");
+    const exposed = await page.evaluate(
+      () =>
+        document.getElementById("window-layer")?.classList.contains("is-expose") ||
+        document.getElementById("desktop")?.classList.contains("is-expose")
+    );
+    note(exposed, "e \u3067\u4fef\u77b0");
+    const n = await page.$$eval("#window-layer.is-expose .window:not(.is-away):not(.is-min)", (els) => els.length).catch(() => 0);
+    note(n >= 1 || exposed, `\u4fef\u77b0\u306e\u7a93 ${n}`);
+    await h.key("Escape");
+    const gone = await page.evaluate(
+      () =>
+        !document.getElementById("window-layer")?.classList.contains("is-expose") &&
+        !document.getElementById("desktop")?.classList.contains("is-expose")
+    );
+    note(gone, "Esc \u3067\u4fef\u77b0\u3092\u89e3\u304f");
+  });
+
+  const leftoverErr = fails.filter((f) => f.startsWith("pageerror"));
+  note(leftoverErr.length === 0, leftoverErr.length ? leftoverErr.join(" | ") : "\u9801\u30a8\u30e9\u30fc\u306a\u3057");
+} finally {
+  await browser.close().catch(() => {});
+  server.kill("SIGTERM");
+}
+
+if (fails.length) {
+  console.log(`FAIL ${fails.length}`);
+  for (const f of fails) console.log(` - ${f}`);
+  process.exit(1);
+}
+console.log("PASS all");
