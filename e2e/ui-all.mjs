@@ -398,3 +398,53 @@ try {
         (b.dataset.path || "").includes("ui-fuda.ofuda")
       )
     );
+    note(made, "fs created fuda");
+    await page.evaluate(() => {
+      const file = [...document.querySelectorAll(".window[data-app=fs] .fs-tree [data-path]")].find((b) =>
+        (b.dataset.path || "").includes("ui-fuda.ofuda")
+      );
+      file?.click();
+    });
+    await sleep(140);
+    note(await clickApp("fs", "#fs-copy"), "fs copy");
+    await sleep(80);
+    note(await clickApp("fs", "#fs-stat"), "fs stat");
+    await sleep(160);
+    note(await page.$eval("#file-stat", (el) => !el.hidden).catch(() => false), "file-stat");
+    await h.key("Escape");
+    note(await clickApp("fs", "#fs-path"), "fs path");
+    await sleep(80);
+    note(await clickApp("fs", "#fs-sort"), "fs sort");
+    await sleep(80);
+    note(await clickApp("fs", "#fs-share"), "fs share");
+    await sleep(180);
+    const sheet = await page.$eval("#os-sheet", (el) => !el.hidden).catch(() => false);
+    note(sheet, "fs share sheet");
+    if (sheet) {
+      await page.evaluate(() => document.querySelector("#os-sheet [data-with=clip], #os-sheet [data-share=clip]")?.click());
+      await sleep(280);
+    }
+    await page.evaluate(() => {
+      const sheetEl = document.getElementById("os-sheet");
+      if (sheetEl) sheetEl.hidden = true;
+    });
+    note(await clickApp("fs", "#fs-with"), "fs with");
+    await sleep(180);
+    const withSheet = await page.$eval("#os-sheet", (el) => !el.hidden).catch(() => false);
+    if (withSheet) {
+      await page.evaluate(() => document.querySelector("#os-sheet [data-with=editor]")?.click());
+      await sleep(320);
+      note(!!(await page.$(".window[data-app=editor]")), "fs with editor");
+      await h.closeWin("editor");
+    } else {
+      note(true, "fs with no pick");
+    }
+    note(!!(await hasApp("fs", "#fs-konoyo-bind")), "fs konoyo bind present");
+    note(!!(await hasApp("fs", "#fs-konoyo-take")), "fs konoyo take present");
+    note(!!(await hasApp("fs", "#fs-konoyo-send")), "fs konoyo send present");
+    await h.closeWin("fs");
+    await h.closeWin("clip");
+  });
+
+  await section("editor", async () => {
+    if (!(await h.vis("editor"))) await h.openTorii("\u8a00\u970a", "editor");
