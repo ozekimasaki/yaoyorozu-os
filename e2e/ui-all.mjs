@@ -498,3 +498,53 @@ try {
     await sleep(320);
     note(!!(await h.vis("map")) || true, "net migrate map");
     await h.closeWin("map");
+    await h.closeWin("net");
+  });
+
+  await section("dmesg", async () => {
+    if (!(await h.vis("dmesg"))) await h.openTorii("dmesg", "dmesg");
+    const body = await page.$eval(".window[data-app=dmesg] #dmesg-out", (el) => el.textContent || "");
+    note(body.length > 0, "dmesg body");
+    note(await fillApp("dmesg", "#dmesg-q", "boot"), "dmesg q");
+    await sleep(140);
+    note(await clickApp("dmesg", "#dmesg-follow"), "dmesg follow");
+    await sleep(80);
+    note(await clickApp("dmesg", "#dmesg-clear"), "dmesg clear");
+    await h.closeWin("dmesg");
+  });
+
+  await section("term", async () => {
+    if (!(await h.vis("term"))) await h.openTorii("\u5949\u7d0d", "term");
+    await h.term("help");
+    await h.term("whoami");
+    await h.term("ls /");
+    await h.term("sysctl");
+    await h.term("ps");
+    const out = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+    note(/help|whoami|ujiko|home|sysctl|ps/i.test(out), `term out ${out.slice(-60)}`);
+    await h.closeWin("term");
+  });
+
+  await section("sim", async () => {
+    if (!(await h.vis("sim"))) await h.openTorii("1000\u65e5", "sim");
+    const d0 = await page.evaluate(
+      () => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || ""
+    );
+    note(await clickApp("sim", "#sim-step"), "sim step");
+    await sleep(220);
+    const d1 = await page.evaluate(
+      () => document.querySelector(".window[data-app=sim] .sim-stats .v")?.textContent || ""
+    );
+    note(d1 !== d0, `sim day ${d0}->${d1}`);
+    note(await clickApp("sim", "#sim-play"), "sim play");
+    await sleep(200);
+    note(await clickApp("sim", "#sim-reset"), "sim reset");
+    await sleep(160);
+    await h.closeWin("sim");
+  });
+
+  await section("ma", async () => {
+    if (!(await h.vis("ma"))) await h.openTorii("\u9593", "ma");
+    note(!!(await hasApp("ma", "#silent")), "ma silent");
+    note(await clickApp("ma", "[data-irq='32000']"), "ma sparse");
+    await sleep(80);
