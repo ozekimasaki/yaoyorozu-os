@@ -248,3 +248,153 @@ try {
     await sleep(120);
     note(await clickApp("oncall", "[data-act=kashiwa]"), "oncall kashiwa");
     await sleep(180);
+    note(await page.$eval("#kashiwa-stage", (el) => el.classList.contains("open")), "oncall opens kashiwa");
+    await h.closeKashiwa();
+    note(await clickApp("oncall", "[data-act=map]"), "oncall map");
+    await sleep(360);
+    note(!!(await h.vis("map")), "oncall opens map");
+    await h.closeWin("map");
+    await h.closeWin("oncall");
+  });
+
+  await section("map", async () => {
+    if (!(await h.vis("map"))) await h.openTorii("\u5217\u5cf6", "map");
+    await page.waitForFunction(() => document.querySelector(".window[data-app=map] svg.japan-map .pref"));
+    const landN = await page.$$eval(
+      ".window[data-app=map]:not(.is-min):not(.is-away) svg.japan-map path.pref",
+      (els) => new Set(els.map((e) => e.dataset.pref || e.id)).size
+    );
+    note(landN === 47, `map paths ${landN}`);
+    const clicked = await page.evaluate(async () => {
+      const win = document.querySelector(".window[data-app=map]:not(.is-min)");
+      const space0 = document.getElementById("space-pill")?.textContent || "";
+      const other = [...win.querySelectorAll("svg .pref")].find((n) => !n.classList.contains("is-selected"));
+      if (other) other.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 180));
+      const sel = win.querySelector("#map-select");
+      if (sel) {
+        const next = [...sel.options].find((o) => o.value && o.value !== sel.value);
+        if (next) {
+          sel.value = next.value;
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+      await new Promise((r) => setTimeout(r, 160));
+      return {
+        still: !!document.querySelector(".window[data-app=map]:not(.is-min):not(.is-away)"),
+        same: space0 === (document.getElementById("space-pill")?.textContent || ""),
+        viewed: win.querySelector("svg .pref.is-view")?.dataset.pref || "",
+        selected: win.querySelector("svg .pref.is-selected")?.dataset.pref || "",
+        h2: win.querySelector("#map-panel h2")?.textContent || "",
+      };
+    });
+    note(clicked.still, "map click keeps window");
+    note(clicked.same, "map click keeps space");
+    note(!!clicked.viewed && clicked.viewed !== clicked.selected, `map click views ${clicked.viewed}`);
+    const jumped = await page.evaluate(async () => {
+      const win = document.querySelector(".window[data-app=map]:not(.is-min)");
+      const host = win.querySelector(".map-wrap");
+      host.focus();
+      host.dispatchEvent(new KeyboardEvent("keydown", { key: "\u6771", bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 80));
+      const viewed = win.querySelector("svg .pref.is-view")?.dataset.pref || "";
+      const enter = win.querySelector("[data-enter]");
+      if (enter) enter.click();
+      await new Promise((r) => setTimeout(r, 160));
+      return {
+        viewed,
+        h2: win.querySelector("#map-panel h2")?.textContent || "",
+        pill: document.getElementById("space-pill")?.textContent || "",
+      };
+    });
+    note(!!jumped.h2 || !!jumped.viewed, `map jump ${jumped.h2 || jumped.viewed}`);
+    note(/kernel:/.test(jumped.pill), `map enter ${jumped.pill}`);
+    await h.closeWin("map");
+  });
+
+  await section("proc", async () => {
+    if (!(await h.vis("proc"))) await h.openTorii("\u795e", "proc");
+    note(await fillApp("proc", "#spawn-name", "e2e-kami"), "proc name");
+    note(await fillApp("proc", "#spawn-role", "probe"), "proc role");
+    note(await clickApp("proc", "#spawn-btn"), "proc spawn");
+    await sleep(220);
+    note(await fillApp("proc", "#proc-q", "e2e-kami"), "proc filter");
+    await sleep(180);
+    const found = await page.$$eval(".window[data-app=proc] tbody tr", (trs) =>
+      trs.some((tr) => (tr.textContent || "").includes("e2e-kami"))
+    );
+    note(found, "proc spawned");
+    note(await clickApp("proc", "[data-act=hold]"), "proc hold");
+    await sleep(140);
+    note(await clickApp("proc", "[data-act=attach]"), "proc attach");
+    await sleep(140);
+    await fillApp("proc", "#proc-q", "");
+    await sleep(120);
+    note(await clickApp("proc", "#next"), "proc next");
+    await sleep(120);
+    note(await clickApp("proc", "#prev"), "proc prev");
+    await h.closeWin("proc");
+  });
+
+  await section("fs", async () => {
+    if (!(await h.vis("fs"))) await h.openTorii("\u7e01fs", "fs");
+    note(!!(await hasApp("fs", "#fs-filter")), "fs filter");
+    note(await fillApp("fs", "#fs-go", "/home"), "fs go /home");
+    await page.evaluate(() => {
+      const go = document.querySelector(".window[data-app=fs] #fs-go");
+      go?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    });
+    await sleep(280);
+    note(await clickApp("fs", "[data-mark='/etc']"), "fs mark etc");
+    await sleep(220);
+    note(await clickApp("fs", "[data-mark='/var/muen']"), "fs mark muen");
+    await sleep(180);
+    note(await clickApp("fs", "[data-mark='/var/watari']"), "fs mark watari");
+    await sleep(180);
+    note(await clickApp("fs", "[data-mark='/var/utsushi']"), "fs mark utsushi");
+    note(!!(await hasApp("fs", "#fs-sweep")), "fs sweep");
+    note(!!(await hasApp("fs", "#fs-utsuwa-track")), "fs utsuwa");
+    note(await clickApp("fs", "#fs-sweep"), "fs sweep click");
+    await sleep(180);
+    note(await clickApp("fs", "[data-mark='/konoyo']"), "fs mark konoyo");
+    await sleep(180);
+    await page.evaluate(() => {
+      const go = document.querySelector(".window[data-app=fs] #fs-go");
+      if (!go) return;
+      go.value = `/home/${document.querySelector(".window[data-app=sys]") ? "" : ""}`;
+    });
+    const home = await page.evaluate(() => {
+      const go = document.querySelector(".window[data-app=fs] #fs-go");
+      const mark = document.querySelector(".window[data-app=fs] [data-mark*='/home/']");
+      if (mark) {
+        mark.click();
+        return mark.dataset.mark;
+      }
+      if (go) {
+        const ujiko = document.getElementById("menubar-meta")?.textContent || "";
+        void ujiko;
+      }
+      return "";
+    });
+    if (!home) {
+      await page.evaluate(() => document.querySelector(".window[data-app=fs] [data-mark]")?.click());
+    }
+    await sleep(200);
+    await page.evaluate(() => {
+      const mark = [...document.querySelectorAll(".window[data-app=fs] [data-mark]")].find((b) =>
+        (b.dataset.mark || "").startsWith("/home/")
+      );
+      mark?.click();
+    });
+    await sleep(240);
+    note(await fillApp("fs", "#fs-name", "ui-box"), "fs name box");
+    note(await clickApp("fs", "#fs-mkdir"), "fs mkdir");
+    await sleep(220);
+    note(await fillApp("fs", "#fs-name", "ui-fuda.ofuda"), "fs name fuda");
+    note(await clickApp("fs", "#fs-new"), "fs new");
+    await sleep(240);
+    const made = await page.evaluate(() =>
+      [...document.querySelectorAll(".window[data-app=fs] .fs-tree [data-path]")].some((b) =>
+        (b.dataset.path || "").includes("ui-fuda.ofuda")
+      )
+    );
