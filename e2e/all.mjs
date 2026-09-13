@@ -32,3 +32,26 @@ const { fails, note } = makeNote();
   note(parts === 38, `\u5217\u5cf6\u65ad\u7247 ${parts}`);
   note(cut >= 0 && stitched === full, "\u5217\u5cf6\u65ad\u7247\u3092\u7d99\u3050\u3068\u78c1\u76e4\u3068\u4e00\u81f4");
 }
+
+const port = Number(process.env.YAO_PORT) || (await freePort());
+const base = `http://127.0.0.1:${port}/index.html`;
+const server = startStatic(port);
+await waitHttp(base);
+
+const profile = mkdtempSync(join(tmpdir(), "yao-e2e-"));
+const browser = await puppeteer.launch({
+  executablePath: CHROME,
+  headless: "new",
+  userDataDir: profile,
+  args: [
+    "--no-sandbox",
+    "--disable-gpu",
+    "--window-size=1400,900",
+    "--disable-features=WebRtcHideLocalIpsWithMdns",
+  ],
+});
+const page = await browser.newPage();
+page._yaoUrl = base;
+page.setDefaultTimeout(20000);
+await page.setViewport({ width: 1400, height: 900 });
+const h = attachPage(page, { fails, note });
