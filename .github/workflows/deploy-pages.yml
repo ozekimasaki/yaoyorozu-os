@@ -26,7 +26,8 @@ jobs:
         run: |
           mkdir -p public-dist
           cp index.html 404.html .nojekyll public-dist/
-          cp -r css js data public-dist/
+          cp -r css js data svg icons public-dist/
+          cp manifest.webmanifest sw.js public-dist/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public-dist
