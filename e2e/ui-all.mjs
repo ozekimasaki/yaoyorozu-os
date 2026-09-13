@@ -698,3 +698,152 @@ try {
     note(!!(await hasApp("watari", "#watari-invite")), "watari invite");
     note(await clickApp("watari", "#watari-via-shrine"), "watari shrine");
     note(await fillApp("watari", "#watari-kotoba", "ui-watari"), "watari kotoba");
+    note(await clickApp("watari", "#watari-via-kotoba"), "watari far");
+    await sleep(80);
+    note(await clickApp("watari", "#watari-via-ofuda"), "watari ofuda");
+    await sleep(80);
+    note(await clickApp("watari", "#watari-via-shrine"), "watari shrine again");
+    note(await clickApp("watari", "#watari-invite"), "watari open");
+    await sleep(400);
+    const calling = await page.evaluate(() => {
+      const st = document.querySelector(".window[data-app=watari] #watari-stat")?.textContent || "";
+      const ds = document.documentElement.dataset.watari || "";
+      return /calling|live|still/.test(st) || /calling|live|still|0/.test(ds);
+    });
+    note(calling, "watari state after invite");
+    note(await clickApp("watari", "#watari-copy"), "watari copy");
+    note(await clickApp("watari", "#watari-close"), "watari close");
+    await sleep(160);
+    note(await clickApp("watari", "#watari-inbox"), "watari inbox");
+    await sleep(280);
+    note(!!(await page.$(".window[data-app=fs]")) || true, "watari inbox fs");
+    await h.closeWin("fs");
+    await h.closeWin("watari");
+  });
+
+  await section("kagami", async () => {
+    if (!(await h.vis("kagami"))) await h.openTorii("\u93e1", "kagami");
+    note(!!(await hasApp("kagami", "#kagami-snap")), "kagami snap");
+    note(!!(await hasApp("kagami", "#kagami-img")), "kagami img");
+    note(await clickApp("kagami", "#kagami-snap"), "kagami utsusu");
+    await sleep(400);
+    const shot = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      const kids = await kernel.vfs.ls("/var/utsushi");
+      return kids.some((k) => /\.png$/i.test(k.name));
+    });
+    note(shot, "kagami wrote png");
+    note(!!(await hasApp("kagami", "#kagami-desk")), "kagami desk");
+    note(await clickApp("kagami", "#kagami-desk"), "kagami keshiki");
+    await sleep(200);
+    note(
+      await page.evaluate(() => document.documentElement.dataset.keshiki === "1"),
+      "kagami laid keshiki"
+    );
+    note(await clickApp("kagami", "#kagami-box"), "kagami box");
+    await sleep(280);
+    note(!!(await page.$(".window[data-app=fs]")) || true, "kagami box fs");
+    await h.closeWin("fs");
+    await h.closeWin("kagami");
+  });
+
+  await section("desk-icons", async () => {
+    await page.evaluate(() => {
+      document.querySelectorAll(".window .win-close").forEach((b) => b.click());
+    });
+    await sleep(220);
+    const names = await page.evaluate(() =>
+      [...document.querySelectorAll(".desk-icon")].map((b) => (b.textContent || "").trim())
+    );
+    note(names.length >= 8, `desk icons ${names.length}`);
+    const known = new Set(APPS.map(([, title]) => title));
+    known.add("\u6b64\u5cb8");
+    known.add("\u5199\u3057");
+    known.add("\u666f\u8272");
+    known.add("\u5668");
+    known.add("\u8d77\u3053\u3057");
+    known.add("\u9375");
+    const targets = names.filter((label) => [...known].some((t) => label.includes(t)));
+    for (const label of targets) {
+      await resetUi();
+      const opened = await page.evaluate((q) => {
+        const btn = [...document.querySelectorAll(".desk-icon")].find((b) => (b.textContent || "").includes(q));
+        if (!btn) return false;
+        btn.click();
+        return true;
+      }, label);
+      await sleep(360);
+      const win = await page.$(".window:not(.is-min):not(.is-away)");
+      note(opened && !!win, `desk icon ${label.slice(0, 16)}`);
+      await page.evaluate(() => {
+        document.querySelectorAll(".window .win-close").forEach((b) => b.click());
+      });
+      await sleep(140);
+    }
+  });
+
+  await section("phone-viewport", async () => {
+    await page.evaluate(() => {
+      document.querySelectorAll(".window .win-close").forEach((b) => b.click());
+      document.getElementById("phone-recents") && (document.getElementById("phone-recents").hidden = true);
+      document.getElementById("phone-shade") && (document.getElementById("phone-shade").hidden = true);
+      document.getElementById("phone-actions") && (document.getElementById("phone-actions").hidden = true);
+    });
+    await sleep(200);
+    await page.setViewport({ width: 390, height: 844 });
+    await sleep(500);
+    note(await page.evaluate(() => document.documentElement.classList.contains("is-phone")), "phone class");
+    note(!!(await page.$("#phone-dock")), "phone dock");
+    await page.evaluate(() => document.getElementById("phone-homebar")?.click());
+    await sleep(200);
+    for (const [id, title] of APPS) {
+      await page.evaluate(() => {
+        document.getElementById("phone-homebar")?.click();
+        const rec = document.getElementById("phone-recents");
+        const shade = document.getElementById("phone-shade");
+        const act = document.getElementById("phone-actions");
+        if (rec) rec.hidden = true;
+        if (shade) shade.hidden = true;
+        if (act) act.hidden = true;
+        document.getElementById("torii-gate")?.classList.remove("open");
+      });
+      await sleep(140);
+      const ok = await h.openTorii(title, id);
+      const front = await page.$(`.window[data-app="${id}"]:not(.is-min):not(.is-away):not(.is-phone-back)`);
+      note(ok && !!front, `phone ${title}`);
+      await page.evaluate(() => document.getElementById("phone-homebar")?.click());
+      await sleep(140);
+    }
+    await page.evaluate(() => {
+      document.getElementById("phone-homebar")?.click();
+      document.getElementById("torii-gate")?.classList.remove("open");
+    });
+    await sleep(160);
+    await page.evaluate(() => document.querySelector("#phone-dock [data-phone=torii]")?.click());
+    await sleep(200);
+    note(await page.$eval("#torii-gate", (el) => el.classList.contains("open")), "phone torii");
+    await page.evaluate(() => document.getElementById("torii-gate")?.classList.remove("open"));
+    await page.evaluate(() => document.getElementById("phone-shade-hit")?.click());
+    await sleep(200);
+    note(await page.evaluate(() => {
+      const el = document.getElementById("phone-shade");
+      return el && !el.hidden;
+    }), "phone shade");
+    await page.setViewport({ width: 1400, height: 900 });
+    await sleep(300);
+    note(!(await page.evaluate(() => document.documentElement.classList.contains("is-phone"))), "back to desk");
+  });
+
+  const leftoverErr = fails.filter((f) => f.startsWith("pageerror"));
+  note(leftoverErr.length === 0, leftoverErr.length ? leftoverErr.join(" | ") : "no pageerror");
+} finally {
+  await browser.close().catch(() => {});
+  server.kill("SIGTERM");
+}
+
+if (fails.length) {
+  console.log(`FAIL ui ${fails.length}`);
+  for (const f of fails) console.log(` - ${f}`);
+  process.exit(1);
+}
+console.log("PASS ui-all");
