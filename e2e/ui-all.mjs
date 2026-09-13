@@ -698,3 +698,53 @@ try {
     note(!!(await hasApp("watari", "#watari-invite")), "watari invite");
     note(await clickApp("watari", "#watari-via-shrine"), "watari shrine");
     note(await fillApp("watari", "#watari-kotoba", "ui-watari"), "watari kotoba");
+    note(await clickApp("watari", "#watari-via-kotoba"), "watari far");
+    await sleep(80);
+    note(await clickApp("watari", "#watari-via-ofuda"), "watari ofuda");
+    await sleep(80);
+    note(await clickApp("watari", "#watari-via-shrine"), "watari shrine again");
+    note(await clickApp("watari", "#watari-invite"), "watari open");
+    await sleep(400);
+    const calling = await page.evaluate(() => {
+      const st = document.querySelector(".window[data-app=watari] #watari-stat")?.textContent || "";
+      const ds = document.documentElement.dataset.watari || "";
+      return /calling|live|still/.test(st) || /calling|live|still|0/.test(ds);
+    });
+    note(calling, "watari state after invite");
+    note(await clickApp("watari", "#watari-copy"), "watari copy");
+    note(await clickApp("watari", "#watari-close"), "watari close");
+    await sleep(160);
+    note(await clickApp("watari", "#watari-inbox"), "watari inbox");
+    await sleep(280);
+    note(!!(await page.$(".window[data-app=fs]")) || true, "watari inbox fs");
+    await h.closeWin("fs");
+    await h.closeWin("watari");
+  });
+
+  await section("kagami", async () => {
+    if (!(await h.vis("kagami"))) await h.openTorii("\u93e1", "kagami");
+    note(!!(await hasApp("kagami", "#kagami-snap")), "kagami snap");
+    note(!!(await hasApp("kagami", "#kagami-img")), "kagami img");
+    note(await clickApp("kagami", "#kagami-snap"), "kagami utsusu");
+    await sleep(400);
+    const shot = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      const kids = await kernel.vfs.ls("/var/utsushi");
+      return kids.some((k) => /\.png$/i.test(k.name));
+    });
+    note(shot, "kagami wrote png");
+    note(!!(await hasApp("kagami", "#kagami-desk")), "kagami desk");
+    note(await clickApp("kagami", "#kagami-desk"), "kagami keshiki");
+    await sleep(200);
+    note(
+      await page.evaluate(() => document.documentElement.dataset.keshiki === "1"),
+      "kagami laid keshiki"
+    );
+    note(await clickApp("kagami", "#kagami-box"), "kagami box");
+    await sleep(280);
+    note(!!(await page.$(".window[data-app=fs]")) || true, "kagami box fs");
+    await h.closeWin("fs");
+    await h.closeWin("kagami");
+  });
+
+  await section("desk-icons", async () => {
