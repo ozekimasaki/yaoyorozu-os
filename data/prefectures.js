@@ -369,7 +369,7 @@ window.YAOYOROZU_PREFECTURES = [
     protocol: "共有資源は、誰のものでもあり、誰のものでもない",
     unusedCpu: 70,
     specialty: "コモンズ",
-    crisis: "京都大阪の裏陣化",
+    crisis: "京都大阪の裏庭化",
     opportunity: "湖を国家の共有メモリにする",
     en: 14000,
     season: "湖",
@@ -567,7 +567,7 @@ window.YAOYOROZU_PREFECTURES = [
     crisis: "中間地点の無名",
     opportunity: "回復を四国の輸出産業にする",
     en: 15000,
-    season: "蜜柊",
+    season: "蜜柑",
   },
   {
     id: "kochi",
