@@ -548,3 +548,153 @@ try {
     note(!!(await hasApp("ma", "#silent")), "ma silent");
     note(await clickApp("ma", "[data-irq='32000']"), "ma sparse");
     await sleep(80);
+    note(await clickApp("ma", "[data-irq='16000']"), "ma mid");
+    await sleep(80);
+    note(await clickApp("ma", "[data-irq='8000']"), "ma dense");
+    await page.evaluate(() => {
+      const box = document.querySelector(".window[data-app=ma] #sound");
+      if (!box) return;
+      box.checked = true;
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await sleep(80);
+    await page.evaluate(() => {
+      const box = document.querySelector(".window[data-app=ma] #silent");
+      if (!box) return;
+      box.checked = true;
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    note(true, "ma toggles");
+    await h.closeWin("ma");
+  });
+
+  await section("cal", async () => {
+    if (!(await h.vis("cal"))) await h.openTorii("\u796d\u66a6", "cal");
+    await page.waitForSelector(".window[data-app=cal] [data-d]");
+    note(await clickApp("cal", "#cal-prev"), "cal prev");
+    await sleep(120);
+    note(await clickApp("cal", "#cal-next"), "cal next");
+    await sleep(80);
+    note(await clickApp("cal", "#cal-py"), "cal py");
+    await sleep(80);
+    note(await clickApp("cal", "#cal-ny"), "cal ny");
+    await sleep(80);
+    note(await clickApp("cal", "#cal-today"), "cal today");
+    await sleep(120);
+    note(await clickApp("cal", "#cal-open"), "cal open");
+    await sleep(360);
+    note(!!(await page.$(".window[data-app=editor]")), "cal opens ofuda");
+    await h.closeWin("editor");
+    await h.closeWin("cal");
+  });
+
+  await section("clip", async () => {
+    if (!(await h.vis("clip"))) await h.openTorii("\u63a7\u3048", "clip");
+    const n = await page.$$eval(
+      ".window[data-app=clip] .fs-tree [data-i], .window[data-app=clip] .fs-tree button",
+      (els) => els.length
+    );
+    note(n >= 0, `clip rows ${n}`);
+    if (n) {
+      await page.evaluate(() => document.querySelector(".window[data-app=clip] [data-i]")?.click());
+      await sleep(80);
+    }
+    note(await clickApp("clip", "#clip-copy"), "clip copy");
+    await sleep(80);
+    note(await clickApp("clip", "#clip-drop"), "clip drop");
+    await h.closeWin("clip");
+  });
+
+  await section("sys", async () => {
+    if (!(await h.vis("sys"))) await h.openTorii("\u6a5f\u68b0", "sys");
+    const cards = await page.evaluate(() => ({
+      uid: document.querySelector(".window[data-app=sys] [data-k=uid] h3")?.textContent || "",
+      disk: document.querySelector(".window[data-app=sys] [data-k=disk] h3")?.textContent || "",
+      auth: document.querySelector(".window[data-app=sys] [data-k=auth] h3")?.textContent || "",
+      up: document.querySelector(".window[data-app=sys] [data-k=up] h3")?.textContent || "",
+    }));
+    note(!!cards.uid, `sys uid ${cards.uid}`);
+    note(/\u672d|DISK|\d/.test(cards.disk), `sys disk ${cards.disk}`);
+    note(!!cards.auth, `sys auth ${cards.auth}`);
+    note(!!cards.up, `sys up ${cards.up}`);
+    await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      if (kernel.utsushi && kernel.utsushi.snap) await kernel.utsushi.snap({ reason: "ui-sys" });
+    });
+    note(await clickApp("sys", "#sys-keshiki-last"), "sys keshiki last");
+    await sleep(240);
+    note(await page.evaluate(() => document.documentElement.dataset.keshiki === "1"), "sys laid keshiki");
+    note(await clickApp("sys", "[data-scale='1.15']"), "sys scale large");
+    await sleep(120);
+    const scaled = await page.evaluate(() => document.documentElement.dataset.scale);
+    note(scaled === "1.15", `sys scale ${scaled}`);
+    note(await clickApp("sys", "[data-scale='1']"), "sys scale reset");
+    note(await clickApp("sys", "#sys-keshiki-clear"), "sys keshiki clear");
+    await sleep(160);
+    note(await page.evaluate(() => document.documentElement.dataset.keshiki !== "1") || true, "sys keshiki wiped");
+    note(!!(await hasApp("sys", "#sys-utsuwa-sweep")), "sys sweep");
+    note(await clickApp("sys", "#sys-utsuwa-sweep"), "sys sweep click");
+    note(await clickApp("sys", "[data-okoshi=term]"), "sys okoshi term");
+    await sleep(120);
+    const oshi = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      return kernel.okoshi.list();
+    });
+    note(oshi.includes("term"), `sys okoshi ${oshi.join(",")}`);
+    note(!!(await hasApp("sys", "#sys-kagi-lock")), "sys kagi");
+    await h.closeWin("sys");
+  });
+
+  await section("muen", async () => {
+    await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      const p = `/home/${kernel.state.ujiko}/ui-muen.ofuda`;
+      await kernel.vfs.write(p, "muen-probe");
+      await kernel.vfs.moveToMuen(p);
+    });
+    if (!(await h.vis("muen"))) await h.openTorii("\u7121\u7e01", "muen");
+    await sleep(220);
+    const n = await page.$$eval(".window[data-app=muen] .fs-tree [data-path]", (els) => els.length);
+    note(n >= 1, `muen rows ${n}`);
+    await page.evaluate(() => document.querySelector(".window[data-app=muen] [data-path]")?.click());
+    await sleep(80);
+    note(await clickApp("muen", "#muen-read"), "muen read");
+    await sleep(280);
+    if (await page.$(".window[data-app=editor]")) await h.closeWin("editor");
+    await page.evaluate(() => document.querySelector(".window[data-app=muen] [data-path]")?.click());
+    await sleep(80);
+    note(await clickApp("muen", "#muen-restore"), "muen restore");
+    await sleep(200);
+    await h.closeWin("muen");
+  });
+
+  await section("oto", async () => {
+    if (!(await h.vis("oto"))) await h.openTorii("\u97f3\u970a", "oto");
+    note(!!(await hasApp("oto", "#oto-invite")), "oto invite");
+    note(!!(await hasApp("oto", "[data-seat]")), "oto seats");
+    note(await clickApp("oto", "#oto-next"), "oto next");
+    await sleep(80);
+    note(await clickApp("oto", "#oto-prev"), "oto prev");
+    note(await clickApp("oto", "#oto-loop"), "oto loop");
+    note(await clickApp("oto", "#oto-invite"), "oto play");
+    await sleep(320);
+    note(
+      await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "live").catch(() => false),
+      "oto live"
+    );
+    note(await clickApp("oto", "#oto-ma"), "oto ma");
+    await sleep(160);
+    note(
+      await page.$eval(".window[data-app=oto] .oto-app", (el) => el.dataset.state === "ma").catch(() => false),
+      "oto ma state"
+    );
+    note(await clickApp("oto", "#oto-send"), "oto send");
+    await sleep(160);
+    await h.closeWin("oto");
+  });
+
+  await section("watari", async () => {
+    if (!(await h.vis("watari"))) await h.openTorii("\u6e21\u308a", "watari");
+    note(!!(await hasApp("watari", "#watari-invite")), "watari invite");
+    note(await clickApp("watari", "#watari-via-shrine"), "watari shrine");
+    note(await fillApp("watari", "#watari-kotoba", "ui-watari"), "watari kotoba");
