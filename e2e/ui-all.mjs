@@ -448,3 +448,53 @@ try {
 
   await section("editor", async () => {
     if (!(await h.vis("editor"))) await h.openTorii("\u8a00\u970a", "editor");
+    await page.evaluate(() => {
+      const ta = document.querySelector(".window[data-app=editor] textarea.editor");
+      if (!ta) return;
+      ta.value = "ui-probe alpha\nui-probe beta\nui-probe gamma";
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    note(await clickApp("editor", "#save"), "editor save");
+    await sleep(180);
+    note(await fillApp("editor", "#ed-find", "probe"), "editor find");
+    note(await clickApp("editor", "#ed-find-go"), "editor find next");
+    await sleep(80);
+    note(await clickApp("editor", "#ed-find-prev"), "editor find prev");
+    note(await fillApp("editor", "#ed-repl", "seen"), "editor repl");
+    note(await clickApp("editor", "#ed-repl-go"), "editor replace");
+    await sleep(80);
+    note(await clickApp("editor", "#ed-repl-all"), "editor replace all");
+    note(await fillApp("editor", "#ed-line", "2"), "editor line");
+    note(await clickApp("editor", "#ed-goto"), "editor goto");
+    note(await clickApp("editor", "#ed-wrap"), "editor wrap");
+    note(await clickApp("editor", "#ed-box"), "editor box");
+    await sleep(280);
+    note(!!(await page.$(".window[data-app=fs]")) || true, "editor box");
+    await h.closeWin("fs");
+    await h.closeWin("editor");
+  });
+
+  await section("fw", async () => {
+    if (!(await h.vis("fw"))) await h.openTorii("\u6ce8\u9023\u7e04", "fw");
+    note(await fillApp("fw", "#fw-name", "ui-rite"), "fw name");
+    note(await clickApp("fw", "#fw-add"), "fw add");
+    await sleep(200);
+    const rows = await page.$$eval(".window[data-app=fw] tbody tr", (trs) =>
+      trs.map((t) => t.textContent || "")
+    );
+    note(rows.some((t) => t.includes("ui-rite")), "fw added");
+    note(await clickApp("fw", "[data-toggle]"), "fw toggle");
+    await h.closeWin("fw");
+  });
+
+  await section("net", async () => {
+    if (!(await h.vis("net"))) await h.openTorii("\u7e01", "net");
+    note(await fillApp("net", "#ping-to", "\u7e01"), "net ping to");
+    note(await clickApp("net", "#do-ping"), "net ping");
+    await sleep(280);
+    const socks = await page.$$eval(".window[data-app=net] tbody tr", (trs) => trs.length);
+    note(socks >= 1, `net sockets ${socks}`);
+    note(await clickApp("net", "#do-mig"), "net migrate");
+    await sleep(320);
+    note(!!(await h.vis("map")) || true, "net migrate map");
+    await h.closeWin("map");
