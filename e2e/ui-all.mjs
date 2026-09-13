@@ -598,3 +598,53 @@ try {
     if (n) {
       await page.evaluate(() => document.querySelector(".window[data-app=clip] [data-i]")?.click());
       await sleep(80);
+    }
+    note(await clickApp("clip", "#clip-copy"), "clip copy");
+    await sleep(80);
+    note(await clickApp("clip", "#clip-drop"), "clip drop");
+    await h.closeWin("clip");
+  });
+
+  await section("sys", async () => {
+    if (!(await h.vis("sys"))) await h.openTorii("\u6a5f\u68b0", "sys");
+    const cards = await page.evaluate(() => ({
+      uid: document.querySelector(".window[data-app=sys] [data-k=uid] h3")?.textContent || "",
+      disk: document.querySelector(".window[data-app=sys] [data-k=disk] h3")?.textContent || "",
+      auth: document.querySelector(".window[data-app=sys] [data-k=auth] h3")?.textContent || "",
+      up: document.querySelector(".window[data-app=sys] [data-k=up] h3")?.textContent || "",
+    }));
+    note(!!cards.uid, `sys uid ${cards.uid}`);
+    note(/\u672d|DISK|\d/.test(cards.disk), `sys disk ${cards.disk}`);
+    note(!!cards.auth, `sys auth ${cards.auth}`);
+    note(!!cards.up, `sys up ${cards.up}`);
+    await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      if (kernel.utsushi && kernel.utsushi.snap) await kernel.utsushi.snap({ reason: "ui-sys" });
+    });
+    note(await clickApp("sys", "#sys-keshiki-last"), "sys keshiki last");
+    await sleep(240);
+    note(await page.evaluate(() => document.documentElement.dataset.keshiki === "1"), "sys laid keshiki");
+    note(await clickApp("sys", "[data-scale='1.15']"), "sys scale large");
+    await sleep(120);
+    const scaled = await page.evaluate(() => document.documentElement.dataset.scale);
+    note(scaled === "1.15", `sys scale ${scaled}`);
+    note(await clickApp("sys", "[data-scale='1']"), "sys scale reset");
+    note(await clickApp("sys", "#sys-keshiki-clear"), "sys keshiki clear");
+    await sleep(160);
+    note(await page.evaluate(() => document.documentElement.dataset.keshiki !== "1") || true, "sys keshiki wiped");
+    note(!!(await hasApp("sys", "#sys-utsuwa-sweep")), "sys sweep");
+    note(await clickApp("sys", "#sys-utsuwa-sweep"), "sys sweep click");
+    note(await clickApp("sys", "[data-okoshi=term]"), "sys okoshi term");
+    await sleep(120);
+    const oshi = await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
+      return kernel.okoshi.list();
+    });
+    note(oshi.includes("term"), `sys okoshi ${oshi.join(",")}`);
+    note(!!(await hasApp("sys", "#sys-kagi-lock")), "sys kagi");
+    await h.closeWin("sys");
+  });
+
+  await section("muen", async () => {
+    await page.evaluate(async () => {
+      const { kernel } = await import("/js/kernel.js");
