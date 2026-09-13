@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ROOT } from "./harness.mjs";
 
 function countLand(markup) {
-  return (markup.match(/<path\\b[^>]*\\sid="/g) || []).length;
+  return (markup.match(/<path\b[^>]*\sid="/g) || []).length;
 }
 
 const raw = readFileSync(join(ROOT, "svg/japan-prefectures.svg"), "utf8");
@@ -24,8 +24,8 @@ if (partN !== 38) {
   console.log(`FAIL 列島断片 ${partN}`);
   process.exit(1);
 }
-if (n !== 47 || !/<\\/svg>/i.test(assembled)) {
-  console.log(`FAIL 列島継ぎ ${n} closed=${/<\\/svg>/i.test(assembled)}`);
+if (n !== 47 || !/<\/svg>/i.test(assembled)) {
+  console.log(`FAIL 列島継ぎ ${n} closed=${/<\/svg>/i.test(assembled)}`);
   process.exit(1);
 }
 if (cut >= 0 && assembled !== raw) {
