@@ -178,3 +178,173 @@ try {
     landStitch.n === 47 && landStitch.parts === 38 && landStitch.closed,
     `\u5217\u5cf6\u7d99\u304e ${landStitch.n}/${landStitch.parts}/${landStitch.closed}`
   );
+  const mapClick = await page.evaluate(async () => {
+    const win = document.querySelector(".window[data-app=map]:not(.is-min)");
+    const space0 = document.getElementById("space-pill")?.textContent || "";
+    const other = [...win.querySelectorAll("svg .pref")].find((n) => !n.classList.contains("is-selected"));
+    if (other) other.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 200));
+    return {
+      still: !!document.querySelector(".window[data-app=map]:not(.is-min):not(.is-away)"),
+      space0,
+      space1: document.getElementById("space-pill")?.textContent || "",
+      viewed: win.querySelector("svg .pref.is-view")?.dataset.pref || "",
+      selected: win.querySelector("svg .pref.is-selected")?.dataset.pref || "",
+      h2: win.querySelector("#map-panel h2")?.textContent || "",
+    };
+  });
+  note(mapClick.still, "\u5217\u5cf6\u30af\u30ea\u30c3\u30af\u3067\u7a93\u304c\u6b8b\u308b");
+  note(mapClick.space0 === mapClick.space1, `\u5217\u5cf6\u30af\u30ea\u30c3\u30af\u306f\u7a7a\u9593\u3092\u79fb\u3055\u306a\u3044 ${mapClick.space1}`);
+  note(!!mapClick.viewed && mapClick.viewed !== mapClick.selected, `\u5217\u5cf6\u30af\u30ea\u30c3\u30af\u306f\u898b\u308b ${mapClick.viewed}`);
+  const mapJump = await page.evaluate(async () => {
+    const win = document.querySelector(".window[data-app=map]:not(.is-min)");
+    const host = win.querySelector(".map-wrap");
+    host.focus();
+    host.dispatchEvent(new KeyboardEvent("keydown", { key: "\u5ca1", bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 80));
+    const viewed = win.querySelector("svg .pref.is-view")?.dataset.pref || "";
+    const h2 = win.querySelector("#map-panel h2")?.textContent || "";
+    host.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 180));
+    return { viewed, h2, pill: document.getElementById("space-pill")?.textContent || "" };
+  });
+  note(mapJump.h2.includes("\u5ca1") || mapJump.viewed.includes("okayama"), `\u5217\u5cf6\u982d\u6587\u5b57 ${mapJump.h2} ${mapJump.viewed}`);
+  note(mapJump.pill.includes("\u5ca1\u5c71"), `\u5217\u5cf6Enter ${mapJump.pill}`);
+  await h.closeWin("map");
+
+  await page.click("#kami-pill");
+  await h.awaitApp("proc");
+  note(!!(await h.vis("proc")), "\u795e");
+  note(!!(await page.$(".window[data-app=proc] #proc-q")), "\u795e\u306e\u691c\u7d22");
+  await page.evaluate(() => {
+    const box = document.querySelector(".window[data-app=proc] #proc-q");
+    box.value = "sleep";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(250);
+  const procRows = await page.$$eval(".window[data-app=proc] tbody tr", (trs) => trs.length);
+  note(procRows >= 1, `\u795e\u306e\u7d5e\u308a ${procRows}`);
+  await page.evaluate(() => document.querySelector(".window[data-app=proc] #next")?.click());
+  await sleep(200);
+  note(!!(await page.$(".window[data-app=proc] tbody")), "\u795e\u306e\u6b21\u9801");
+  await h.closeWin("proc");
+
+  await h.openTorii("\u7e01fs", "fs");
+  note(!!(await h.vis("fs")), "\u7e01fs");
+  note(!!(await page.$(".window[data-app=fs] #fs-filter")), "\u7e01fs \u7d5e\u308a");
+  await page.evaluate(() => {
+    const go = document.querySelector(".window[data-app=fs] #fs-go");
+    if (!go) return;
+    go.value = "/etc";
+    go.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+  });
+  await sleep(400);
+  const etc = await page.$$eval(".window[data-app=fs] .fs-tree [data-path]:not([data-up])", (els) =>
+    els.map((b) => b.dataset.path)
+  );
+  note(etc.some((p) => (p || "").includes("/etc")), `\u7e01fs /etc ${etc.slice(0, 3).join(" ")}`);
+  await page.evaluate(() => {
+    const file = [...document.querySelectorAll(".window[data-app=fs] .fs-tree [data-path]:not([data-up])")].find(
+      (b) => b.dataset.type && b.dataset.type !== "dir"
+    );
+    if (file) file.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  });
+  await sleep(500);
+  note(!!(await page.$(".window[data-app=editor]")), "\u7e01fs \u304b\u3089\u8a00\u970a");
+  await h.closeWin("editor");
+  await h.closeWin("fs");
+
+  await h.openTorii("\u8a00\u970a", "editor");
+  note(!!(await h.vis("editor")), "\u8a00\u970a");
+  await page.evaluate(() => {
+    const ta = document.querySelector(".window[data-app=editor] textarea.editor");
+    if (!ta) return;
+    ta.value = "yaoyorozu-e2e-probe\n\u4e8c\u884c\u76ee";
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.evaluate(() => document.querySelector(".window[data-app=editor] #save")?.click());
+  await sleep(300);
+  await page.evaluate(() => {
+    const box = document.querySelector(".window[data-app=editor] #ed-find");
+    if (!box) return;
+    box.value = "e2e";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+    document.querySelector(".window[data-app=editor] #ed-find-go")?.click();
+  });
+  await sleep(200);
+  note(!!(await page.$(".window[data-app=editor] #ed-find")), "\u8a00\u970a\u3092\u63a2\u308b");
+  await page.evaluate(() => {
+    const box = document.querySelector(".window[data-app=editor] #ed-line");
+    if (!box) return;
+    box.value = "2";
+    document.querySelector(".window[data-app=editor] #ed-goto")?.click();
+  });
+  await sleep(150);
+  note(true, "\u8a00\u970a\u306e\u884c\u3078");
+  await h.closeWin("editor");
+
+  await h.openTorii("\u6ce8\u9023\u7e04", "fw");
+  note(!!(await h.vis("fw")), "\u6ce8\u9023\u7e04");
+  const fwRows = await page.$$eval(".window[data-app=fw] tbody tr", (trs) => trs.length);
+  note(fwRows >= 3, `\u6ce8\u9023\u7e04\u306e\u884c ${fwRows}`);
+  await page.evaluate(() => {
+    const box = document.querySelector(".window[data-app=fw] #fw-name");
+    box.value = "e2e-rite";
+    document.querySelector(".window[data-app=fw] #fw-add")?.click();
+  });
+  await sleep(250);
+  const fwAfter = await page.$$eval(".window[data-app=fw] tbody tr", (trs) => trs.map((t) => t.textContent));
+  note(fwAfter.some((t) => (t || "").includes("e2e-rite")), "\u6ce8\u9023\u7e04\u306b\u5100\u793c\u3092\u8db3\u3059");
+  await h.closeWin("fw");
+
+  await h.closeKashiwa();
+  await page.click("#net-pill");
+  await h.awaitApp("net");
+  note(!!(await h.vis("net")), "\u7e01");
+  note(!!(await page.$(".window[data-app=net] #ping-to")), "\u7e01 ping\u6b04");
+  await page.evaluate(() => document.querySelector(".window[data-app=net] #do-ping")?.click());
+  await sleep(400);
+  const socks = await page.$$eval(".window[data-app=net] tbody tr", (trs) => trs.length);
+  note(socks >= 1, `\u7e01\u30bd\u30b1\u30c3\u30c8 ${socks}`);
+  await h.closeWin("net");
+
+  await h.openTorii("dmesg", "dmesg");
+  note(!!(await h.vis("dmesg")), "dmesg");
+  const dmesgBody = await page.$eval(".window[data-app=dmesg] #dmesg-out", (el) => el.textContent || "");
+  note(dmesgBody.length > 0, "\u6838\u306e\u9418\u304c\u3042\u308b");
+  await page.evaluate(() => {
+    const box = document.querySelector(".window[data-app=dmesg] #dmesg-q");
+    box.value = "exec";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(200);
+  note(!!(await page.$(".window[data-app=dmesg] #dmesg-follow")), "dmesg \u8ffd\u3046");
+  await h.closeWin("dmesg");
+
+  await h.openTorii("\u5949\u7d0d", "term");
+  note(!!(await h.vis("term")), "\u5949\u7d0d");
+  await h.term("whoami");
+  await h.term("pwd");
+  await h.term("ls /etc");
+  await h.term("write e2e-probe.ofuda e2e-body");
+  await h.term("file e2e-probe.ofuda");
+  await h.term("clip e2e-clip");
+  await h.term("rm e2e-probe.ofuda");
+  await h.term("cron every 2 e2e-toki");
+  await sleep(2600);
+  await h.term("cron");
+  await h.term("at +2 e2e-at");
+  await h.term("atq");
+  const termOut = await page.$eval(".window[data-app=term] .term-out", (el) => el.textContent || "");
+  note(/e2e|etc|ofuda|ujiko|home/i.test(termOut), `\u5949\u7d0d\u51fa\u529b ${termOut.slice(-80)}`);
+  note(/e2e-toki|every 2/.test(termOut), `\u6642\u5831 cron ${termOut.includes("e2e-toki")}`);
+  const oshiN = await page.evaluate(() => (document.getElementById("oshi-pill")?.textContent || "").length);
+  note(oshiN >= 1, `\u6642\u5831\u304a\u544a\u3052 ${oshiN}`);
+  await h.closeWin("term");
+
+  await h.openTorii("\u5949\u7d0d", "term");
+  await h.openTorii("\u5f53\u76f4", "oncall");
+  await page.evaluate(() => document.querySelector(".window[data-app=oncall] .win-min")?.click());
+  await sleep(200);
+  await h.term("assoc");
+  await h.term("cat /proc/apps");
