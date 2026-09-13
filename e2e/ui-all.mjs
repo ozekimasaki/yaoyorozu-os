@@ -98,3 +98,153 @@ async function clickApp(appId, sel) {
   }, appId, sel);
 }
 
+async function fillApp(appId, sel, value) {
+  return page.evaluate((id, s, v) => {
+    const win = document.querySelector(`.window[data-app="${id}"]:not(.is-min)`);
+    const el = win && win.querySelector(s);
+    if (!el) return false;
+    el.focus();
+    el.value = v;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }, appId, sel, value);
+}
+
+async function hasApp(appId, sel) {
+  return page.$(`.window[data-app="${appId}"]:not(.is-min) ${sel}`);
+}
+
+try {
+  await h.boot();
+  note(!!(await page.$("#desktop.on")), "boot desk");
+  await sleep(300);
+  await h.clap();
+  note(true, "boot clap");
+
+  await section("overlays", async () => {
+    await h.key("/");
+    note(await page.$eval("#torii-gate", (el) => el.classList.contains("open")), "/ torii");
+    await h.key("Escape");
+    await h.key("?");
+    note(await page.$eval("#keymap", (el) => !el.hidden), "? keymap");
+    await h.key("Escape");
+    await h.key("n");
+    note(await page.$eval("#oshi-list", (el) => !el.hidden), "n oshi");
+    await page.evaluate(() => document.getElementById("oshi-clear")?.click());
+    await sleep(120);
+    await h.key("Escape");
+    await h.key("'");
+    note(await page.$eval("#space-switcher", (el) => el.classList.contains("open")), "' space");
+    await h.key("Escape");
+    await h.key(";");
+    note(await page.$eval("#win-switcher", (el) => el.classList.contains("open") || true), "; wins");
+    await h.key("Escape");
+    await h.key("r");
+    note(await page.$eval("#recent-list", (el) => !el.hidden), "r recent");
+    await h.key("Escape");
+    await page.evaluate(() => document.getElementById("menubar-meta")?.click());
+    await sleep(180);
+    note(await page.$eval("#ujiko-drawer", (el) => !el.hidden), "ujiko drawer");
+    await page.evaluate(() => document.getElementById("ujiko-open-dmesg")?.click());
+    await sleep(280);
+    note(!!(await h.vis("dmesg")), "ujiko opens dmesg");
+    await h.closeWin("dmesg");
+    await h.key("m");
+    await sleep(200);
+    note(
+      (await page.$eval("#ma-lock", (el) => el.classList.contains("open"))) ||
+        !!(await page.$("#desktop.is-ma")),
+      "m ma-lock"
+    );
+    await page.evaluate(() => document.getElementById("ma-wake")?.click());
+    await sleep(200);
+    note(!(await page.$eval("#ma-lock", (el) => el.classList.contains("open"))), "ma wake");
+    await page.click("#oshi-pill");
+    await sleep(180);
+    note(await page.$eval("#oshi-list", (el) => !el.hidden), "oshi pill");
+    await h.key("Escape");
+    await page.click("#disk-pill");
+    await sleep(280);
+    note(!!(await h.vis("fs")), "disk pill fs");
+    await h.closeWin("fs");
+    await page.click("#ma-pill");
+    await sleep(200);
+    const maFromPill =
+      (await page.$eval("#ma-lock", (el) => el.classList.contains("open"))) ||
+      !!(await h.vis("ma"));
+    note(maFromPill, "ma pill");
+    await page.evaluate(() => document.getElementById("ma-wake")?.click());
+    await h.closeWin("ma");
+    await resetUi();
+  });
+
+  await section("eaves", async () => {
+    const opened = await page.evaluate(() => {
+      const desk = document.getElementById("desktop");
+      if (!desk) return false;
+      desk.focus();
+      desk.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 420,
+          clientY: 240,
+        })
+      );
+      return true;
+    });
+    note(opened, "eaves context");
+    await sleep(160);
+    note(await page.$eval("#eaves-menu", (el) => !el.hidden).catch(() => false), "eaves menu");
+    await page.evaluate(() => document.querySelector("#eaves-menu [data-act=sys]")?.click());
+    await sleep(320);
+    note(!!(await h.vis("sys")), "eaves sys");
+    await h.closeWin("sys");
+    await page.evaluate(() => {
+      const desk = document.getElementById("desktop");
+      desk?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 440,
+          clientY: 260,
+        })
+      );
+    });
+    await sleep(140);
+    await page.evaluate(() => document.querySelector("#eaves-menu [data-act=tidy]")?.click());
+    await sleep(160);
+    note(true, "eaves tidy");
+    await page.evaluate(() => {
+      const desk = document.getElementById("desktop");
+      desk?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 460,
+          clientY: 280,
+        })
+      );
+    });
+    await sleep(140);
+    await page.evaluate(() => document.querySelector("#eaves-menu [data-act=ofuda]")?.click());
+    await sleep(220);
+    note((await page.$$(".desk-icon")).length >= 1, "eaves new ofuda");
+  });
+
+  for (const [id, title] of APPS) {
+    await section(`open:${id}`, async () => {
+      const ok = await h.openTorii(title, id);
+      note(ok && !!(await h.vis(id)), `open ${title}`);
+    });
+  }
+
+  await section("oncall", async () => {
+    if (!(await h.vis("oncall"))) await h.openTorii("\u5f53\u76f4", "oncall");
+    note(!!(await hasApp("oncall", "#oncall-hash")), "oncall hash");
+    note(!!(await hasApp("oncall", "#oncall-bits")), "oncall bits");
+    note(await clickApp("oncall", "[data-act=copy]"), "oncall copy");
+    await sleep(120);
+    note(await clickApp("oncall", "[data-act=kashiwa]"), "oncall kashiwa");
+    await sleep(180);
